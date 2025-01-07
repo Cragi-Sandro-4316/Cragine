@@ -1,0 +1,16 @@
+/home/cragisandro4316/Desktop/jetbrains/clion-2024.3.1.1/bin/cmake/linux/x64/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=/home/cragisandro4316/Desktop/jetbrains/clion-2024.3.1.1/bin/ninja/linux/x64/ninja -G Ninja -S /run/media/cragisandro4316/nvme1n1p1/dev/Cragine -B /run/media/cragisandro4316/nvme1n1p1/dev/Cragine/cmake-build-debug
+-- The C compiler identification is GNU 13.2.1
+-- The CXX compiler identification is GNU 13.2.1
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/lib64/ccache/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/lib64/ccache/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Configuring done (0.3s)
+-- Generating done (0.0s)
+-- Build files have been written to: /run/media/cragisandro4316/nvme1n1p1/dev/Cragine/cmake-build-debug
