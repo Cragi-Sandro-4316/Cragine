@@ -1,9 +1,9 @@
 # ninja log v6
-0	29	1736272054151665568	Sandbox/CMakeFiles/Sandbox.dir/src/main.cpp.o	a4eb68a51cf45231
-296	314	1736272070622549827	Engine/libEngine.a	186cc4bddc16437e
-1	296	1736272070327551899	Engine/CMakeFiles/Engine.dir/src/Cragine.cpp.o	73153edb544b09b9
-314	355	1736272070640549700	Sandbox/Sandbox	42301ab09cabb5a9
-1	29	1736272209665572775	Sandbox/CMakeFiles/Sandbox.dir/src/main.cpp.o	6282c0a70928f062
-1	341	1736272209665572775	Engine/CMakeFiles/Engine.dir/src/Cragine.cpp.o	afd3394b059db227
-341	361	1736272210005570386	Engine/libEngine.a	186cc4bddc16437e
-361	409	1736272210025570245	Sandbox/Sandbox	42301ab09cabb5a9
+1	44	1736350796551402752	Sandbox/CMakeFiles/Sandbox.dir/src/main.cpp.o	d3eb46b257535b3f
+1	37	1736350908120634123	Engine/CMakeFiles/Engine.dir/src/prova/Application.cpp.o	e62d26d6beeebde7
+38	66	1736350908157633868	Engine/libEngine.a	b758c59cef4ccd41
+0	275	1736350796550402759	Engine/CMakeFiles/Engine.dir/src/Cragine.cpp.o	79a61e4cf521a3bf
+66	106	1736350908185633675	Sandbox/Sandbox	42301ab09cabb5a9
+0	33	1736351313117763311	Engine/CMakeFiles/Engine.dir/src/core/Application.cpp.o	a3ae1ce1462d627e
+33	74	1736351313150763067	Engine/libEngine.a	c15114c4d3506d8
+74	115	1736351313191762765	Sandbox/Sandbox	42301ab09cabb5a9

@@ -1,12 +1,6 @@
-//
-// Created by cragisandro4316 on 07/01/25.
-//
+#pragma once
+#include "core/Application.h"
 
-#ifndef CRAGINE_H
-#define CRAGINE_H
+#include "core/EntryPoint.h"
 
-namespace Cragine {
-    void Init();
-}
 
-#endif //CRAGINE_H

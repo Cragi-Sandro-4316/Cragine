@@ -2,7 +2,7 @@
 project(Engine)
 
 # Source files
-file(GLOB_RECURSE ENGINE_SRC src/*.cpp include/*.h)
+file(GLOB_RECURSE ENGINE_SRC src/*.cpp src/*/*.cpp include/*.h include/*/*.h)
 
 # Create a static library
 add_library(Engine STATIC ${ENGINE_SRC})

@@ -55,7 +55,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/run/media/cragisandro4316/nvme1n1p1/dev/Cragine/cmake-build-debug"
+			"value" : "/run/media/cragisandro4316/nvme0n1p1/dev/Cragine/cmake-build-debug"
 		},
 		{
 			"name" : "CMAKE_CACHE_MAJOR_VERSION",
@@ -543,7 +543,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/run/media/cragisandro4316/nvme1n1p1/dev/Cragine/cmake-build-debug/CMakeFiles/pkgRedirects"
+			"value" : "/run/media/cragisandro4316/nvme0n1p1/dev/Cragine/cmake-build-debug/CMakeFiles/pkgRedirects"
 		},
 		{
 			"name" : "CMAKE_GENERATOR",
@@ -603,7 +603,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/run/media/cragisandro4316/nvme1n1p1/dev/Cragine"
+			"value" : "/run/media/cragisandro4316/nvme0n1p1/dev/Cragine"
 		},
 		{
 			"name" : "CMAKE_INSTALL_PREFIX",
@@ -1151,7 +1151,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/run/media/cragisandro4316/nvme1n1p1/dev/Cragine/cmake-build-debug"
+			"value" : "/run/media/cragisandro4316/nvme0n1p1/dev/Cragine/cmake-build-debug"
 		},
 		{
 			"name" : "Cragine_IS_TOP_LEVEL",
@@ -1175,7 +1175,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/run/media/cragisandro4316/nvme1n1p1/dev/Cragine"
+			"value" : "/run/media/cragisandro4316/nvme0n1p1/dev/Cragine"
 		},
 		{
 			"name" : "Engine_BINARY_DIR",
@@ -1187,7 +1187,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/run/media/cragisandro4316/nvme1n1p1/dev/Cragine/cmake-build-debug/Engine"
+			"value" : "/run/media/cragisandro4316/nvme0n1p1/dev/Cragine/cmake-build-debug/Engine"
 		},
 		{
 			"name" : "Engine_IS_TOP_LEVEL",
@@ -1211,7 +1211,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/run/media/cragisandro4316/nvme1n1p1/dev/Cragine/Engine"
+			"value" : "/run/media/cragisandro4316/nvme0n1p1/dev/Cragine/Engine"
 		},
 		{
 			"name" : "Sandbox_BINARY_DIR",
@@ -1223,7 +1223,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/run/media/cragisandro4316/nvme1n1p1/dev/Cragine/cmake-build-debug/Sandbox"
+			"value" : "/run/media/cragisandro4316/nvme0n1p1/dev/Cragine/cmake-build-debug/Sandbox"
 		},
 		{
 			"name" : "Sandbox_IS_TOP_LEVEL",
@@ -1247,7 +1247,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/run/media/cragisandro4316/nvme1n1p1/dev/Cragine/Sandbox"
+			"value" : "/run/media/cragisandro4316/nvme0n1p1/dev/Cragine/Sandbox"
 		},
 		{
 			"name" : "_CMAKE_LINKER_PUSHPOP_STATE_SUPPORTED",

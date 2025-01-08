@@ -1,4 +1,4 @@
-# Install script for directory: /run/media/cragisandro4316/nvme1n1p1/dev/Cragine/Engine
+# Install script for directory: /run/media/cragisandro4316/nvme0n1p1/dev/Cragine/Engine
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

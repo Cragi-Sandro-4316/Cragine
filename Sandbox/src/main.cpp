@@ -1,5 +1,16 @@
-#include "Cragine.h"
+#include <Cragine.h>
 
-int main() {
-    Cragine::Init();
+class Sandbox : public Cragine::Application {
+    public:
+    Sandbox() {
+
+    }
+
+    ~Sandbox() {
+
+    }
+};
+
+Cragine::Application* CreateApplication() {
+    return new Sandbox();
 }

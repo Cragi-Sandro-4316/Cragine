@@ -49,7 +49,7 @@
 			[
 				{
 					"backtrace" : 2,
-					"path" : "/run/media/cragisandro4316/nvme1n1p1/dev/Cragine/Engine/include"
+					"path" : "/run/media/cragisandro4316/nvme0n1p1/dev/Cragine/Engine/include"
 				}
 			],
 			"language" : "CXX",
