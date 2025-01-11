@@ -79,4 +79,4 @@ namespace Cragine {
         return os << e.toString();
     }
 
-}
+} 

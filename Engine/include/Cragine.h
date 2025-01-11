@@ -2,6 +2,7 @@
 #pragma once
 
 #include "core/Application.h"
+#include "layers/Layer.h"
 
 // ----------ENTRY POINT-------------
 #include "core/EntryPoint.h"

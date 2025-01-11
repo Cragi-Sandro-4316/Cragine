@@ -17,6 +17,14 @@ namespace Cragine {
     Application::~Application() {}
 
 
+    void Application::pushLayer(Layer* layer) {
+        layerStack.pushLayer(layer);
+    }
+
+    void Application::pushOverlay(Layer* layer) {
+        layerStack.pushOverlay(layer);
+    }
+
 
     void Application::onEvent(Event& e) {
 
@@ -24,19 +32,26 @@ namespace Cragine {
 
         dispatcher.dispatch<WindowCloseEvent>(BIND_EVENT_FN(Application::onWindowClosed));
 
-        LOG_TRACE("{0}", e.toString());
+
+        // Iterates the layers backwards and handles the event
+        for (auto it = layerStack.end(); it != layerStack.begin();) {
+            (*--it)->onEvent(e);
+            if (e.handled) 
+                break;
+        }
     }
 
 
     // the game update loop
     void Application::run() {
 
-        // test event
-        MouseButtonPressedEvent event(12);
-        LOG_TRACE(event.toString());
-
         while (running) {
             window->onUpdate();
+
+            // Updates the layers
+            for (Layer* layer : layerStack) {
+                layer->onUpdate();
+            }
         }
 
     }
