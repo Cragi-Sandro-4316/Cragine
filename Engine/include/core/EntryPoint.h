@@ -1,9 +1,20 @@
 #pragma once
+#include "core/Application.h"
+#include "utils/Logger.h"
 
-extern Cragine::Application* CreateApplication();
+extern Cragine::Application* createApplication();
 
 int main(int argc, char** argv) {
-    auto app = CreateApplication();
-    app->Run();
+
+    Cragine::Logger::init();
+
+    LOG_CORE_WARNING("Initialized Core Logger");
+
+    LOG_INFO("Initialized Client Logger");
+
+    auto app = createApplication();
+    app->run();
     delete app;
+
+    return 0;
 }

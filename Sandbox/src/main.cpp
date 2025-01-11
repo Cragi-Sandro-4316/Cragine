@@ -1,5 +1,7 @@
 #include <Cragine.h>
+#include <cstdio>
 
+// Application class
 class Sandbox : public Cragine::Application {
     public:
     Sandbox() {
@@ -11,6 +13,7 @@ class Sandbox : public Cragine::Application {
     }
 };
 
-Cragine::Application* CreateApplication() {
+// Instantiates an Application
+Cragine::Application* createApplication() {
     return new Sandbox();
 }
