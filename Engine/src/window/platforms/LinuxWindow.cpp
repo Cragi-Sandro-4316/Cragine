@@ -4,8 +4,8 @@
 #include "Events/KeyEvent.h"
 #include "utils/Logger.h"
 
+#include <glad/glad.h>
 #include <GLFW/glfw3.h>
-
 
 namespace Cragine {
 
@@ -44,8 +44,16 @@ namespace Cragine {
             GLFWInitialized = true;
         }
 
+        // create the window
         window = glfwCreateWindow((int)props.width, (int)props.height, data.title.c_str(), nullptr, nullptr);
         glfwMakeContextCurrent(window);
+
+        // initialize glad
+        int status = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+        if (!status) {
+            LOG_CORE_FATAL("Failed to initialize glad");
+        }
+
         glfwSetWindowUserPointer(window, &data);
         setVSync(true);
 

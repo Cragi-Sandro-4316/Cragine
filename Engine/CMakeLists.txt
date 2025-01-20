@@ -10,6 +10,9 @@ add_subdirectory(libs/spdlog)
 # Add the glfw submodule path as an external dependency
 add_subdirectory(libs/glfw)
 
+# Add the glad submodule path as an external dependency
+add_subdirectory(libs/glad)
+
 # Source files
 file(GLOB_RECURSE ENGINE_SRC src/*.cpp src/*/*.cpp include/*.h include/*/*.h)
 
@@ -17,7 +20,7 @@ file(GLOB_RECURSE ENGINE_SRC src/*.cpp src/*/*.cpp include/*.h include/*/*.h)
 add_library(Engine STATIC ${ENGINE_SRC})
 
 # Link spdlog to the Engine
-target_link_libraries(Engine PRIVATE spdlog::spdlog glfw)
+target_link_libraries(Engine PRIVATE spdlog::spdlog glfw glad)
 
 # Set the path to the precompiled header
 target_precompile_headers(Engine PRIVATE include/CraginePCH.h)
@@ -27,3 +30,6 @@ target_include_directories(Engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # Include the header files for spdlog
 target_include_directories(Engine PUBLIC libs/spdlog/include)
+
+# # Define GLFW_INCLUDE_NONE to prevent GLFW from including OpenGL headers
+# target_compile_definitions(glfw PRIVATE GLFW_INCLUDE_NONE)
