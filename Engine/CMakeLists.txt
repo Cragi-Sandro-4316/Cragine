@@ -34,3 +34,5 @@ target_include_directories(Engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 # Include the header files for spdlog
 target_include_directories(Engine PUBLIC libs/spdlog/include)
 
+# Include the header files for imgui
+target_include_directories(Engine PUBLIC libs/imgui)

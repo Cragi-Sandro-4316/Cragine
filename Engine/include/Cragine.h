@@ -4,6 +4,9 @@
 #include "core/Application.h"
 #include "layers/Layer.h"
 
+#include "layers/imGui/ImGuiLayer.h"
+
+
 // ----------ENTRY POINT-------------
 #include "core/EntryPoint.h"
 // ----------------------------------

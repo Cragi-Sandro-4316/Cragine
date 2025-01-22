@@ -19,7 +19,11 @@ namespace Cragine {
         void pushLayer(Layer* layer);
         void pushOverlay(Layer* layer);
 
+        inline Window& getWindow() { return *window; }
+        inline static Application& get() { return *instance; }
     private: 
+        static Application* instance;
+
         bool onWindowClosed(WindowCloseEvent& e);
 
         std::unique_ptr<Window> window;

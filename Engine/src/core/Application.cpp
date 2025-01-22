@@ -6,10 +6,13 @@
 
 namespace Cragine {
 
-
     #define BIND_EVENT_FN(func) std::bind(&func, this, std::placeholders::_1)
 
+    Application* Application::instance = nullptr;
+
     Application::Application() {
+        instance = this;
+        
         window = std::unique_ptr<Window>(Window::create());
         window->setEventCallback(BIND_EVENT_FN(Application::onEvent));
     }
@@ -19,10 +22,12 @@ namespace Cragine {
 
     void Application::pushLayer(Layer* layer) {
         layerStack.pushLayer(layer);
+        layer->onAttach();
     }
 
     void Application::pushOverlay(Layer* layer) {
         layerStack.pushOverlay(layer);
+        layer->onAttach();
     }
 
 
