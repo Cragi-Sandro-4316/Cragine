@@ -20,6 +20,9 @@ namespace Cragine {
         void setVSync(bool enabled) override;
         bool isVSync() const override;
 
+
+        inline virtual void* getNativeWindow() const { return window; };
+
     private:
         virtual void init(const WindowProps& props);
         virtual void shutdown();

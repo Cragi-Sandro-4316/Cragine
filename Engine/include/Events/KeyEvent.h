@@ -54,4 +54,20 @@ namespace Cragine {
         EVENT_CLASS_TYPE(KeyReleased)
     };
 
+    class KeyTypedEvent : public KeyEvent {
+    public:
+        KeyTypedEvent(int keyCode)
+            : KeyEvent(keyCode) {}
+
+        
+
+        std::string toString() const override {
+            std::stringstream ss;
+            ss << "KeyTypedEvent: " << keyCode;
+            return ss.str();
+        }
+
+        EVENT_CLASS_TYPE(KeyTyped)
+    };
+
 }

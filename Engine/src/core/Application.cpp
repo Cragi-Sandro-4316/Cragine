@@ -3,6 +3,8 @@
 #include "Events/MouseEvent.h"
 #include "utils/Logger.h"
 #include "window/Window.h"
+// #include "input/Input.h"
+
 
 namespace Cragine {
 
@@ -51,12 +53,16 @@ namespace Cragine {
     void Application::run() {
 
         while (running) {
+            
             window->onUpdate();
 
             // Updates the layers
             for (Layer* layer : layerStack) {
                 layer->onUpdate();
             }
+
+            
+
         }
 
     }

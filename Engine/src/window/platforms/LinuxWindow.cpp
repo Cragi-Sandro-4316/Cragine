@@ -154,6 +154,19 @@ namespace Cragine {
             data->eventCallback(event);
         });
 
+
+
+
+        glfwSetCharCallback(window, [](GLFWwindow* window, unsigned int keycode) {
+            
+            WindowData* data = (WindowData*) glfwGetWindowUserPointer(window);
+            KeyTypedEvent event(keycode);
+
+            data->eventCallback(event);
+
+        });
+
+
     }
 
 

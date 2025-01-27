@@ -10,11 +10,13 @@ public:
 
 
     void onUpdate() override {
-        LOG_INFO("Example::Update");
+        // LOG_INFO("Example::Update");
+        bool alt = Cragine::Input::isKeyPressed(CRAGINE_KEY_LEFT_ALT);
+        LOG_INFO("alt: {0}", alt);
     }
 
     void onEvent(Cragine::Event& event) override {
-        LOG_INFO("{0}", event.toString());
+        // LOG_INFO("{0}", event.toString());
     }
 
 };
