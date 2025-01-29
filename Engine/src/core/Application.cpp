@@ -5,7 +5,6 @@
 #include "window/Window.h"
 // #include "input/Input.h"
 
-
 namespace Cragine {
 
     #define BIND_EVENT_FN(func) std::bind(&func, this, std::placeholders::_1)
@@ -17,6 +16,8 @@ namespace Cragine {
         
         window = std::unique_ptr<Window>(Window::create());
         window->setEventCallback(BIND_EVENT_FN(Application::onEvent));
+
+        
     }
 
     Application::~Application() {}

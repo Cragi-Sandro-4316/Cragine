@@ -15,6 +15,8 @@ add_subdirectory(libs/glad)
 # Add the ImGui submodule path as an external dependency
 add_subdirectory(libs/imgui) 
 
+# Add the glm submodule path as an external dependency
+add_subdirectory(libs/glm) 
 
 # Source files
 file(GLOB_RECURSE ENGINE_SRC src/*.cpp src/*/*.cpp include/*.h include/*/*.h)

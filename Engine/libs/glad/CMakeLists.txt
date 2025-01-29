@@ -1,5 +1,3 @@
-# CMakeLists.txt for glad
-
 # Add glad source files
 file(GLOB GLAD_SRC src/*.c)
 
