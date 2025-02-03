@@ -32,7 +32,7 @@ namespace Cragine {
         bool onMouseMovedEvent(MouseMovedEvent& e);
         bool onMouseScrolledEvent(MouseScrolledEvent& e);
         
-        bool  onKeyTypedEvent(KeyTypedEvent& e);
+        bool onKeyTypedEvent(KeyTypedEvent& e);
         bool onKeyPressedEvent(KeyPressedEvent& e);
         bool onKeyReleasedEvent(KeyReleasedEvent& e);
         

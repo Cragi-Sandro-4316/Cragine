@@ -4,7 +4,8 @@
 #include "core/Application.h"
 
 #include "utils/Macros.h"
-
+#include "utils/ImGuiUtils.h"
+#include "input/Keycodes.h"
 
 // TEMPORARY
 #include <glad/glad.h>
@@ -55,6 +56,8 @@ namespace Cragine {
         io.DeltaTime = deltaTime > 0.0 ? (time - deltaTime) : (1.0f / 60.0f);
         deltaTime = time;
 
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
         ImGui_ImplOpenGL3_NewFrame();
         ImGui::NewFrame();
 
@@ -75,6 +78,7 @@ namespace Cragine {
         dispatcher.dispatch<MouseScrolledEvent>(BIND_EVENT_FN(ImGuiLayer::onMouseScrolledEvent));
 
         dispatcher.dispatch<KeyPressedEvent>(BIND_EVENT_FN(ImGuiLayer::onKeyPressedEvent));
+        dispatcher.dispatch<KeyTypedEvent>(BIND_EVENT_FN(ImGuiLayer::onKeyTypedEvent));
         dispatcher.dispatch<KeyReleasedEvent>(BIND_EVENT_FN(ImGuiLayer::onKeyReleasedEvent));
         
         dispatcher.dispatch<WindowResizeEvent>(BIND_EVENT_FN(ImGuiLayer::onWindowResizeEvent));
@@ -115,20 +119,53 @@ namespace Cragine {
     }
     
     bool ImGuiLayer::onKeyPressedEvent(KeyPressedEvent& e) {
-        // TODO: implement with Cragine KeyCodes
+        ImGuiIO& io = ImGui::GetIO();
+        
+        ImGuiKey key = mapCragineKeyToImGuiKey(e.getKeyCode());
+        io.AddKeyEvent(key, true); // `true` means key is pressed
+        
+        io.AddKeyEvent (
+            ImGuiKey_LeftCtrl, 
+            e.getKeyCode() == CRAGINE_KEY_LEFT_CONTROL || 
+            e.getKeyCode() == CRAGINE_KEY_RIGHT_CONTROL
+        );
+
+        io.AddKeyEvent(
+            ImGuiKey_LeftShift, 
+            e.getKeyCode() == CRAGINE_KEY_LEFT_SHIFT || 
+            e.getKeyCode() == CRAGINE_KEY_RIGHT_SHIFT
+        );
+        
+        io.AddKeyEvent(
+            ImGuiKey_LeftAlt, 
+            e.getKeyCode() == CRAGINE_KEY_LEFT_ALT || 
+            e.getKeyCode() == CRAGINE_KEY_RIGHT_ALT
+        );
+
+        io.AddKeyEvent(
+            ImGuiKey_LeftSuper, 
+            e.getKeyCode() == CRAGINE_KEY_LEFT_SUPER || 
+            e.getKeyCode() == CRAGINE_KEY_RIGHT_SUPER
+        );
 
         return false;
     }
     
     bool ImGuiLayer::onKeyReleasedEvent(KeyReleasedEvent& e) {
-        // TODO: implement with Cragine KeyCodes
+        ImGuiIO& io = ImGui::GetIO();
+        ImGuiKey key = mapCragineKeyToImGuiKey(e.getKeyCode());
 
+        io.AddKeyEvent(key, false); // `false` means key is released
         return false;
-    }
+    }   
 
-    bool onKeyTypedEvent(KeyTypedEvent& e) {
-        // TODO: implement with Cragine KeyCodes
+    bool ImGuiLayer::onKeyTypedEvent(KeyTypedEvent& e) {
+        ImGuiIO& io = ImGui::GetIO();
+        int keycode = e.getKeyCode();
 
+        if (keycode > 0 && keycode < 0x10000)
+            io.AddInputCharacter((unsigned short) keycode);
+        
         return false;
     }
 

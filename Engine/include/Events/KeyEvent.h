@@ -6,7 +6,7 @@
 namespace Cragine {
     class KeyEvent : public Event {
     public: 
-        inline int getKeyCOde() const { return keyCode; }
+        inline int getKeyCode() const { return keyCode; }
     
         EVENT_CLASS_CATEGORY(EventCategoryKeyboard | EventCategoryInput)
 
