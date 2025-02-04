@@ -6,6 +6,8 @@
 #include "layers/LayerStack.h"
 #include "window/Window.h"
 
+#include "layers/imGui/ImGuiLayer.h"
+
 namespace Cragine {
     class Application {
     public:
@@ -27,6 +29,7 @@ namespace Cragine {
         bool onWindowClosed(WindowCloseEvent& e);
 
         std::unique_ptr<Window> window;
+        ImGuiLayer* imGuiLayer;
 
         bool running = true;
 

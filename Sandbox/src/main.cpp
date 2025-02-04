@@ -26,7 +26,6 @@ class Sandbox : public Cragine::Application {
     public:
     Sandbox() {
         pushLayer(new SampleLayer());
-        pushOverlay(new Cragine::ImGuiLayer());
     }
 
     ~Sandbox() {

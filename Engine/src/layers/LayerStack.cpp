@@ -4,9 +4,7 @@
 
 
 namespace Cragine {
-    LayerStack::LayerStack() {
-        layerInsert = layers.begin();
-    }
+    LayerStack::LayerStack() {}
 
     LayerStack::~LayerStack() {
         for (Layer* layer : layers)
@@ -14,7 +12,8 @@ namespace Cragine {
     }
 
     void LayerStack::pushLayer(Layer* layer) {
-        layerInsert = layers.emplace(layerInsert, layer);
+        layers.emplace(layers.begin() + layerInsertIndex, layer);
+        layerInsertIndex++;
     }
 
     void LayerStack::pushOverlay(Layer* overlay) {
@@ -25,7 +24,7 @@ namespace Cragine {
         auto it = std::find(layers.begin(), layers.end(), layer);
         if (it != layers.end()) {
             layers.erase(it);
-            layerInsert--;
+            layerInsertIndex--;
         }
 
     }

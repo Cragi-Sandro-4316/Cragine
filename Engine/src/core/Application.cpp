@@ -4,6 +4,7 @@
 #include "utils/Logger.h"
 #include "window/Window.h"
 // #include "input/Input.h"
+#include "glad/glad.h"
 
 namespace Cragine {
 
@@ -17,7 +18,8 @@ namespace Cragine {
         window = std::unique_ptr<Window>(Window::create());
         window->setEventCallback(BIND_EVENT_FN(Application::onEvent));
 
-        
+        imGuiLayer = new ImGuiLayer;
+        pushOverlay(imGuiLayer);
     }
 
     Application::~Application() {}
@@ -54,16 +56,22 @@ namespace Cragine {
     void Application::run() {
 
         while (running) {
-            
-            window->onUpdate();
+            glClearColor(0.3, 0, 0.3, 1);
+            glClear(GL_COLOR_BUFFER_BIT);
+
 
             // Updates the layers
             for (Layer* layer : layerStack) {
                 layer->onUpdate();
             }
 
-            
+            imGuiLayer->begin();
+            for (Layer* layer : layerStack) {
+                layer->onImGuiRender();
+            }
+            imGuiLayer->end();
 
+            window->onUpdate();
         }
 
     }
