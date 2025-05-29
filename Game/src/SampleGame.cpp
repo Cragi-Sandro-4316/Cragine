@@ -13,5 +13,6 @@ public:
 };
 
 Cragine::Application* Cragine::createApplication() {
+    printf("porco dio!\n");
     return new Game;
 }
