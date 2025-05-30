@@ -1,7 +1,7 @@
 #include "Application.h"
+#include "utils/Logger.h"
+
 #include <cstdio>
-#include <spdlog/spdlog.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
 
 namespace Cragine {
     Application::Application() {}
@@ -9,11 +9,10 @@ namespace Cragine {
     Application::~Application() {}
 
     void Application::run() {
-        auto logger = spdlog::stdout_color_mt("Cragine");
-        logger -> set_level(spdlog::level::trace);
+
 
         while(true) {
-            logger->error("porco dio");
+            LOG_CORE_INFO("pipa storta\n");
         }
     }
 }

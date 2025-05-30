@@ -29,4 +29,7 @@ add_library(Engine STATIC ${ENGINE_SRC})
 target_link_libraries(Engine PRIVATE spdlog)
 
 # Include directories
-target_include_directories(Engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(Engine PUBLIC 
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    $<TARGET_PROPERTY:spdlog,INTERFACE_INCLUDE_DIRECTORIES>
+)
