@@ -1,6 +1,8 @@
 #include "Application.h"
 #include "utils/Logger.h"
 
+#include "Events/ApplicationEvent.h"
+
 #include <cstdio>
 
 namespace Cragine {
@@ -10,9 +12,10 @@ namespace Cragine {
 
     void Application::run() {
 
-
         while(true) {
-            LOG_CORE_INFO("pipa storta\n");
+            WindowResizeEvent e(1280, 720);
+
+            LOG_INFO(e.ToString());
         }
     }
 }

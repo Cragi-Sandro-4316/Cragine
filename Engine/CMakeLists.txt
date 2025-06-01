@@ -11,7 +11,7 @@ project(Engine)
 CPMAddPackage(
     NAME spdlog
     GIT_REPOSITORY "https://github.com/gabime/spdlog.git"
-    GIT_TAG        "v1.13.0" # <--- IMPORTANT: Specify a known, stable tag for spdlog
+    GIT_TAG        "v1.15.3" # <--- IMPORTANT: Specify a known, stable tag for spdlog
     OPTIONS        "SPDLOG_BUILD_EXAMPLES OFF" # Optional: turn off examples to speed up build
     OPTIONS        "SPDLOG_BUILD_TESTS OFF"    # Optional: turn off tests
 )

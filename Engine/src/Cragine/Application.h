@@ -1,5 +1,8 @@
 #pragma once
 
+#include "Core.h"
+#include "Events/Event.h"
+
 namespace Cragine {
     class Application {
     public:
