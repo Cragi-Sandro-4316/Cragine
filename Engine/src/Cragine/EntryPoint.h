@@ -1,7 +1,8 @@
 #pragma once
 #include "Application.h"
 #include "utils/Logger.h"
-#include <cstdio>
+
+#include "CraginePCH.h"
 
 extern Cragine::Application* Cragine::createApplication();
 

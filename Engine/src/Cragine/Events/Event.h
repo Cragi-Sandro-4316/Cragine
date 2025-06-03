@@ -2,9 +2,11 @@
 
 #include "../Core.h"
 
-#include <string>
-#include <functional>
-#include <sstream>
+#include "../CraginePCH.h"
+
+// #include <string>
+// #include <functional>
+// #include <sstream>
 
 namespace Cragine {
 

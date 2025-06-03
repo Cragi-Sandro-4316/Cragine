@@ -28,6 +28,8 @@ add_library(Engine STATIC ${ENGINE_SRC})
 # Link fmt to your Engine library
 target_link_libraries(Engine PRIVATE spdlog)
 
+target_precompile_headers(Engine PRIVATE src/Cragine/CraginePCH.h)
+
 # Include directories
 target_include_directories(Engine PUBLIC 
     ${CMAKE_CURRENT_SOURCE_DIR}/include
