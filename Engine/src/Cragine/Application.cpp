@@ -6,16 +6,16 @@
 #include "CraginePCH.h"
 
 namespace Cragine {
-    Application::Application() {}
+    Application::Application() {
+        m_window = std::unique_ptr<Window>(Window::Create());
+    }
 
     Application::~Application() {}
 
     void Application::run() {
 
-        while(true) {
-            WindowResizeEvent e(1280, 720);
-
-            LOG_INFO(e.ToString());
+        while(m_running) {
+            m_window->onUpdate();
         }
     }
 }

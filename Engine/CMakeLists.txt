@@ -16,11 +16,24 @@ CPMAddPackage(
     OPTIONS        "SPDLOG_BUILD_TESTS OFF"    # Optional: turn off tests
 )
 
+CPMAddPackage(
+    NAME glfw
+    GIT_REPOSITORY  "https://github.com/glfw/glfw.git"
+    GIT_TAG         "3.4"
+)
+
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # Source files
-file(GLOB_RECURSE ENGINE_SRC src/*.cpp src/*/*.cpp src/*.h src/*/*.h include/*.h)
+file(GLOB_RECURSE ENGINE_SRC 
+    src/*.cpp 
+    src/*/*.cpp 
+    src/*.h 
+    src/*/*.h 
+    src/*/*/*.h
+    include/*.h
+)
 
 # Create a static library
 add_library(Engine STATIC ${ENGINE_SRC})
@@ -28,10 +41,15 @@ add_library(Engine STATIC ${ENGINE_SRC})
 # Link fmt to your Engine library
 target_link_libraries(Engine PRIVATE spdlog)
 
+# Link fmt to your Engine library
+target_link_libraries(Engine PRIVATE glfw)
+
 target_precompile_headers(Engine PRIVATE src/Cragine/CraginePCH.h)
 
 # Include directories
 target_include_directories(Engine PUBLIC 
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     $<TARGET_PROPERTY:spdlog,INTERFACE_INCLUDE_DIRECTORIES>
+    $<TARGET_PROPERTY:glfw,INTERFACE_INCLUDE_DIRECTORIES>
 )
