@@ -1,0 +1,2 @@
+/usr/bin/ar qc libCragine.a CMakeFiles/Cragine.dir/include/Prova.cpp.o
+/usr/bin/ranlib libCragine.a

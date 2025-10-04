@@ -1,0 +1,14 @@
+[
+{
+  "directory": "/mnt/Ssd/dev/Cragine/build-debug/Cragine",
+  "command": "/usr/lib64/ccache/c++  -I/mnt/Ssd/dev/Cragine/Cragine/include -std=gnu++20 -o CMakeFiles/Cragine.dir/include/Prova.cpp.o -c /mnt/Ssd/dev/Cragine/Cragine/include/Prova.cpp",
+  "file": "/mnt/Ssd/dev/Cragine/Cragine/include/Prova.cpp",
+  "output": "Cragine/CMakeFiles/Cragine.dir/include/Prova.cpp.o"
+},
+{
+  "directory": "/mnt/Ssd/dev/Cragine/build-debug/Project",
+  "command": "/usr/lib64/ccache/c++  -I/mnt/Ssd/dev/Cragine/Cragine/include -std=gnu++20 -o CMakeFiles/Project.dir/src/main.cpp.o -c /mnt/Ssd/dev/Cragine/Project/src/main.cpp",
+  "file": "/mnt/Ssd/dev/Cragine/Project/src/main.cpp",
+  "output": "Project/CMakeFiles/Project.dir/src/main.cpp.o"
+}
+]
