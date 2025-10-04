@@ -1,1 +1,0 @@
-/usr/lib64/ccache/c++ -Wl,--dependency-file=CMakeFiles/Project.dir/link.d CMakeFiles/Project.dir/src/main.cpp.o -o Project  ../Cragine/libCragine.a

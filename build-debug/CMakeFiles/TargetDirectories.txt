@@ -1,8 +1,0 @@
-/mnt/Ssd/dev/Cragine/build-debug/CMakeFiles/edit_cache.dir
-/mnt/Ssd/dev/Cragine/build-debug/CMakeFiles/rebuild_cache.dir
-/mnt/Ssd/dev/Cragine/build-debug/Cragine/CMakeFiles/Cragine.dir
-/mnt/Ssd/dev/Cragine/build-debug/Cragine/CMakeFiles/edit_cache.dir
-/mnt/Ssd/dev/Cragine/build-debug/Cragine/CMakeFiles/rebuild_cache.dir
-/mnt/Ssd/dev/Cragine/build-debug/Project/CMakeFiles/Project.dir
-/mnt/Ssd/dev/Cragine/build-debug/Project/CMakeFiles/edit_cache.dir
-/mnt/Ssd/dev/Cragine/build-debug/Project/CMakeFiles/rebuild_cache.dir
