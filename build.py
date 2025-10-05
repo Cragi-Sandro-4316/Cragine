@@ -12,18 +12,20 @@ try:
     if param == "--debug":
         print("Building debug...")
         # Build debug
-        subprocess.run(["cmake", "--build", "."], cwd="build-debug", check=True)
+        subprocess.run(["cmake", ".."], cwd="build-debug")
+        subprocess.run(["ninja"], cwd="build-debug", check=True)
 
     elif param == "--release":
         print("Building release...")
         # Build debug
-        subprocess.run(["cmake", "--build", "."], cwd="build-debug", check=True)
+        subprocess.run(["cmake", ".."], cwd="build-debug")
+        subprocess.run(["ninja"], cwd="build-debug", check=True)
 
     elif param == "--clean":
         print("Cleaning build...")
         subprocess.run(["rm", "-rf", "build-debug"])
-        subprocess.run(["cmake", "-S", ".", "-B", "build-debug"])
-        subprocess.run(["cmake", "--build", "."], cwd="build-debug", check=True)
+        subprocess.run(["cmake", "-B", "build-debug", "-G", "Ninja", "."])
+        subprocess.run(["ninja"], cwd="build-debug", check=True)
     else:
         print("Unknown option:", param)
 

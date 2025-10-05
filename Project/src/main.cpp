@@ -1,7 +1,7 @@
-#include <Prova.h>
+#include <App.h>
 
 int main() {
-    Cragine::Prova prova{};
-    prova.printStuff();
+    crg::App app{};
+    app.run();
     return 0;
 }

@@ -1,0 +1,3 @@
+[submodule "Cragine/deps/glfw"]
+	path = Cragine/deps/glfw
+	url = https://github.com/glfw/glfw.git

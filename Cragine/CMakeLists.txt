@@ -17,7 +17,7 @@ add_library(Cragine STATIC ${ENGINE_SRC})
 # target_link_libraries(Cragine PRIVATE spdlog)
 
 # Link fmt to your Engine library
-# target_link_libraries(Cragine PRIVATE glfw)
+target_link_libraries(Cragine PRIVATE glfw)
 
 
 # # Include directories
