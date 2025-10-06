@@ -1,6 +1,7 @@
 #include "App.h"
+#include "utils/Logger.h"
+
 #include <GLFW/glfw3.h>
-#include <iostream>
 
 namespace crg {
 
@@ -8,6 +9,8 @@ namespace crg {
     static constexpr int HEIGHT = 600;
 
     App::App() {
+        Logger::init();
+
         m_window = std::make_unique<Window>(
             WIDTH,
             HEIGHT,
@@ -18,8 +21,8 @@ namespace crg {
     void App::run() {
         while(!glfwWindowShouldClose(m_window->getGlfwWindow())) {
             glfwPollEvents();
-            std::cout<<"pipa\n";
+            LOG_CORE_TRACE("App currently running...");
         }
-        std::cout<<"Uscito con successo"<<std::endl;
+        LOG_CORE_INFO("Uscito con successo");
     }
 }

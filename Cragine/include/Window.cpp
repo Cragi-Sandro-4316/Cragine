@@ -1,5 +1,5 @@
 #include "Window.h"
-#include <iostream>
+#include "utils/Logger.h"
 
 namespace crg {
     Window::Window(
@@ -15,7 +15,7 @@ namespace crg {
     }
 
     void Window::initWindow() {
-        std::cout<<"window created"<<std::endl;
+        LOG_CORE_TRACE("Window Created!");
         glfwInit();
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
         glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);

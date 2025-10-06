@@ -1,3 +1,6 @@
 [submodule "Cragine/deps/glfw"]
 	path = Cragine/deps/glfw
 	url = https://github.com/glfw/glfw.git
+[submodule "Cragine/deps/spdlog"]
+	path = Cragine/deps/spdlog
+	url = https://github.com/gabime/spdlog.git
