@@ -23,6 +23,6 @@ namespace crg {
             glfwPollEvents();
             LOG_CORE_TRACE("App currently running...");
         }
-        LOG_CORE_INFO("Uscito con successo");
+        LOG_CORE_INFO("App terminated successfully");
     }
 }

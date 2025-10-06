@@ -1,10 +1,5 @@
 project(Cragine)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
-
-# Add spdlog include dir
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/deps/spdlog/include)
-
 # Source files
 file(GLOB_RECURSE ENGINE_SRC CMAKE_CONFIGURE_DEPENDS
     include/*.cpp
@@ -15,6 +10,14 @@ file(GLOB_RECURSE ENGINE_SRC CMAKE_CONFIGURE_DEPENDS
 )
 
 add_library(Cragine STATIC ${ENGINE_SRC})
+
+# Add spdlog include dir
+target_include_directories(
+    Cragine
+    PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/deps/spdlog/include
+)
 
 # Link glfw to your Engine library
 target_link_libraries(Cragine PRIVATE glfw)
