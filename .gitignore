@@ -1,2 +1,6 @@
 build-debug/
+cmake-build-debug/
 .cache/
+.idea/
+.cache/
+.ropeproject/

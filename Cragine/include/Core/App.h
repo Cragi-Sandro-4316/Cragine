@@ -1,4 +1,5 @@
 #pragma once
+#include "Ecs/World.h"
 #include "Window.h"
 #include <memory>
 
@@ -13,7 +14,13 @@ namespace crg {
 
         void run();
     private:
+
+        ecs::World m_ecsWorld;
+
+
         std::unique_ptr<Window> m_window;
+
+
 
     };
 }
