@@ -64,14 +64,14 @@ namespace crg::ecs {
         const std::vector<ComponentInfo> getTypes() const { return m_types; }
 
         template<typename... Components>
-        void addEntity(const std::tuple<Components...>& data, ComponentRegistry* compRegistry, Entity entityHandle) {
+        void addEntity(const std::tuple<Components...>& data, Entity entityHandle) {
 
             if (!matchesArchetype<Components...>()) {
                 LOG_CORE_ERROR("AddEntity Error: Type signature incorrect");
                 return;
             }
 
-            Chunk* chunk = findOrCreateChunk(compRegistry);
+            Chunk* chunk = findOrCreateChunk();
 
             copyTupleToChunk(chunk, data, entityHandle);
         }
@@ -99,7 +99,7 @@ namespace crg::ecs {
             return true;
         }
 
-        Chunk* findOrCreateChunk(ComponentRegistry* registry);
+        Chunk* findOrCreateChunk();
 
         template<typename... Components>
         void copyTupleToChunk(Chunk* chunk, const std::tuple<Components...>& data, Entity entityHandle) {

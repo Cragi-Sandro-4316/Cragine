@@ -15,9 +15,8 @@ namespace crg::ecs {
     class ArchetypeManager {
     public:
 
-    ArchetypeManager(EntityManager* entManager, ComponentRegistry* compRegistry) :
-    m_entityManager(entManager),
-    m_componentRegistry(compRegistry) {}
+    ArchetypeManager(EntityManager* entManager) :
+    m_entityManager(entManager) {}
 
         // Returns a pointer to the archetype of the given entity
         Archetype* getEntityArchetype(Entity entity) {
@@ -43,8 +42,14 @@ namespace crg::ecs {
 
         template <typename... Components>
         ComponentSignature createSignature() {
-            ComponentSignature signature;
-            (signature.push_back(*m_componentRegistry->getInfo<Components>()), ...);
+            ComponentSignature signature = {{
+                ComponentInfo {
+                    .type = typeid(Components),
+                    .size = sizeof(Components),
+                    .alignment = alignof(Components)
+                }
+            }...};
+            // (signature.push_back(*m_componentRegistry->getInfo<Components>()), ...);
             return signature;
         }
 
@@ -91,7 +96,7 @@ namespace crg::ecs {
                 LOG_CORE_WARNING("No suitable archetype found");
             }
 
-            archetype->addEntity(data, m_componentRegistry, entity);
+            archetype->addEntity(data, entity);
 
             LOG_CORE_INFO("Entity successfully added to archetype");
         }
@@ -118,7 +123,7 @@ namespace crg::ecs {
 
         EntityManager* m_entityManager;
 
-        ComponentRegistry* m_componentRegistry;
+        // ComponentRegistry* m_componentRegistry;
 
 
     private:

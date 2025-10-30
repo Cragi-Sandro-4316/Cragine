@@ -2,6 +2,7 @@
 #include "utils/Logger.h"
 
 #include <GLFW/glfw3.h>
+#include <string>
 
 namespace crg {
 
@@ -20,25 +21,17 @@ namespace crg {
 
     }
 
-    struct Component {
+    struct UnregisteredComponent {
         std::string str;
     };
 
     void App::run() {
-        m_ecsWorld.registerComponent<Component>();
-        m_ecsWorld.registerComponent<int>();
 
-        m_ecsWorld.spawnEntity<Component>({
-            Component{
-                .str = "Stocazzw"
-            }
-        });
-
-        m_ecsWorld.spawnEntity<Component, int>({
-            Component{
-                .str = "Roberto"
+        m_ecsWorld.spawnEntity<UnregisteredComponent, int>({
+            UnregisteredComponent {
+                .str = "Gigio"
             },
-            9
+            67
         });
 
         while(!glfwWindowShouldClose(m_window->getGlfwWindow())) {
@@ -46,15 +39,10 @@ namespace crg {
             LOG_CORE_TRACE("App currently running...");
             LOG_CORE_ERROR("");
 
-
-            for (auto [component] : m_ecsWorld.query<Component>()) {
-                LOG_CORE_INFO("ENTITY COMPONENT VALUE: {}", component.str);
+            for (auto [uc, in] : m_ecsWorld.query<UnregisteredComponent, int>()) {
+                LOG_CORE_INFO("MEGAKNIGHT: {}", in);
             }
 
-            for (auto [component, integer] : m_ecsWorld.query<Component, int>()) {
-                LOG_CORE_INFO("ENTITY COMPONENT VALUE: {} {}", component.str, integer);
-                component.str = "Jovanotti";
-            }
         }
         LOG_CORE_INFO("App terminated successfully");
     }

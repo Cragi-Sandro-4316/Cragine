@@ -7,46 +7,7 @@
 
 namespace crg::ecs {
 
-    // template<typename... Components>
-    // void Archetype::addEntity(
-    //     const std::tuple<Components...>& data,
-    //     ComponentRegistry* compRegistry,
-    //     Entity entityHandle
-    // ) {
-
-    //     if (!matchesArchetype<Components...>()) {
-    //         LOG_CORE_ERROR("AddEntity Error: Type signature incorrect");
-    //         return;
-    //     }
-
-    //     Chunk* chunk = findOrCreateChunk(compRegistry);
-
-
-    //     // entityLocation.chunk = chunk;
-    //     // entityLocation.archetype = this;
-    //     // entityLocation.indexInChunk = chunk->entityCount;
-
-    //     copyTupleToChunk(chunk, data, entityHandle);
-    // }
-
-
-    // template<typename... Components>
-    // bool Archetype::matchesArchetype() const {
-    //     if (sizeof...(Components) != m_types.size())
-    //         return false;
-
-    //     std::array<std::type_index, sizeof...(Components)> inputTypes = { typeid(Components)... };
-    //     std::sort(inputTypes.begin(), inputTypes.end());
-
-    //     for (size_t i = 0; i < inputTypes.size(); i++) {
-    //         if (inputTypes[i] != m_types[i].type) return false;
-    //     }
-
-    //     return true;
-    // }
-
-
-    Chunk* Archetype::findOrCreateChunk(ComponentRegistry* registry) {
+    Chunk* Archetype::findOrCreateChunk() {
         Chunk* chunk;
 
         // 1. Find a chunk with space

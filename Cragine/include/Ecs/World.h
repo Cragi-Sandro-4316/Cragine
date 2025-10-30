@@ -37,15 +37,15 @@ namespace crg::ecs {
         m_archetypeManager.removeEntity(entityHandle);
     }
 
-    template<typename Component>
-    void registerComponent() {
-        m_componentRegistry.registerComponent<Component>();
-    }
+    // template<typename Component>
+    // void registerComponent() {
+    //     m_componentRegistry.registerComponent<Component>();
+    // }
 
     private:
 
         // Holds component information, such as size, alignment and type id
-        ComponentRegistry m_componentRegistry{};
+        // ComponentRegistry m_componentRegistry{};
 
         // Manages the world's entities
         EntityManager m_entityManager{};
@@ -53,7 +53,7 @@ namespace crg::ecs {
         // The archetype manager
         ArchetypeManager m_archetypeManager{
             &m_entityManager,
-            &m_componentRegistry
+            // &m_componentRegistry
         };
 
     };
