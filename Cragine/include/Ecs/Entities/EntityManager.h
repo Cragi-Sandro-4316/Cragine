@@ -18,7 +18,7 @@ namespace crg::ecs {
                 signature.begin(),
                 signature.end(),
                 [](const ComponentInfo& a, const ComponentInfo& b) {
-                    return a.alignment >b.alignment;
+                    return a.alignment > b.alignment;
                 }
             );
 
@@ -48,7 +48,7 @@ namespace crg::ecs {
         }
 
         // Returns the signature of the given Entity
-        ComponentSignature getEntitySignature(Entity entity) const {
+        const ComponentSignature getEntitySignature(Entity entity) const {
             if (!m_entitySignatures.contains(entity.index)) {
                 return ComponentSignature{};
             }

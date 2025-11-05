@@ -26,11 +26,17 @@ namespace crg::ecs {
             .type = typeid(Components),
             .size = sizeof(Components),
             .alignment = alignof(Components)
-        }... };
+        }..., {
+            .type = typeid(Entity),
+            .size = sizeof(Entity),
+            .alignment = alignof(Entity)
+        }};
 
         auto handle = m_entityManager.newEntity(compInfos);
 
-        m_archetypeManager.addEntity(handle, data);
+        auto dataWithEntity = std::tuple_cat(std::move(data), std::make_tuple(handle));
+
+        m_archetypeManager.addEntity(handle, dataWithEntity);
     }
 
     void removeEntity(Entity entityHandle) {

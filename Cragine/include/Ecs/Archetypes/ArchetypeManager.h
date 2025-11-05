@@ -23,18 +23,37 @@ namespace crg::ecs {
             auto entitySignature = m_entityManager->getEntitySignature(entity);
             if (entitySignature.empty()) return nullptr;
 
+            auto key = hashSignature(entitySignature);
 
-            if (!m_archetypeSignatures.contains(entitySignature)) {
-                LOG_CORE_INFO("Created new archetype for entity id: {} generation: {}", entity.index, entity.generation);
-                m_archetypes.emplace_back(entitySignature);
-                m_archetypeSignatures[entitySignature] = m_archetypes.size() - 1;
 
-                for (auto& component : entitySignature) {
-                    m_componentLocations[component].emplace_back(m_archetypeSignatures.at(entitySignature));
-                }
+            for (auto& c : entitySignature) {
+                LOG_CORE_INFO("Component: {}, hash: {}", c.type.name(), c.type.hash_code());
+                LOG_CORE_INFO("type_index hash: {}, addr: {}", c.type.hash_code(), (const void*)&c.type);
+                LOG_CORE_INFO("Key : {}", key);
+
             }
 
-            size_t index = m_archetypeSignatures.at(entitySignature);
+
+            auto it = m_archetypeSignatures.find(key);  // Always returns m_archetypeSignatures.end()
+
+            size_t index;
+
+            // This is the problem
+            if (it == m_archetypeSignatures.end()) {
+                // Always enters here
+                LOG_CORE_INFO("Created new archetype for entity id: {} generation: {}", entity.index, entity.generation);
+                m_archetypes.emplace_back(entitySignature);
+                m_archetypeSignatures[key] = m_archetypes.size() - 1; // Overwrites the right spot in the hash map; so the key is indeed correct.
+
+                for (auto& component : entitySignature) {
+                    m_componentLocations[component].emplace_back(m_archetypeSignatures.at(key));
+                }
+
+                index = m_archetypeSignatures.size() - 1;
+            }
+            else {
+                index = it->second;
+            }
 
             return &m_archetypes[index];
         }
@@ -78,10 +97,18 @@ namespace crg::ecs {
             // TODO: get component data from chunks
 
             // Gets all data chunks
-            std::vector<std::vector<Chunk>*> chunks;
+            std::vector<Chunk*> chunks;
             chunks.reserve(archetypeIndices.size());
             for (auto& index : archetypeIndices) {
-                chunks.emplace_back(m_archetypes[index].getChunks());
+                auto chunkList = m_archetypes[index].getChunks();
+
+                for (auto& c : *chunkList) {
+                    if (c.entityCount > 0) {
+                        chunks.emplace_back(&c);
+                    }
+                }
+
+                // chunks.emplace_back(m_archetypes[index].getChunks());
             }
 
             return QueryResult<Component...>{chunks};
@@ -103,15 +130,26 @@ namespace crg::ecs {
 
         void removeEntity(Entity entity) {
             auto archetype = getEntityArchetype(entity);
+
             archetype->removeEntity(entity, m_entityManager);
+            m_entityManager->removeEntity(entity);
         }
 
     private:
 
+        using ComponentHash = size_t;
 
+        ComponentHash hashSignature(ComponentSignature sig) {
+            ComponentHash hash = 0;
+
+            for (auto& comp : sig) {
+                hash ^= comp.type.hash_code() + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+            }
+            return hash;
+        }
 
         // Links a component signature with its archetype
-        std::unordered_map<ComponentSignature, size_t> m_archetypeSignatures{};
+        std::unordered_map<ComponentHash, size_t> m_archetypeSignatures{};
 
         // Vector of archetypes
         std::vector<Archetype> m_archetypes{};

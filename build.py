@@ -12,7 +12,7 @@ try:
     if param == "--debug":
         print("Building debug...")
         # Build debug
-        subprocess.run(["cmake", ".."], cwd="build-debug")
+        subprocess.run(["cmake", "..", "-DCMAKE_BUILD_TYPE=Debug"], cwd="build-debug")
         subprocess.run(["ninja"], cwd="build-debug", check=True)
 
     elif param == "--release":
