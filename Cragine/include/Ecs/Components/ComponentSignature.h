@@ -7,6 +7,12 @@
 namespace crg::ecs {
     using ComponentSignature = std::vector<ComponentInfo>;
 
+    // Wrapper for raw data. Used in archetype move operations
+    struct RawCompData {
+        std::vector<uint8_t*> buffers;
+        std::unordered_map<ComponentInfo, size_t> signatureIds;
+    };
+
 }
 
 namespace std {

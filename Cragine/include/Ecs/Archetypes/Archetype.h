@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Ecs/Components/ComponentManager.h"
+#include "Ecs/Components/ComponentSignature.h"
 #include "Ecs/Entities/EntityManager.h"
 #include "Ecs/Entities/Entity.h"
 #include "utils/Logger.h"
@@ -77,10 +78,85 @@ namespace crg::ecs {
         }
 
         // Removes the given entity
-        void removeEntity(Entity removeHandle, EntityManager* entManager);
+        void removeEntity(Entity removeHandle);
 
         std::vector<Chunk>* getChunks() {
             return &m_chunks;
+        }
+
+        RawCompData getRawCompData(Entity entity) {
+            RawCompData result{};
+            result.buffers.reserve(m_types.size());
+
+            for (auto& c : m_chunks) {
+                if (c.entityCount <= 0) continue;
+
+                auto it = c.entityIndices.find(entity);
+                if (it == c.entityIndices.end()) continue;
+
+                auto entityIndex = it->second;
+
+                for (size_t i = 0; i < m_types.size(); i++) {
+                    result.signatureIds[m_types[i]] = i;
+
+                    auto compIdx = c.componentIndices.find(m_types[i].type);
+                    if (compIdx == c.componentIndices.end()) {
+                        LOG_CORE_ERROR("Raw data retrieval error: Component index not found in chunk for component {}", m_types[i].type.name());
+                        return RawCompData{};
+                    }
+
+                    uint8_t* dataPtr = static_cast<uint8_t*>(c.componentBuffers[compIdx->second].get() + entityIndex * m_types[i].size);
+
+                    result.buffers.emplace_back(dataPtr);
+                }
+
+                return result;
+            }
+
+            LOG_CORE_ERROR("Raw data retrieval error: entity chunk could not be found.");
+            return RawCompData{};
+        }
+
+
+        void addFromRawData(RawCompData rawData, Entity entity) {
+            for (auto& type : m_types) {
+                if (!rawData.signatureIds.contains(type)) {
+                    LOG_CORE_ERROR("Raw data error: Given data signature does not match this archetype.");
+                    return;
+                }
+            }
+
+            Chunk* chunk = findOrCreateChunk();
+
+            for (auto& type : m_types) {
+
+                auto idx = rawData.signatureIds[type];
+                auto dataPtr = rawData.buffers[idx];
+
+                auto it = chunk->componentIndices.find(type.type);
+                if (it == chunk->componentIndices.end()) {
+                    LOG_CORE_ERROR("Raw component copy error: Type not found in chunk ");
+                    return;
+                }
+
+                uint8_t* buffer = chunk->componentBuffers[it->second].get();
+
+                if (!type.copyFn) {
+                    LOG_CORE_ERROR("Error: missing copy lambda for type {}", type.type.name());
+                }
+
+                type.copyFn(
+                    buffer + chunk->entityCount * type.size,
+                    dataPtr
+                );
+
+
+            }
+
+
+            chunk->entities[chunk->entityCount] = entity;
+            chunk->entityIndices[entity] = chunk->entityCount;
+            chunk->entityCount++;
         }
 
     private:
@@ -125,8 +201,19 @@ namespace crg::ecs {
                 return;
             }
 
+            ComponentInfo* compInfo = nullptr;
+            for (auto& t : m_types) {
+                if (t.type == type) {
+                    compInfo = &t;
+                }
+            }
+
             auto buffer = chunk->componentBuffers[it->second].get();
-            std::memcpy(buffer + entityIndex * sizeof(T), &component, sizeof(T));
+
+            compInfo->copyFn(
+                buffer + entityIndex * sizeof(T),
+                &component
+            );
         }
 
     private:

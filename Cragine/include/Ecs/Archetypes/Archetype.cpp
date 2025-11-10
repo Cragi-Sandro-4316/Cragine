@@ -64,7 +64,7 @@ namespace crg::ecs {
     //     std::memcpy(buffer + entityIndex * sizeof(T), &component, sizeof(T));
     // }
 
-    void Archetype::removeEntity(Entity removeHandle, EntityManager* entManager) {
+    void Archetype::removeEntity(Entity removeHandle) {
 
         // Find chunk
         size_t removeIndex = 0;

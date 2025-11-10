@@ -6,7 +6,9 @@
 #include "Ecs/Components/QueryResult.h"
 #include "Ecs/Entities/Entity.h"
 #include "Entities/EntityManager.h"
+#include <cstring>
 #include <tuple>
+#include <type_traits>
 
 
 namespace crg::ecs {
@@ -20,16 +22,38 @@ namespace crg::ecs {
         return result;
     }
 
+    template<typename Component>
+    void addComponent(Entity entityHandle, Component data) {
+        m_archetypeManager.addComponent<Component>(entityHandle, data);
+
+    }
+
+    template<typename Component>
+    void removeComponent(Entity entityHandle) {
+        m_archetypeManager.removeComponent<Component>(entityHandle);
+    }
+
+
     template<typename... Components>
     void spawnEntity(std::tuple<Components...> data) {
         ComponentSignature compInfos = { ComponentInfo {
             .type = typeid(Components),
             .size = sizeof(Components),
-            .alignment = alignof(Components)
+            .alignment = alignof(Components),
+            .copyFn = (std::is_trivially_copyable_v<Components>) ?
+            [](void* dst, const void* src) {
+                std::memcpy(dst, src, sizeof(Components));
+            } :
+            [](void* dst, const void* src) {
+                new (dst) Components(*static_cast<const Components*>(src));
+            }
         }..., {
             .type = typeid(Entity),
             .size = sizeof(Entity),
-            .alignment = alignof(Entity)
+            .alignment = alignof(Entity),
+            .copyFn = [](void* dst, const void* src) {
+                std::memcpy(dst, src, sizeof(Entity));
+            }
         }};
 
         auto handle = m_entityManager.newEntity(compInfos);

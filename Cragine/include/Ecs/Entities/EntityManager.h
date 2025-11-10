@@ -56,6 +56,15 @@ namespace crg::ecs {
             return m_entitySignatures.at(entity.index);
         }
 
+        const void updateEntitySignature(Entity entity, ComponentSignature newSignature) {
+            auto it = m_entitySignatures.find(entity.index);
+            if (it == m_entitySignatures.end()) {
+                LOG_CORE_ERROR("Signature update error: couldn't find entity within signature list");
+                return;
+            }
+            it->second = newSignature;
+        }
+
         // Removes the given entity from the active entity list
         // and pushes it to the recyclable handle list
         void removeEntity(Entity entity) {
@@ -98,22 +107,22 @@ namespace crg::ecs {
             return entity.generation == m_entityHandles[entity.index].generation;
         }
 
-        EntityLocation* getEntityLocation(Entity entityHandle) {
-            auto it = m_entityLocations.find(entityHandle);
-            if (it == m_entityLocations.end()) {
-                LOG_CORE_ERROR("GetEntityLocation: Cannot find entity location instance; Handle is probably invalid");
-                return nullptr;
-            }
+        // EntityLocation* getEntityLocation(Entity entityHandle) {
+        //     auto it = m_entityLocations.find(entityHandle);
+        //     if (it == m_entityLocations.end()) {
+        //         LOG_CORE_ERROR("GetEntityLocation: Cannot find entity location instance; Handle is probably invalid");
+        //         return nullptr;
+        //     }
 
-            return &it->second;
-        }
+        //     return &it->second;
+        // }
 
     private:
 
         std::unordered_map<uint32_t, ComponentSignature> m_entitySignatures{};
 
         // Keeps track of where an entity is located
-        std::unordered_map<Entity, EntityLocation> m_entityLocations{};
+        // std::unordered_map<Entity, EntityLocation> m_entityLocations{};
 
         std::vector<Entity> m_entityHandles{};
 

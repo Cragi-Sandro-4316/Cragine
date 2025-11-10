@@ -6,6 +6,7 @@
 #include "../Entities/EntityManager.h"
 #include "Ecs/Components/ComponentManager.h"
 #include "Ecs/Components/QueryResult.h"
+#include "spdlog/fmt/bundled/base.h"
 #include "utils/Logger.h"
 
 #include <tuple>
@@ -24,14 +25,6 @@ namespace crg::ecs {
             if (entitySignature.empty()) return nullptr;
 
             auto key = hashSignature(entitySignature);
-
-
-            for (auto& c : entitySignature) {
-                LOG_CORE_INFO("Component: {}, hash: {}", c.type.name(), c.type.hash_code());
-                LOG_CORE_INFO("type_index hash: {}, addr: {}", c.type.hash_code(), (const void*)&c.type);
-                LOG_CORE_INFO("Key : {}", key);
-
-            }
 
 
             auto it = m_archetypeSignatures.find(key);  // Always returns m_archetypeSignatures.end()
@@ -131,9 +124,169 @@ namespace crg::ecs {
         void removeEntity(Entity entity) {
             auto archetype = getEntityArchetype(entity);
 
-            archetype->removeEntity(entity, m_entityManager);
+            archetype->removeEntity(entity);
             m_entityManager->removeEntity(entity);
         }
+
+
+        template<typename Component>
+        void addComponent(Entity entityHandle, Component componentData) {
+            auto signature = m_entityManager->getEntitySignature(entityHandle);
+            auto it = m_archetypeSignatures.find(hashSignature(signature));
+            if (it == m_archetypeSignatures.end()) {
+                LOG_CORE_ERROR("Component add failed: Couldn't find archetype matching given entity's signature.");
+                return;
+            }
+
+            auto& archetype = m_archetypes[it->second];
+
+            auto entData = archetype.getRawCompData(entityHandle);
+
+            uint8_t* newCompData = reinterpret_cast<uint8_t*> (&componentData);
+            ComponentInfo newComponentInfo = ComponentInfo {
+                .type = typeid(Component),
+                .size = sizeof(Component),
+                .alignment = alignof(Component),
+                .copyFn = (std::is_trivially_copyable_v<Component>) ?
+                [](void* dst, const void* src) {
+                    std::memcpy(dst, src, sizeof(Component));
+                } :
+                [](void* dst, const void* src) {
+                    new (dst) Component(*static_cast<const Component*>(src));
+                }
+            };
+
+            entData.buffers.emplace_back(newCompData);
+            entData.signatureIds[newComponentInfo] = entData.buffers.size() - 1;
+
+
+            archetype.removeEntity(entityHandle);
+
+
+            signature.emplace_back(ComponentInfo {
+                .type = typeid(Component),
+                .size = sizeof(Component),
+                .alignment = alignof(Component),
+                .copyFn = (std::is_trivially_copyable_v<Component>) ?
+                [](void* dst, const void* src) {
+                    std::memcpy(dst, src, sizeof(Component));
+                } :
+                [](void* dst, const void* src) {
+                    new (dst) Component(*static_cast<const Component*>(src));
+                }
+            });
+
+            std::sort(
+                signature.begin(),
+                signature.end(),
+                [](const ComponentInfo& a, const ComponentInfo& b) {
+                    return a.alignment > b.alignment;
+                }
+            );
+
+            m_entityManager->updateEntitySignature(entityHandle, signature);
+
+
+            auto newArchetype = getEntityArchetype(entityHandle);
+            newArchetype->addFromRawData(entData, entityHandle);
+        }
+
+
+        template<typename Component>
+        void removeComponent(Entity entityHandle) {
+            auto signature = m_entityManager->getEntitySignature(entityHandle);
+            auto it = m_archetypeSignatures.find(hashSignature(signature));
+            if (it == m_archetypeSignatures.end()) {
+                LOG_CORE_ERROR("Component removal error: Couldn't find archetype matching given entity's signature.");
+                return;
+            }
+
+            auto& archetype = m_archetypes[it->second];
+
+            auto entData = archetype.getRawCompData(entityHandle);
+
+            auto componentInfo = ComponentInfo {
+                .type = typeid(Component),
+                .size = sizeof(Component),
+                .alignment = alignof(Component),
+                .copyFn = (std::is_trivially_copyable_v<Component>) ?
+                [](void* dst, const void* src) {
+                    std::memcpy(dst, src, sizeof(Component));
+                } :
+                [](void* dst, const void* src) {
+                    new (dst) Component(*static_cast<const Component*>(src));
+                }
+            };
+
+
+            auto removeCompIdx = entData.signatureIds.find(componentInfo);
+            if (removeCompIdx == entData.signatureIds.end()) {
+                LOG_CORE_WARNING("Component removal warning: given component not found in signature");
+                return;
+            }
+
+            // TODO: Warning: not thread safe
+            size_t lastIdx = entData.buffers.size() - 1;
+            if (removeCompIdx->second != lastIdx) {
+                entData.buffers[removeCompIdx->second] = entData.buffers[lastIdx];
+
+                auto movedCompIt = std::find_if(
+                    entData.signatureIds.begin(),
+                    entData.signatureIds.end(),
+                    [lastIdx](const auto& kv) {
+                        return kv.second == lastIdx;
+                    }
+                );
+
+                if (movedCompIt != entData.signatureIds.end()) {
+                    movedCompIt->second = removeCompIdx->second;
+                }
+            }
+
+            entData.buffers.pop_back();
+            entData.signatureIds.erase(removeCompIdx);
+
+            archetype.removeEntity(entityHandle);
+
+            // Remove the component from the entity's signature
+            auto sigIt = std::find_if(signature.begin(), signature.end(),
+                [&componentInfo](const ComponentInfo& ci) { return ci == componentInfo; });
+
+            if (sigIt != signature.end()) {
+                *sigIt = signature.back();
+                signature.pop_back();
+            }
+
+            std::sort(
+                signature.begin(),
+                signature.end(),
+                [](const ComponentInfo& a, const ComponentInfo& b) {
+                    return a.alignment > b.alignment;
+                }
+            );
+
+            m_entityManager->updateEntitySignature(entityHandle, signature);
+
+            auto newArchetype = getEntityArchetype(entityHandle);
+            newArchetype->addFromRawData(entData, entityHandle);
+
+        }
+
+
+        void addEntityFromRawData(Entity entity, RawCompData rawData) {
+            auto archetype = getEntityArchetype(entity);
+
+            if (!archetype) {
+                LOG_CORE_WARNING("No suitable archetype found");
+            }
+
+            // archetype->addEntity(data, entity);
+
+            archetype->addFromRawData(rawData, entity);
+
+            LOG_CORE_INFO("Entity successfully added to archetype");
+        }
+
 
     private:
 

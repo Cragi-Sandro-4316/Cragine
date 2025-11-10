@@ -15,10 +15,14 @@ namespace crg::ecs {
         size_t size;
         size_t alignment;
 
+        void (*copyFn)(void* dst, const void* src);
+
         bool operator==(const ComponentInfo& other) const noexcept {
             return type == other.type;
         }
     };
+
+
 
     class ComponentRegistry {
     public:
