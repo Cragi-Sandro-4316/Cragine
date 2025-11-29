@@ -16,7 +16,7 @@ namespace crg::ecs {
     public:
 
     template<typename... Components>
-    QueryResult<Components...> query() {
+    auto query() {
         auto result = m_archetypeManager.getComponentData<Components...>();
 
         return result;

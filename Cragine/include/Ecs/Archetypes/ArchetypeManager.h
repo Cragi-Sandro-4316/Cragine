@@ -10,6 +10,7 @@
 #include "utils/Logger.h"
 
 #include <tuple>
+#include <typeindex>
 #include <unordered_map>
 
 namespace crg::ecs {
@@ -53,21 +54,68 @@ namespace crg::ecs {
 
 
         template <typename... Components>
-        ComponentSignature createSignature() {
-            ComponentSignature signature = {{
-                ComponentInfo {
-                    .type = typeid(Components),
-                    .size = sizeof(Components),
-                    .alignment = alignof(Components)
+        void createSignature(
+            ComponentSignature& components,
+            ComponentSignature& withFilter,
+            ComponentSignature& withoutFilter
+        ) {
+
+            auto lambda = [&](auto t) {
+                using T = decltype(t);
+                std::type_index tt = typeid(T);
+
+
+                if constexpr (is_with<T>::value) {
+                    using Inner = typename T::type;
+
+                    LOG_CORE_TRACE("Found WITH filter {}", tt.name());
+                    withFilter.emplace_back(
+                        typeid(Inner),
+                        sizeof(Inner),
+                        alignof(Inner)
+                    );
                 }
-            }...};
-            // (signature.push_back(*m_componentRegistry->getInfo<Components>()), ...);
-            return signature;
+                else if constexpr (is_without<T>::value) {
+                    using Inner = typename T::type;
+
+                    LOG_CORE_TRACE("Found WITHOUT filter {}", tt.name());
+                    withoutFilter.emplace_back(
+                        typeid(Inner),
+                        sizeof(Inner),
+                        alignof(Inner)
+                    );
+                }
+                else {
+                    LOG_CORE_TRACE("Queried COMPONENT: {}", tt.name());
+
+                    components.emplace_back(
+                        typeid(T),
+                        sizeof(T),
+                        alignof(T)
+                    );
+                }
+
+            };
+
+            (lambda(Components{}), ...);
+
         }
 
         template<typename... Component>
-        QueryResult<Component...> getComponentData() {
-            ComponentSignature infos = createSignature<Component...>();
+        auto getComponentData() {
+
+            using FilteredTypes = filter_all<std::tuple<Component...>>::type;
+
+            ComponentSignature infos{};
+            ComponentSignature withFilter{};
+            ComponentSignature withoutFilter{};
+
+            createSignature<Component...>(infos, withFilter,withoutFilter);
+
+            // DEBUG PRINT:
+            for (auto info : infos) {
+                LOG_CORE_TRACE("{}", info.type.name());
+            }
 
             std::vector<const std::vector<size_t>*> archetypeLists;
             archetypeLists.reserve(sizeof...(Component));
@@ -76,8 +124,15 @@ namespace crg::ecs {
                 auto archetypes = m_componentLocations.find(component);
                 if (archetypes == m_componentLocations.end()) {
                     LOG_CORE_WARNING("Query failure: Valid Archetype not found! Returning empty list");
-                    return {};
+                    auto returnLambda = [&]<typename... Ts>(std::tuple<Ts...>*) {
+                        return QueryResult<Ts...>{};
+                    };
+
+                    FilteredTypes t;
+
+                    return returnLambda(&t);
                 }
+
                 archetypeLists.emplace_back(&archetypes->second);
             }
 
@@ -87,12 +142,46 @@ namespace crg::ecs {
 
             auto archetypeIndices = intersectSortedVectors(archetypeLists);
 
-            // TODO: get component data from chunks
-
             // Gets all data chunks
             std::vector<Chunk*> chunks;
             chunks.reserve(archetypeIndices.size());
+
             for (auto& index : archetypeIndices) {
+
+                const auto& currentArchetype = m_archetypes[index];
+                const ComponentSignature& archetypeTypes = currentArchetype.getTypes();
+
+                // --- 1. WITHOUT Filter Check (Checks for FORBIDDEN components) ---
+                bool hasForbiddenComponent = false;
+                for (const auto& withoutInfo : withoutFilter) {
+                    // If the archetype HAS a component from the withoutFilter list
+                    if (std::find(archetypeTypes.begin(), archetypeTypes.end(), withoutInfo) != archetypeTypes.end()) {
+                        hasForbiddenComponent = true;
+                        break;
+                    }
+                }
+                if (hasForbiddenComponent) {
+                    continue; // Skip: It has a forbidden component
+                }
+
+                // --- 2. WITH Filter Check (Checks for REQUIRED components) ---
+                // The variable should track if a required component is MISSING
+                bool missingRequiredComponent = false;
+
+                // CRITICAL FIX: Loop over withFilter, not withoutFilter!
+                for (const auto& withInfo : withFilter) {
+                    // If the archetype DOES NOT HAVE a component from the withFilter list
+                    if (std::find(archetypeTypes.begin(), archetypeTypes.end(), withInfo) == archetypeTypes.end()) {
+                        missingRequiredComponent = true;
+                        break;
+                    }
+                }
+
+                // CRITICAL FIX: Use the 'missing' flag to continue
+                if (missingRequiredComponent) {
+                    continue; // Skip: It is missing a required component
+                }
+
                 auto chunkList = m_archetypes[index].getChunks();
 
                 for (auto& c : *chunkList) {
@@ -101,10 +190,16 @@ namespace crg::ecs {
                     }
                 }
 
-                // chunks.emplace_back(m_archetypes[index].getChunks());
+
             }
 
-            return QueryResult<Component...>{chunks};
+            auto returnLambda = [&]<typename... Ts>(std::tuple<Ts...>*) {
+                return QueryResult<Ts...>{chunks};
+            };
+
+            FilteredTypes t;
+
+            return returnLambda(&t);
         }
 
 
