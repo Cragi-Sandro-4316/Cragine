@@ -1,7 +1,6 @@
 #include "App.h"
 #include "Ecs/Components/ComponentSignature.h"
-#include "Ecs/Entities/Entity.h"
-#include "Ecs/Entities/EntityManager.h"
+#include "Ecs/Components/QueryResult.h"
 #include "utils/Logger.h"
 
 #include <GLFW/glfw3.h>
@@ -28,8 +27,15 @@ namespace crg {
     };
 
     struct Marker1 {};
-
     struct Marker2 {};
+    struct Marker3 {};
+
+
+    void sampleSystem(ecs::Query<Sample, ecs::Without<Marker1>> query) {
+        for (auto [sample] : query.iter()) {
+            LOG_CORE_TRACE("{}", sample.str);
+        }
+    }
 
     void App::run() {
 
@@ -48,48 +54,31 @@ namespace crg {
             Marker2 {}
         });
 
+        m_ecsWorld.spawnEntity<Sample, Marker3>({
+            Sample {
+                .str = "Romolo e Remo"
+            },
+            Marker3 {}
+        });
+
+        m_systemScheduler.addSystem(ecs::Schedule::Update, sampleSystem);
+
         while(!glfwWindowShouldClose(m_window->getGlfwWindow())) {
             glfwPollEvents();
             // LOG_CORE_TRACE("App currently running...");
 
-            for (
-                auto [str] :
-                m_ecsWorld.query<
-                    Sample,
-                    ecs::With<Marker2>
-                >()
-            ) {
-                LOG_CORE_ERROR("Entity says: {}", str.str);
 
-            }
-
-            for (
-                auto [entity, str] :
-                m_ecsWorld.query<
-                    ecs::Entity,
-                    Sample,
-                    ecs::With<Marker1>,
-                    ecs::Without<Marker2>
-                >()
-            ) {
-                LOG_CORE_ERROR("Entity says: {}", str.str);
-
-                m_ecsWorld.addComponent(entity, Marker2{});
-            }
-
-            for (
-                auto [str] :
-                m_ecsWorld.query<
-                    Sample,
-                    ecs::With<Marker2>
-                >()
-            ) {
-                LOG_CORE_ERROR("Entity says: {}", str.str);
-
-            }
+            m_systemScheduler.update(m_ecsWorld);
 
             break;
         }
         LOG_CORE_INFO("App terminated successfully");
     }
+
+
+
+
+
+
+
 }

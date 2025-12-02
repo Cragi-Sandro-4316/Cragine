@@ -3,7 +3,6 @@
 #include "Archetypes/ArchetypeManager.h"
 #include "Components/ComponentManager.h"
 #include "Components/ComponentSignature.h"
-#include "Ecs/Components/QueryResult.h"
 #include "Ecs/Entities/Entity.h"
 #include "Entities/EntityManager.h"
 #include <cstring>
@@ -16,8 +15,16 @@ namespace crg::ecs {
     public:
 
     template<typename... Components>
-    auto query() {
-        auto result = m_archetypeManager.getComponentData<Components...>();
+    auto query(
+        ComponentSignature components,
+        ComponentSignature withFilter,
+        ComponentSignature withoutFilter
+    ) {
+        auto result = m_archetypeManager.getComponentData<Components...>(
+            components,
+            withFilter,
+            withoutFilter
+        );
 
         return result;
     }
@@ -67,10 +74,6 @@ namespace crg::ecs {
         m_archetypeManager.removeEntity(entityHandle);
     }
 
-    // template<typename Component>
-    // void registerComponent() {
-    //     m_componentRegistry.registerComponent<Component>();
-    // }
 
     private:
 

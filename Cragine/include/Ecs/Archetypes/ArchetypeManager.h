@@ -5,8 +5,6 @@
 #include "../Entities/Entity.h"
 #include "../Entities/EntityManager.h"
 #include "Ecs/Components/ComponentManager.h"
-#include "Ecs/Components/QueryResult.h"
-#include "spdlog/fmt/bundled/base.h"
 #include "utils/Logger.h"
 
 #include <tuple>
@@ -14,6 +12,10 @@
 #include <unordered_map>
 
 namespace crg::ecs {
+
+    template<typename... T>
+    class QueryResult;
+
     class ArchetypeManager {
     public:
 
@@ -53,64 +55,13 @@ namespace crg::ecs {
         }
 
 
-        template <typename... Components>
-        void createSignature(
-            ComponentSignature& components,
-            ComponentSignature& withFilter,
-            ComponentSignature& withoutFilter
+        template<typename... Component>
+        auto getComponentData(
+            ComponentSignature infos,
+            ComponentSignature withFilter,
+            ComponentSignature withoutFilter
         ) {
 
-            auto lambda = [&](auto t) {
-                using T = decltype(t);
-                std::type_index tt = typeid(T);
-
-
-                if constexpr (is_with<T>::value) {
-                    using Inner = typename T::type;
-
-                    LOG_CORE_TRACE("Found WITH filter {}", tt.name());
-                    withFilter.emplace_back(
-                        typeid(Inner),
-                        sizeof(Inner),
-                        alignof(Inner)
-                    );
-                }
-                else if constexpr (is_without<T>::value) {
-                    using Inner = typename T::type;
-
-                    LOG_CORE_TRACE("Found WITHOUT filter {}", tt.name());
-                    withoutFilter.emplace_back(
-                        typeid(Inner),
-                        sizeof(Inner),
-                        alignof(Inner)
-                    );
-                }
-                else {
-                    LOG_CORE_TRACE("Queried COMPONENT: {}", tt.name());
-
-                    components.emplace_back(
-                        typeid(T),
-                        sizeof(T),
-                        alignof(T)
-                    );
-                }
-
-            };
-
-            (lambda(Components{}), ...);
-
-        }
-
-        template<typename... Component>
-        auto getComponentData() {
-
-            using FilteredTypes = filter_all<std::tuple<Component...>>::type;
-
-            ComponentSignature infos{};
-            ComponentSignature withFilter{};
-            ComponentSignature withoutFilter{};
-
-            createSignature<Component...>(infos, withFilter,withoutFilter);
 
             // DEBUG PRINT:
             for (auto info : infos) {
@@ -128,9 +79,8 @@ namespace crg::ecs {
                         return QueryResult<Ts...>{};
                     };
 
-                    FilteredTypes t;
 
-                    return returnLambda(&t);
+                    return QueryResult<Component...>{};
                 }
 
                 archetypeLists.emplace_back(&archetypes->second);
@@ -193,13 +143,9 @@ namespace crg::ecs {
 
             }
 
-            auto returnLambda = [&]<typename... Ts>(std::tuple<Ts...>*) {
-                return QueryResult<Ts...>{chunks};
-            };
 
-            FilteredTypes t;
 
-            return returnLambda(&t);
+            return QueryResult<Component...>{chunks};
         }
 
 
