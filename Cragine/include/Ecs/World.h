@@ -5,6 +5,7 @@
 #include "Components/ComponentSignature.h"
 #include "Ecs/Entities/Entity.h"
 #include "Entities/EntityManager.h"
+#include "Events/EventManager.h"
 #include <cstring>
 #include <tuple>
 #include <type_traits>
@@ -13,6 +14,10 @@
 namespace crg::ecs {
     class World {
     public:
+
+    World() {
+        EventManager event_manager = EventManager();
+    }
 
     template<typename... Components>
     auto query(
@@ -74,6 +79,9 @@ namespace crg::ecs {
         m_archetypeManager.removeEntity(entityHandle);
     }
 
+    EventManager* getEventManager() {
+        return &m_eventManager;
+    }
 
     private:
 
@@ -88,6 +96,8 @@ namespace crg::ecs {
             &m_entityManager,
             // &m_componentRegistry
         };
+
+        EventManager m_eventManager{};
 
     };
 }

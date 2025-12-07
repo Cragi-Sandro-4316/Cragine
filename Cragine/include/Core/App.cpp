@@ -1,6 +1,8 @@
 #include "App.h"
 #include "Ecs/Components/ComponentSignature.h"
 #include "Ecs/Components/QueryResult.h"
+#include "Ecs/Systems/SystemScheduler.h"
+#include "Events/EventParam.h"
 #include "utils/Logger.h"
 
 #include <GLFW/glfw3.h>
@@ -26,15 +28,36 @@ namespace crg {
         std::string str;
     };
 
-    struct Marker1 {};
+    struct Marker1 {
+        std::string str;
+    };
     struct Marker2 {};
     struct Marker3 {};
 
 
-    void sampleSystem(ecs::Query<Sample, ecs::Without<Marker1>> query) {
-        for (auto [sample] : query.iter()) {
-            LOG_CORE_TRACE("{}", sample.str);
+    void sampleSystem(
+        ecs::EventWriter<Sample> writer
+    ) {
+        LOG_CORE_TRACE("System 1");
+        writer.write(Sample {
+            .str = "Porca troia funge"
+        });
+
+        writer.write(Sample {
+            .str = "Evento 2"
+        });
+
+    }
+
+
+    void sampleSystem2(
+        ecs::EventReader<Sample> reader
+    ) {
+        LOG_CORE_TRACE("Sample Events");
+        for (auto& [sample] : *reader.read()) {
+            LOG_CORE_TRACE("Evento: {}", sample);
         }
+
     }
 
     void App::run() {
@@ -62,6 +85,7 @@ namespace crg {
         });
 
         m_systemScheduler.addSystem(ecs::Schedule::Update, sampleSystem);
+        m_systemScheduler.addSystem(ecs::Schedule::Update, sampleSystem2);
 
         while(!glfwWindowShouldClose(m_window->getGlfwWindow())) {
             glfwPollEvents();

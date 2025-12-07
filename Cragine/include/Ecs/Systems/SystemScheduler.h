@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Ecs/Systems/System.h"
+#include "utils/Logger.h"
 #include <memory>
 #include <vector>
 
@@ -29,6 +30,7 @@ namespace crg::ecs {
                     m_startupSystems.emplace_back(std::move(newSys));
                 break;
                 case Schedule::Update:
+                    LOG_CORE_TRACE("Added system");
                     m_updateSystems.emplace_back(std::move(newSys));
                 break;
                 case Schedule::FixedUpdate:
