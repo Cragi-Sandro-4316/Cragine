@@ -2,6 +2,7 @@
 #include "Ecs/Components/QueryResult.h"
 #include "Ecs/Systems/SystemScheduler.h"
 #include "Events/EventParam.h"
+#include "Resources/ResourceParam.h"
 #include "utils/Logger.h"
 #include "Ecs/Components/QueryParam.h"
 
@@ -36,34 +37,16 @@ namespace crg {
 
 
     void sampleSystem(
-        ecs::EventWriter<Sample> writer
+        ecs::ResMut<Sample> res
     ) {
-        LOG_CORE_TRACE("System 1");
-        writer.write(Sample {
-            .str = "Porca troia funge"
-        });
-
-        writer.write(Sample {
-            .str = "Evento 2"
-        });
-
+        res.get().str = "gigio boos";
     }
 
 
-    void sampleSystem2(
-        ecs::EventReader<Sample> reader,
-        ecs::Query<Sample> query
+    void sys2(
+        ecs::Res<Sample> res
     ) {
-        LOG_CORE_TRACE("Sample Events: ");
-        for (auto& [sample] : reader.read()) {
-            LOG_CORE_TRACE("Evento: {}", sample);
-        }
-
-        LOG_CORE_TRACE("Sample Query: ");
-        for (auto [sample] : query.iter()) {
-            LOG_CORE_TRACE("Sample: {}", sample.str);
-        }
-
+        LOG_CORE_TRACE("{}", res.get().str);
     }
 
     void App::run() {
@@ -90,8 +73,12 @@ namespace crg {
             Marker3 {}
         });
 
+        m_ecsWorld.getResourceManager().newResource(Sample{
+            .str = "pipaa"
+        });
+
         m_systemScheduler.addSystem(ecs::Schedule::Update, sampleSystem);
-        m_systemScheduler.addSystem(ecs::Schedule::Update, sampleSystem2);
+        m_systemScheduler.addSystem(ecs::Schedule::Update, sys2);
 
         int i = 0;
         while(!glfwWindowShouldClose(m_window->getGlfwWindow())) {
@@ -103,7 +90,7 @@ namespace crg {
             m_ecsWorld.getEventManager()->swapBuffers();
             // break;
             i++;
-            if (i == 4) {
+            if (i == 1) {
                 break;
             }
         }

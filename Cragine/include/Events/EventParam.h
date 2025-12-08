@@ -32,7 +32,7 @@ namespace crg::ecs {
             EventReader(EventManager* manager) : m_manager(manager) {}
             EventReader() = default;
 
-            std::vector<EventName>& read() {
+            const std::vector<EventName>& read() {
                  return *m_manager->read<EventName>();
             }
 

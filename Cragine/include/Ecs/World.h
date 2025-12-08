@@ -6,6 +6,7 @@
 #include "Ecs/Entities/Entity.h"
 #include "Entities/EntityManager.h"
 #include "Events/EventManager.h"
+#include "Resources/ResourceManager.h"
 #include <cstring>
 #include <tuple>
 #include <type_traits>
@@ -83,6 +84,10 @@ namespace crg::ecs {
         return &m_eventManager;
     }
 
+    ResourceManager& getResourceManager() {
+        return m_resourceManager;
+    }
+
     private:
 
         // Holds component information, such as size, alignment and type id
@@ -98,6 +103,8 @@ namespace crg::ecs {
         };
 
         EventManager m_eventManager{};
+
+        ResourceManager m_resourceManager{};
 
     };
 }
