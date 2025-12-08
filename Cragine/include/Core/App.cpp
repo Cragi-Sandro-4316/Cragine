@@ -1,9 +1,9 @@
 #include "App.h"
-#include "Ecs/Components/ComponentSignature.h"
 #include "Ecs/Components/QueryResult.h"
 #include "Ecs/Systems/SystemScheduler.h"
 #include "Events/EventParam.h"
 #include "utils/Logger.h"
+#include "Ecs/Components/QueryParam.h"
 
 #include <GLFW/glfw3.h>
 #include <string>
@@ -51,11 +51,17 @@ namespace crg {
 
 
     void sampleSystem2(
-        ecs::EventReader<Sample> reader
+        ecs::EventReader<Sample> reader,
+        ecs::Query<Sample> query
     ) {
-        LOG_CORE_TRACE("Sample Events");
-        for (auto& [sample] : *reader.read()) {
+        LOG_CORE_TRACE("Sample Events: ");
+        for (auto& [sample] : reader.read()) {
             LOG_CORE_TRACE("Evento: {}", sample);
+        }
+
+        LOG_CORE_TRACE("Sample Query: ");
+        for (auto [sample] : query.iter()) {
+            LOG_CORE_TRACE("Sample: {}", sample.str);
         }
 
     }
@@ -64,7 +70,7 @@ namespace crg {
 
         m_ecsWorld.spawnEntity<Sample, Marker1>({
             Sample {
-                .str = "Pipa"
+                .str = "Prova 1"
             },
             Marker1 {
             }
@@ -72,14 +78,14 @@ namespace crg {
 
         m_ecsWorld.spawnEntity<Sample, Marker2>({
             Sample {
-                .str = "Maurizio"
+                .str = "Prova 2"
             },
             Marker2 {}
         });
 
         m_ecsWorld.spawnEntity<Sample, Marker3>({
             Sample {
-                .str = "Romolo e Remo"
+                .str = "Prova 3"
             },
             Marker3 {}
         });
@@ -87,14 +93,19 @@ namespace crg {
         m_systemScheduler.addSystem(ecs::Schedule::Update, sampleSystem);
         m_systemScheduler.addSystem(ecs::Schedule::Update, sampleSystem2);
 
+        int i = 0;
         while(!glfwWindowShouldClose(m_window->getGlfwWindow())) {
             glfwPollEvents();
-            // LOG_CORE_TRACE("App currently running...");
-
+            LOG_CORE_TRACE("Frame: {}", i);
 
             m_systemScheduler.update(m_ecsWorld);
 
-            break;
+            m_ecsWorld.getEventManager()->swapBuffers();
+            // break;
+            i++;
+            if (i == 4) {
+                break;
+            }
         }
         LOG_CORE_INFO("App terminated successfully");
     }
