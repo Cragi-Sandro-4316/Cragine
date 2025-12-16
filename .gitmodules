@@ -4,3 +4,6 @@
 [submodule "Cragine/deps/spdlog"]
 	path = Cragine/deps/spdlog
 	url = https://github.com/gabime/spdlog.git
+[submodule "Cragine/deps/VkBootstrap"]
+	path = Cragine/deps/VkBootstrap
+	url = https://github.com/charles-lunarg/vk-bootstrap.git
