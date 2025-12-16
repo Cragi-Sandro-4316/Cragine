@@ -24,9 +24,28 @@ namespace crg {
             return *this;
         }
 
+        App& addModule(std::vector<Module>& modules) {
+            for (auto& module : modules ) {
+                module.build(*this);
+            }
+
+            return *this;
+        }
+
         template <typename R, typename... Args>
-        void addSystems(const ecs::Schedule schedule, R (*system)(Args...)) {
+        void addSystem(const ecs::Schedule schedule, R (*system)(Args...)) {
             m_systemScheduler.addSystem(schedule, system);
+        }
+
+        template<typename ResourceName, typename... Args>
+        void addResource(Args&&... args) {
+            m_ecsWorld.getResourceManager().newResource<ResourceName>(
+                std::forward<Args>(args)...
+            );
+        }
+
+        Window* getWindow() {
+            return m_window.get();
         }
 
     private:

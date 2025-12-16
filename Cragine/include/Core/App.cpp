@@ -2,6 +2,7 @@
 #include "Ecs/Components/QueryResult.h"
 #include "Ecs/Systems/SystemScheduler.h"
 #include "Events/EventParam.h"
+#include "InputModule/InputManager.h"
 #include "Resources/ResourceParam.h"
 #include "utils/Logger.h"
 #include "Ecs/Components/QueryParam.h"
@@ -37,17 +38,20 @@ namespace crg {
 
 
     void sampleSystem(
-        ecs::ResMut<Sample> res
+        ecs::Res<InputManager> res
     ) {
-        res.get().str = "gigio boos";
-    }
+        auto& inputManager = res.get();
 
 
-    void sys2(
-        ecs::Res<Sample> res
-    ) {
-        LOG_CORE_TRACE("{}", res.get().str);
+        if (inputManager.keyPressed(KeyCode::KeyA)) {
+            // LOG_CORE_INFO("You just pressed the A key!");
+        }
+        else {
+            // LOG_CORE_FATAL("You did not press the A key!");
+        }
+
     }
+
 
     void App::run() {
 
@@ -73,23 +77,22 @@ namespace crg {
             Marker3 {}
         });
 
-        m_ecsWorld.getResourceManager().newResource(Sample{
-            .str = "pipaa"
-        });
+        // m_ecsWorld.getResourceManager().newResource(Sample{
+        //     .str = "pipaa"
+        // });
 
         m_systemScheduler.addSystem(ecs::Schedule::Update, sampleSystem);
-        m_systemScheduler.addSystem(ecs::Schedule::Update, sys2);
 
         int i = 0;
         while(!glfwWindowShouldClose(m_window->getGlfwWindow())) {
             glfwPollEvents();
-            LOG_CORE_TRACE("Frame: {}", i);
+            // LOG_CORE_TRACE("Frame: {}", i);
 
             m_systemScheduler.update(m_ecsWorld);
 
             m_ecsWorld.getEventManager()->swapBuffers();
             // break;
-            i++;
+            // i++;
             if (i == 1) {
                 break;
             }

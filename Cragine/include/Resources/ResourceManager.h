@@ -32,10 +32,10 @@ namespace crg {
         }
 
 
-        template<typename ResourceName>
-        void newResource(ResourceName resource) {
+        template<typename ResourceName, typename... Args>
+        void newResource(Args&&... args) {
             m_queues[typeid(ResourceName)] = ResourceWrapper {
-                std::make_shared<ResourceName>(std::move(resource))
+                std::make_shared<ResourceName>(ResourceName {args...})
             };
         }
 

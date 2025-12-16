@@ -19,7 +19,7 @@ target_include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/deps/spdlog/include
 )
 
+add_subdirectory(deps/VkBootstrap)
+
 # Link glfw to your Engine library
 target_link_libraries(Cragine PRIVATE glfw)
-
-

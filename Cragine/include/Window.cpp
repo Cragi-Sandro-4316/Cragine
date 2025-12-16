@@ -1,5 +1,6 @@
 #include "Window.h"
 #include "utils/Logger.h"
+#include <GLFW/glfw3.h>
 
 namespace crg {
     Window::Window(
@@ -29,6 +30,7 @@ namespace crg {
         );
 
         glfwSetWindowUserPointer(m_window, this);
+
     }
 
     GLFWwindow* Window::getGlfwWindow() {
