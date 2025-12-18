@@ -1,7 +1,6 @@
 #pragma once
 
 #include "InputModule/KeyCode.h"
-#include "Window.h"
 #include "utils/Logger.h"
 #include <GLFW/glfw3.h>
 #include <unordered_map>
@@ -13,8 +12,10 @@ namespace crg {
 
     class InputManager {
     public:
-        InputManager(Window* window)
+        InputManager(GLFWwindow* window)
         : m_window(window) {
+            LOG_CORE_INFO("Creating InputManager. {}", (void*) this);
+
             KeyCode allKeys[] = {
                 KeyCode::KeySpace,KeyCode::KeyApostrophe,KeyCode::KeyComma,KeyCode::KeyMinus,KeyCode::KeyPeriod,KeyCode::KeySlash,KeyCode::KeyD0,
                 KeyCode::KeyD1,KeyCode::KeyD2,KeyCode::KeyD3,KeyCode::KeyD4,KeyCode::KeyD5,KeyCode::KeyD6,KeyCode::KeyD7,
@@ -48,10 +49,16 @@ namespace crg {
 
 
         InputManager() {
+            LOG_CORE_INFO("Creating InputManager. {}", (void*) this);
+
             m_window = nullptr;
-            LOG_CORE_ERROR("Could not initialize the input manager");
         }
 
+        ~InputManager() {
+            LOG_CORE_INFO("Destroying InputManager. {}", (void*) this);
+        }
+
+        InputManager(const InputManager & other) = delete;
 
         bool keyPressed(KeyCode keycode) const {
             auto index = m_keyIndices[keycode];
@@ -67,12 +74,7 @@ namespace crg {
     private:
 
         bool getKeyState(KeyCode keycode) {
-            auto state = glfwGetKey(m_window->getGlfwWindow(), (int)keycode);
-
-            if (state == GLFW_RELEASE) {
-                LOG_CORE_ERROR("AAAAAA");
-            }
-
+            auto state = glfwGetKey(m_window, (int)keycode);
 
             return state == GLFW_PRESS;
         }
@@ -81,17 +83,15 @@ namespace crg {
         void update() {
             m_current = !m_current;
 
-            if(!m_window->getGlfwWindow()) {
-                LOG_CORE_ERROR("NULLPTR");
+            if(!m_window) {
+                LOG_CORE_ERROR("InputManager: window is nullptr");
             }
 
             for (auto& [keycode, index] : m_keyIndices) {
                 m_keyStates[m_current][index] = getKeyState(keycode);
 
-                LOG_CORE_TRACE("Key: {}, value: {}", (int)keycode, getKeyState(keycode));
             }
 
-            LOG_CORE_INFO("Finished updating");
 
         }
 
@@ -104,7 +104,7 @@ namespace crg {
 
         bool m_current = true;
 
-        Window* m_window;
+        GLFWwindow* m_window;
 
         friend class InputModule;
     };

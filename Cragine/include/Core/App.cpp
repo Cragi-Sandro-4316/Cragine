@@ -26,62 +26,10 @@ namespace crg {
     }
 
 
-    struct Sample {
-        std::string str;
-    };
-
-    struct Marker1 {
-        std::string str;
-    };
-    struct Marker2 {};
-    struct Marker3 {};
-
-
-    void sampleSystem(
-        ecs::Res<InputManager> res
-    ) {
-        auto& inputManager = res.get();
-
-
-        if (inputManager.keyPressed(KeyCode::KeyA)) {
-            // LOG_CORE_INFO("You just pressed the A key!");
-        }
-        else {
-            // LOG_CORE_FATAL("You did not press the A key!");
-        }
-
-    }
-
 
     void App::run() {
 
-        m_ecsWorld.spawnEntity<Sample, Marker1>({
-            Sample {
-                .str = "Prova 1"
-            },
-            Marker1 {
-            }
-        });
-
-        m_ecsWorld.spawnEntity<Sample, Marker2>({
-            Sample {
-                .str = "Prova 2"
-            },
-            Marker2 {}
-        });
-
-        m_ecsWorld.spawnEntity<Sample, Marker3>({
-            Sample {
-                .str = "Prova 3"
-            },
-            Marker3 {}
-        });
-
-        // m_ecsWorld.getResourceManager().newResource(Sample{
-        //     .str = "pipaa"
-        // });
-
-        m_systemScheduler.addSystem(ecs::Schedule::Update, sampleSystem);
+        LOG_CORE_TRACE("App running");
 
         int i = 0;
         while(!glfwWindowShouldClose(m_window->getGlfwWindow())) {

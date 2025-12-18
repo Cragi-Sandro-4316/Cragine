@@ -4,6 +4,10 @@
 
 
 namespace crg {
+
+
+
+
     class Window {
     public:
         Window(
@@ -32,4 +36,8 @@ namespace crg {
         std::string m_windowName;
 
     };
+
+
+
+
 }

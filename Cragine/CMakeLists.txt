@@ -27,4 +27,9 @@ message(STATUS "Vulkan Include Dir: ${Vulkan_INCLUDE_DIRS}")
 add_subdirectory(deps/VkBootstrap)
 
 # Link glfw to your Engine library
-target_link_libraries(Cragine PRIVATE glfw Vulkan::Vulkan)
+target_link_libraries(
+    Cragine PRIVATE
+    glfw
+    Vulkan::Vulkan
+    vk-bootstrap
+)

@@ -60,7 +60,7 @@ namespace crg::ecs {
 
         static Res<ResourceName> fetch(State* state, World& world) {
             Res<ResourceName> resource {
-                state->manager->template getResource<ResourceName>()
+                *state->manager->template getResource<ResourceName>()
             };
 
             return resource;
@@ -86,7 +86,7 @@ namespace crg::ecs {
 
         static ResMut<ResourceName> fetch(State* state, World& world) {
             ResMut<ResourceName> resource {
-                state->manager->template getResource<ResourceName>()
+                *state->manager->template getResource<ResourceName>()
             };
 
             return resource;

@@ -18,24 +18,24 @@ namespace crg {
     public:
 
         template<typename ResourceName>
-        ResourceName& getResource() {
-            static ResourceName EMPTY;
+        ResourceName* getResource() {
+            // static ResourceName EMPTY;
             std::type_index typeId = typeid(ResourceName);
             auto it = m_queues.find(typeId);
             if (it == m_queues.end()) {
                LOG_CORE_WARNING("Resource not found");
-               return EMPTY;
+               return nullptr;
             }
 
             ResourceName* resource = static_cast<ResourceName*>(it->second.resource.get());
-            return *resource;
+            return resource;
         }
 
 
         template<typename ResourceName, typename... Args>
         void newResource(Args&&... args) {
             m_queues[typeid(ResourceName)] = ResourceWrapper {
-                std::make_shared<ResourceName>(ResourceName {args...})
+                std::make_shared<ResourceName>(args...)
             };
         }
 
