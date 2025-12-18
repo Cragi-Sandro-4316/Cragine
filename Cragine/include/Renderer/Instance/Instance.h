@@ -16,5 +16,5 @@ namespace crg {
      *
      * @return the instance created.
      */
-    vk::Instance makeInstance(const char* appName, std::deque<std::function<void()>>& deletionQueue);
+    vk::Instance makeInstance(const char* appName, std::deque<std::function<void(vk::Instance)>>& deletionQueue);
 }

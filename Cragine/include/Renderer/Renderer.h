@@ -20,11 +20,13 @@ namespace crg {
     private:
 
         // @brief Destruction queue
-        std::deque<std::function<void()>> m_deletionQueue;
+        std::deque<std::function<void(vk::Instance)>> m_deletionQueue;
 
         vk::Instance m_instance = VK_NULL_HANDLE;
 
         GLFWwindow* m_window;
+
+
 
     };
 

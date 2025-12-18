@@ -15,7 +15,7 @@ namespace crg {
     Renderer::~Renderer() {
         LOG_CORE_INFO("Destroying renderer");
         while (m_deletionQueue.size() > 0) {
-            m_deletionQueue.back()();
+            m_deletionQueue.back()(m_instance);
             m_deletionQueue.pop_back();
         }
     }
