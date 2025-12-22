@@ -1,5 +1,6 @@
 #pragma once
 #include <GLFW/glfw3.h>
+#include <cstdint>
 #include <string>
 
 
@@ -21,6 +22,14 @@ namespace crg {
         Window& operator= (const Window&) = delete;
 
         GLFWwindow* getGlfwWindow();
+
+        uint32_t getWidth() {
+            return m_width;
+        }
+
+        uint32_t getHeight() {
+            return m_height;
+        }
 
     private:
         void initWindow();
