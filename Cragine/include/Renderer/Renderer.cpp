@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <sys/types.h>
 #include <vulkan/vulkan_core.h>
+#include <vulkan/vulkan_to_string.hpp>
 
 
 namespace crg::renderer {
@@ -21,6 +22,9 @@ namespace crg::renderer {
 
         m_graphicsQueue = m_vkbDevice.get_queue(vkb::QueueType::graphics).value();
         m_graphicsQueueFamily = m_vkbDevice.get_queue_index(vkb::QueueType::graphics).value();
+
+        initCommands();
+        initSyncStructs();
 
         m_isInitialized = true;
     }
@@ -137,6 +141,10 @@ namespace crg::renderer {
 
             for (uint32_t i = 0; i < FRAME_OVERLAP; i++) {
                 m_device.destroyCommandPool(m_frames[i].m_commandPool);
+
+                m_device.destroyFence(m_frames[i].m_renderFence, nullptr);
+                m_device.destroySemaphore(m_frames[i].m_renderSemaphore, nullptr);
+                m_device.destroySemaphore(m_frames[i].m_swapchainSemaphore, nullptr);
             }
 
             destroySwapchain();
@@ -156,26 +164,118 @@ namespace crg::renderer {
         );
 
         for (uint32_t i = 0; i < FRAME_OVERLAP; i++) {
-            vk::Result createResult = m_device.createCommandPool(&commandPoolInfo, nullptr, &m_frames[i].m_commandPool);
-
-            if (createResult != vk::Result::eSuccess) {
-                LOG_CORE_ERROR("Could not create command pool");
-                return;
-            }
+            VK_CHECK(m_device.createCommandPool(&commandPoolInfo, nullptr, &m_frames[i].m_commandPool));
 
             vk::CommandBufferAllocateInfo cmdAllocInfo = utils::commandBufferAllocateInfo(
                 m_frames[i].m_commandPool,
                 1
             );
 
-            vk::Result allocResult = m_device.allocateCommandBuffers(&cmdAllocInfo, &m_frames[i].m_mainComandBuffer);
-
-            if (allocResult != vk::Result::eSuccess) {
-                LOG_CORE_ERROR("Could not allocate command buffers");
-                return;
-            }
+            VK_CHECK(m_device.allocateCommandBuffers(&cmdAllocInfo, &m_frames[i].m_mainComandBuffer));
         }
 
     }
+
+    void Renderer::initSyncStructs() {
+       	//create syncronization structures
+    	//one fence to control when the gpu has finished rendering the frame,
+    	//and 2 semaphores to syncronize rendering with swapchain
+    	//we want the fence to start signalled so we can wait on it on the first frame
+        vk::FenceCreateInfo fenceCreateInfo = utils::fenceCreateInfo(vk::FenceCreateFlagBits::eSignaled);
+        vk::SemaphoreCreateInfo semaphoreCreateInfo = utils::semaphoreCreateInfo(vk::SemaphoreCreateFlags{});
+
+        for (uint32_t i = 0; i < FRAME_OVERLAP; i++) {
+            VK_CHECK(m_device.createFence(&fenceCreateInfo, nullptr, &m_frames[i].m_renderFence));
+
+            VK_CHECK(m_device.createSemaphore(&semaphoreCreateInfo, nullptr, &m_frames[i].m_swapchainSemaphore));
+            VK_CHECK(m_device.createSemaphore(&semaphoreCreateInfo, nullptr, &m_frames[i].m_renderSemaphore));
+        }
+    }
+
+    void Renderer::draw() {
+        // Wait until the gpu is finished. Timeout of 1 second.
+        VK_CHECK(m_device.waitForFences(1, &getCurrentFrame().m_renderFence, true, 1000000000));
+        VK_CHECK(m_device.resetFences(1, &getCurrentFrame().m_renderFence));
+
+        uint32_t swapchainImageIndex;
+        VK_CHECK(m_device.acquireNextImageKHR(m_swapchain, 1000000000, getCurrentFrame().m_swapchainSemaphore, nullptr, &swapchainImageIndex));
+
+
+        vk::CommandBuffer cmd = getCurrentFrame().m_mainComandBuffer;
+
+        cmd.reset(vk::CommandBufferResetFlagBits{});
+
+        vk::CommandBufferBeginInfo cmdBeginInfo = utils::commandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+
+        VK_CHECK(cmd.begin(&cmdBeginInfo));
+
+        utils::transitionImage(
+            cmd,
+            m_swapchainImages[swapchainImageIndex],
+            vk::ImageLayout::eUndefined,
+            vk::ImageLayout::eGeneral
+        );
+
+        //make a clear-color from frame number. This will flash with a 120 frame period.
+        vk::ClearColorValue clearValue{};
+        float flash = std::abs(std::sin(m_frameNumber / 120.f));
+        clearValue = vk::ClearColorValue{ 0.0f, 0.0f, flash, 1.0f };
+
+        vk::ImageSubresourceRange clearRange = utils::imageSubresourceRange(vk::ImageAspectFlagBits::eColor);
+
+        //clear image
+        cmd.clearColorImage(
+            m_swapchainImages[swapchainImageIndex],
+            vk::ImageLayout::eGeneral,
+            &clearValue,
+            1,
+            &clearRange
+        );
+
+        utils::transitionImage(
+            cmd,
+            m_swapchainImages[swapchainImageIndex],
+            vk::ImageLayout::eGeneral,
+            vk::ImageLayout::ePresentSrcKHR
+        );
+
+        cmd.end();
+
+        vk::CommandBufferSubmitInfo cmdInfo = utils::commandBufferSubmitInfo(cmd);
+
+        vk::SemaphoreSubmitInfo waitInfo = utils::semaphoreSubmitInfo(
+            vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+            getCurrentFrame().m_swapchainSemaphore
+        );
+        vk::SemaphoreSubmitInfo signalInfo = utils::semaphoreSubmitInfo(
+            vk::PipelineStageFlagBits2::eAllGraphics,
+            getCurrentFrame().m_renderSemaphore
+        );
+
+        vk::SubmitInfo2 submit = utils::submitInfo(
+            &cmdInfo,
+            &signalInfo,
+            &waitInfo
+        );
+
+        VK_CHECK(m_graphicsQueue.submit2(1, &submit, getCurrentFrame().m_renderFence));
+
+
+        vk::PresentInfoKHR presentInfo{};
+        presentInfo.pNext = nullptr;
+        presentInfo.pSwapchains = &m_swapchain;
+        presentInfo.swapchainCount = 1;
+
+        presentInfo.pWaitSemaphores = &getCurrentFrame().m_renderSemaphore;
+        presentInfo.waitSemaphoreCount = 1;
+
+        presentInfo.pImageIndices = &swapchainImageIndex;
+
+        VK_CHECK(m_graphicsQueue.presentKHR(&presentInfo));
+
+        m_frameNumber++;
+    }
+
+
 
 }

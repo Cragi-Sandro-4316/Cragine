@@ -14,5 +14,40 @@ namespace crg::renderer::utils {
         uint32_t count
     );
 
+    vk::FenceCreateInfo fenceCreateInfo(
+        vk::FenceCreateFlags flags
+    );
 
+    vk::SemaphoreCreateInfo semaphoreCreateInfo(
+        vk::SemaphoreCreateFlags flags
+    );
+
+    vk::CommandBufferBeginInfo commandBufferBeginInfo(
+        vk::CommandBufferUsageFlags flags
+    );
+
+    void transitionImage(
+        vk::CommandBuffer cmd,
+        vk::Image image,
+        vk::ImageLayout currentlayout,
+        vk::ImageLayout newLayout
+    );
+
+    vk::ImageSubresourceRange imageSubresourceRange(vk::ImageAspectFlags aspectMask);
+
+    vk::SemaphoreSubmitInfo semaphoreSubmitInfo(
+        vk::PipelineStageFlags2 stageMask,
+        vk::Semaphore semaphore
+    );
+
+
+    vk::CommandBufferSubmitInfo commandBufferSubmitInfo(
+        vk::CommandBuffer cmd
+    );
+
+    vk::SubmitInfo2 submitInfo(
+        vk::CommandBufferSubmitInfo* cmd,
+        vk::SemaphoreSubmitInfo* signalSemaphoreInfo,
+        vk::SemaphoreSubmitInfo* waitSemaphoreInfo
+    );
 }

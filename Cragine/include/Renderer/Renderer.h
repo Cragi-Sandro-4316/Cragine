@@ -2,6 +2,7 @@
 
 #include "VkBootstrap.h"
 #include "Window.h"
+#include "utils/Logger.h"
 #include "vulkan/vulkan.hpp"
 #include <cstdint>
 #include <deque>
@@ -14,12 +15,27 @@
 
 namespace crg::renderer {
 
+    #define VK_CHECK(x)                                                         \
+    do {                                                                        \
+    vk::Result err = x;                                                         \
+        if ((int)err) {                                                         \
+            LOG_CORE_ERROR("Detected vulkan error: {}", vk::to_string(err));    \
+            abort();                                                            \
+        }                                                                       \
+    } while(0)                                                                  \
+
     struct FrameData {
         vk::CommandPool m_commandPool;
         vk::CommandBuffer m_mainComandBuffer;
+
+        vk::Semaphore m_swapchainSemaphore;
+        vk::Semaphore m_renderSemaphore;
+        vk::Fence m_renderFence;
+
     };
 
-    constexpr uint32_t FRAME_OVERLAP = 2;
+    // TODO: fix semaphore count
+    constexpr uint32_t FRAME_OVERLAP = 4;
 
     class Renderer {
     public:
@@ -31,6 +47,8 @@ namespace crg::renderer {
         Renderer operator=(Renderer&) = delete;
 
         FrameData& getCurrentFrame() { return m_frames[m_frameNumber % FRAME_OVERLAP]; }
+
+        void draw();
 
     public:
         FrameData m_frames[FRAME_OVERLAP];
@@ -52,6 +70,8 @@ namespace crg::renderer {
         void cleanup();
 
         void initCommands();
+
+        void initSyncStructs();
 
     private:
 

@@ -3,6 +3,7 @@
 #include "Module/Module.h"
 #include "Core/App.h"
 #include "Renderer/Renderer.h"
+#include "Resources/ResourceParam.h"
 
 namespace crg {
 
@@ -10,7 +11,12 @@ namespace crg {
         virtual void build(App& app) {
             app.addResource<renderer::Renderer>(app.getWindow());
 
+            app.addSystem(ecs::Schedule::Update, updateRenderer);
+        }
 
+        static void updateRenderer(ecs::ResMut<renderer::Renderer> rendererRes) {
+            auto& renderer = rendererRes.get();
+            renderer.draw();
         }
 
     };
