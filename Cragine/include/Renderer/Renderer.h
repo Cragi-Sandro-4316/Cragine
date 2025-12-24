@@ -34,8 +34,6 @@ namespace crg::renderer {
 
     };
 
-    // TODO: fix semaphore count
-    constexpr uint32_t FRAME_OVERLAP = 4;
 
     class Renderer {
     public:
@@ -46,12 +44,12 @@ namespace crg::renderer {
         Renderer(const Renderer&) = delete;
         Renderer operator=(Renderer&) = delete;
 
-        FrameData& getCurrentFrame() { return m_frames[m_frameNumber % FRAME_OVERLAP]; }
+        FrameData& getCurrentFrame() { return m_frames[m_frameNumber % m_frames.size()]; }
 
         void draw();
 
     public:
-        FrameData m_frames[FRAME_OVERLAP];
+        std::vector<FrameData> m_frames;
 
         vk::Queue m_graphicsQueue;
         uint32_t m_graphicsQueueFamily;
@@ -74,8 +72,6 @@ namespace crg::renderer {
         void initSyncStructs();
 
     private:
-
-        // std::deque<std::function<void(vk::Instance)>> m_deletionQueue;
 
         uint32_t m_frameNumber = 0;
 
@@ -100,9 +96,6 @@ namespace crg::renderer {
         Window* m_window;
 
         bool m_isInitialized = false;
-
-        // TODO: Push deletion lambdas to deletion queue
-
 
         vkb::Instance m_vkbInstance;
         vkb::PhysicalDevice m_vkbPhysicalDevice;

@@ -117,7 +117,7 @@ namespace crg::renderer {
 
         std::memcpy(m_swapchainImages.data(), images.data(), images.size() * sizeof(VkImage));
         std::memcpy(m_swapchainImageViews.data(), views.data(), views.size() * sizeof(VkImageView));
-
+        m_frames.resize(m_swapchainImages.size());
     }
 
     void Renderer::initSwapchain() {
@@ -139,7 +139,7 @@ namespace crg::renderer {
         if (m_isInitialized) {
             m_device.waitIdle();
 
-            for (uint32_t i = 0; i < FRAME_OVERLAP; i++) {
+            for (uint32_t i = 0; i < m_frames.size(); i++) {
                 m_device.destroyCommandPool(m_frames[i].m_commandPool);
 
                 m_device.destroyFence(m_frames[i].m_renderFence, nullptr);
@@ -163,7 +163,7 @@ namespace crg::renderer {
             vk::CommandPoolCreateFlagBits::eResetCommandBuffer
         );
 
-        for (uint32_t i = 0; i < FRAME_OVERLAP; i++) {
+        for (uint32_t i = 0; i < m_frames.size(); i++) {
             VK_CHECK(m_device.createCommandPool(&commandPoolInfo, nullptr, &m_frames[i].m_commandPool));
 
             vk::CommandBufferAllocateInfo cmdAllocInfo = utils::commandBufferAllocateInfo(
@@ -184,7 +184,7 @@ namespace crg::renderer {
         vk::FenceCreateInfo fenceCreateInfo = utils::fenceCreateInfo(vk::FenceCreateFlagBits::eSignaled);
         vk::SemaphoreCreateInfo semaphoreCreateInfo = utils::semaphoreCreateInfo(vk::SemaphoreCreateFlags{});
 
-        for (uint32_t i = 0; i < FRAME_OVERLAP; i++) {
+        for (uint32_t i = 0; i < m_frames.size(); i++) {
             VK_CHECK(m_device.createFence(&fenceCreateInfo, nullptr, &m_frames[i].m_renderFence));
 
             VK_CHECK(m_device.createSemaphore(&semaphoreCreateInfo, nullptr, &m_frames[i].m_swapchainSemaphore));
