@@ -1,5 +1,6 @@
 #pragma once
 
+#include "utils/VkTypes.h"
 #include "VkBootstrap.h"
 #include "Window.h"
 #include "utils/Logger.h"
@@ -10,6 +11,9 @@
 #include <vulkan/vulkan_core.h>
 #define VUILKAN_HPP_NO_EXCEPTIONS
 #include <vulkan/vulkan.hpp>
+
+#include "vk_mem_alloc.h"
+
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -24,16 +28,6 @@ namespace crg::renderer {
         }                                                                       \
     } while(0)                                                                  \
 
-    struct FrameData {
-        vk::CommandPool m_commandPool;
-        vk::CommandBuffer m_mainComandBuffer;
-
-        vk::Semaphore m_swapchainSemaphore;
-        vk::Semaphore m_renderSemaphore;
-        vk::Fence m_renderFence;
-
-    };
-
 
     class Renderer {
     public:
@@ -47,6 +41,8 @@ namespace crg::renderer {
         FrameData& getCurrentFrame() { return m_frames[m_frameNumber % m_frames.size()]; }
 
         void draw();
+
+        void drawBackground(vk::CommandBuffer cmd);
 
     public:
         std::vector<FrameData> m_frames;
@@ -74,6 +70,14 @@ namespace crg::renderer {
     private:
 
         uint32_t m_frameNumber = 0;
+
+        VmaAllocator m_allocator;
+
+        DeletionQueue m_deletionQueue;
+
+        AllocatedImage m_drawImage;
+
+        vk::Extent2D m_drawExtent;
 
         vk::Instance m_instance = VK_NULL_HANDLE;
 

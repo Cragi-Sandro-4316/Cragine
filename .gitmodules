@@ -7,3 +7,6 @@
 [submodule "Cragine/deps/VkBootstrap"]
 	path = Cragine/deps/VkBootstrap
 	url = https://github.com/charles-lunarg/vk-bootstrap.git
+[submodule "Cragine/deps/vma"]
+	path = Cragine/deps/vma
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git

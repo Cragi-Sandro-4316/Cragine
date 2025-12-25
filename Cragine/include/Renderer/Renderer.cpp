@@ -1,3 +1,6 @@
+#define VMA_IMPLEMENTATION
+#include "vk_mem_alloc.h"
+
 #include "Renderer.h"
 #include "Renderer/utils/RendererUtils.h"
 #include "VkBootstrap.h"
@@ -9,7 +12,6 @@
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vulkan_to_string.hpp>
 
-
 namespace crg::renderer {
 
     Renderer::Renderer(Window* window) :
@@ -18,6 +20,20 @@ namespace crg::renderer {
 
         makeInstance("Cragine");
         selectDevice();
+
+        VmaAllocatorCreateInfo allocInfo = {};
+        allocInfo.physicalDevice = m_physicalDevice;
+        allocInfo.device = m_device;
+        allocInfo.instance = m_instance;
+        allocInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+        VK_CHECK((vk::Result)vmaCreateAllocator(&allocInfo, &m_allocator));
+
+        m_deletionQueue.pushFunction([&]() {
+            vmaDestroyAllocator(m_allocator);
+        });
+
+
+
         initSwapchain();
 
         m_graphicsQueue = m_vkbDevice.get_queue(vkb::QueueType::graphics).value();
@@ -25,6 +41,9 @@ namespace crg::renderer {
 
         initCommands();
         initSyncStructs();
+
+
+
 
         m_isInitialized = true;
     }
@@ -118,6 +137,46 @@ namespace crg::renderer {
         std::memcpy(m_swapchainImages.data(), images.data(), images.size() * sizeof(VkImage));
         std::memcpy(m_swapchainImageViews.data(), views.data(), views.size() * sizeof(VkImageView));
         m_frames.resize(m_swapchainImages.size());
+
+
+        vk::Extent3D drawImageExtent = {
+            m_window->getWidth(),
+            m_window->getHeight(),
+            1
+        };
+
+        m_drawImage.imageFormat = vk::Format::eR16G16B16A16Sfloat;
+        m_drawImage.imageExtent = drawImageExtent;
+
+        vk::ImageUsageFlags drawImageFlags{};
+        drawImageFlags |= vk::ImageUsageFlagBits::eTransferSrc;
+        drawImageFlags |= vk::ImageUsageFlagBits::eTransferDst;
+        drawImageFlags |= vk::ImageUsageFlagBits::eStorage;
+        drawImageFlags |= vk::ImageUsageFlagBits::eColorAttachment;
+
+        vk::ImageCreateInfo rimgInfo = utils::imageCreateInfo(m_drawImage.imageFormat, drawImageFlags, drawImageExtent);
+
+        VmaAllocationCreateInfo rimgAllocInfo{};
+        rimgAllocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+        rimgAllocInfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+        VK_CHECK((vk::Result)vmaCreateImage(
+            m_allocator,
+            (VkImageCreateInfo*) &rimgInfo,
+            &rimgAllocInfo,
+            (VkImage*) &m_drawImage.image,
+            &m_drawImage.allocation,
+            nullptr
+        ));
+
+        vk::ImageViewCreateInfo rviewInfo = utils::imageViewCreateInfo(m_drawImage.imageFormat, m_drawImage.image, vk::ImageAspectFlagBits::eColor);
+
+        VK_CHECK(m_device.createImageView(&rviewInfo, nullptr, &m_drawImage.imageView));
+
+        m_deletionQueue.pushFunction([&]() {
+            m_device.destroyImageView(m_drawImage.imageView, nullptr);
+            vmaDestroyImage(m_allocator, m_drawImage.image, m_drawImage.allocation);
+        });
     }
 
     void Renderer::initSwapchain() {
@@ -145,7 +204,11 @@ namespace crg::renderer {
                 m_device.destroyFence(m_frames[i].m_renderFence, nullptr);
                 m_device.destroySemaphore(m_frames[i].m_renderSemaphore, nullptr);
                 m_device.destroySemaphore(m_frames[i].m_swapchainSemaphore, nullptr);
+
+                m_frames[i].m_deletionQueue.flush();
             }
+
+            m_deletionQueue.flush();
 
             destroySwapchain();
 
@@ -195,6 +258,8 @@ namespace crg::renderer {
     void Renderer::draw() {
         // Wait until the gpu is finished. Timeout of 1 second.
         VK_CHECK(m_device.waitForFences(1, &getCurrentFrame().m_renderFence, true, 1000000000));
+        getCurrentFrame().m_deletionQueue.flush();
+
         VK_CHECK(m_device.resetFences(1, &getCurrentFrame().m_renderFence));
 
         uint32_t swapchainImageIndex;
@@ -211,31 +276,39 @@ namespace crg::renderer {
 
         utils::transitionImage(
             cmd,
-            m_swapchainImages[swapchainImageIndex],
+            m_drawImage.image,
             vk::ImageLayout::eUndefined,
             vk::ImageLayout::eGeneral
         );
 
-        //make a clear-color from frame number. This will flash with a 120 frame period.
-        vk::ClearColorValue clearValue{};
-        float flash = std::abs(std::sin(m_frameNumber / 120.f));
-        clearValue = vk::ClearColorValue{ 0.0f, 0.0f, flash, 1.0f };
+        drawBackground(cmd);
 
-        vk::ImageSubresourceRange clearRange = utils::imageSubresourceRange(vk::ImageAspectFlagBits::eColor);
-
-        //clear image
-        cmd.clearColorImage(
-            m_swapchainImages[swapchainImageIndex],
+        utils::transitionImage(
+            cmd,
+            m_drawImage.image,
             vk::ImageLayout::eGeneral,
-            &clearValue,
-            1,
-            &clearRange
+            vk::ImageLayout::eTransferSrcOptimal
         );
 
         utils::transitionImage(
             cmd,
             m_swapchainImages[swapchainImageIndex],
-            vk::ImageLayout::eGeneral,
+            vk::ImageLayout::eUndefined,
+            vk::ImageLayout::eTransferDstOptimal
+        );
+
+        utils::copyImageToImage(
+            cmd,
+            m_drawImage.image,
+            m_swapchainImages[swapchainImageIndex],
+            m_drawExtent,
+            m_swapchainExtent
+        );
+
+        utils::transitionImage(
+            cmd,
+            m_swapchainImages[swapchainImageIndex],
+            vk::ImageLayout::eTransferDstOptimal,
             vk::ImageLayout::ePresentSrcKHR
         );
 
@@ -277,5 +350,14 @@ namespace crg::renderer {
     }
 
 
+    void Renderer::drawBackground(vk::CommandBuffer cmd) {
+        //make a clear-color from frame number. This will flash with a 120 frame period.
+        vk::ClearColorValue clearValue{};
+        float flash = std::abs(std::sin(m_frameNumber / 120.f));
+        clearValue = vk::ClearColorValue{ 0.0f, 0.0f, flash, 1.0f };
 
+        vk::ImageSubresourceRange clearRange = utils::imageSubresourceRange(vk::ImageAspectFlagBits::eColor);
+
+        cmd.clearColorImage(m_drawImage.image, vk::ImageLayout::eGeneral, &clearValue, 1, &clearRange);
+    }
 }

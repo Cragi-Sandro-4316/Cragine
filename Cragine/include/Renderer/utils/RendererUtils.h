@@ -50,4 +50,25 @@ namespace crg::renderer::utils {
         vk::SemaphoreSubmitInfo* signalSemaphoreInfo,
         vk::SemaphoreSubmitInfo* waitSemaphoreInfo
     );
+
+    vk::ImageViewCreateInfo imageViewCreateInfo(
+        vk::Format format,
+        vk::Image image,
+        vk::ImageAspectFlags aspectFlags
+    );
+
+    vk::ImageCreateInfo imageCreateInfo(
+        vk::Format format,
+        vk::ImageUsageFlags flags,
+        vk::Extent3D extent
+    );
+
+    void copyImageToImage(
+        vk::CommandBuffer cmd,
+        vk::Image source,
+        vk::Image destination,
+        vk::Extent2D srcSize,
+        vk::Extent2D dstSize
+    );
+
 }

@@ -1,6 +1,7 @@
 #include "RendererUtils.h"
 #include "vulkan/vulkan.hpp"
 
+
 namespace crg::renderer::utils {
     vk::CommandPoolCreateInfo commandPoolCreateInfo(
         uint32_t queueFamilyIndex,
@@ -145,6 +146,92 @@ namespace crg::renderer::utils {
         info.pCommandBufferInfos = cmd;
 
         return info;
+    }
+
+    vk::ImageCreateInfo imageCreateInfo(
+        vk::Format format,
+        vk::ImageUsageFlags flags,
+        vk::Extent3D extent
+    ) {
+        vk::ImageCreateInfo info{};
+        info.pNext = nullptr;
+
+        info.imageType = vk::ImageType::e2D;
+
+        info.format = format;
+        info.extent = extent;
+
+		info.mipLevels = 1;
+    	info.arrayLayers = 1;
+
+        info.samples = vk::SampleCountFlagBits::e1;
+
+        info.tiling = vk::ImageTiling::eOptimal;
+        info.usage = flags;
+
+        return info;
+    }
+
+    vk::ImageViewCreateInfo imageViewCreateInfo(
+        vk::Format format,
+        vk::Image image,
+        vk::ImageAspectFlags aspectFlags
+    ) {
+        vk::ImageViewCreateInfo info{};
+        info.pNext = nullptr;
+
+        info.viewType = vk::ImageViewType::e2D;
+        info.image = image;
+        info.format = format;
+        info.subresourceRange.baseMipLevel = 0;
+        info.subresourceRange.levelCount = 1;
+        info.subresourceRange.baseArrayLayer = 0;
+        info.subresourceRange.layerCount = 1;
+        info.subresourceRange.aspectMask = aspectFlags;
+
+        return info;
+    }
+
+    void copyImageToImage(
+        vk::CommandBuffer cmd,
+        vk::Image source,
+        vk::Image destination,
+        vk::Extent2D srcSize,
+        vk::Extent2D dstSize
+    ) {
+        vk::ImageBlit2 blitRegion{};
+        blitRegion.pNext = nullptr;
+
+    	blitRegion.srcOffsets[1].x = srcSize.width;
+    	blitRegion.srcOffsets[1].y = srcSize.height;
+    	blitRegion.srcOffsets[1].z = 1;
+
+    	blitRegion.dstOffsets[1].x = dstSize.width;
+    	blitRegion.dstOffsets[1].y = dstSize.height;
+    	blitRegion.dstOffsets[1].z = 1;
+
+    	blitRegion.srcSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+    	blitRegion.srcSubresource.baseArrayLayer = 0;
+    	blitRegion.srcSubresource.layerCount = 1;
+    	blitRegion.srcSubresource.mipLevel = 0;
+
+    	blitRegion.dstSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+    	blitRegion.dstSubresource.baseArrayLayer = 0;
+    	blitRegion.dstSubresource.layerCount = 1;
+    	blitRegion.dstSubresource.mipLevel = 0;
+
+    	vk::BlitImageInfo2 blitInfo{};
+        blitInfo.pNext = nullptr;
+
+    	blitInfo.dstImage = destination;
+    	blitInfo.dstImageLayout = vk::ImageLayout::eTransferDstOptimal;
+    	blitInfo.srcImage = source;
+    	blitInfo.srcImageLayout = vk::ImageLayout::eTransferSrcOptimal;
+    	blitInfo.filter = vk::Filter::eLinear;
+    	blitInfo.regionCount = 1;
+    	blitInfo.pRegions = &blitRegion;
+
+    	cmd.blitImage2(&blitInfo);
     }
 
 }

@@ -17,6 +17,7 @@ target_include_directories(
     PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/deps/spdlog/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/deps/vma/include
 )
 
 find_package(Vulkan REQUIRED)
