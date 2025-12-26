@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Renderer/Descriptors.h"
 #include "utils/VkTypes.h"
 #include "VkBootstrap.h"
 #include "Window.h"
@@ -50,6 +51,14 @@ namespace crg::renderer {
         vk::Queue m_graphicsQueue;
         uint32_t m_graphicsQueueFamily;
 
+        DescriptorAllocator m_globalDescriptorAllocator;
+
+        vk::DescriptorSet m_drawImageDescriptors;
+        vk::DescriptorSetLayout m_drawImageDescriptorLayout;
+
+        vk::Pipeline m_gradientPipeline;
+        vk::PipelineLayout m_gradientPipelineLayout;
+
     private:
         void makeInstance(const char* appName);
 
@@ -66,6 +75,11 @@ namespace crg::renderer {
         void initCommands();
 
         void initSyncStructs();
+
+        void initDescriptors();
+
+        void initPipelines();
+        void initBackgroundPipelines();
 
     private:
 

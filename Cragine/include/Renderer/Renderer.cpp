@@ -1,3 +1,4 @@
+#include "Renderer/Descriptors.h"
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
 
@@ -42,8 +43,9 @@ namespace crg::renderer {
         initCommands();
         initSyncStructs();
 
+        initDescriptors();
 
-
+        initPipelines();
 
         m_isInitialized = true;
     }
@@ -127,6 +129,7 @@ namespace crg::renderer {
         .value();
 
         m_swapchainExtent = vkbSwapchain.extent;
+        m_drawExtent = m_swapchainExtent;
         m_swapchain = vkbSwapchain.swapchain;
         auto images = vkbSwapchain.get_images().value();
         auto views = vkbSwapchain.get_image_views().value();
@@ -352,12 +355,108 @@ namespace crg::renderer {
 
     void Renderer::drawBackground(vk::CommandBuffer cmd) {
         //make a clear-color from frame number. This will flash with a 120 frame period.
-        vk::ClearColorValue clearValue{};
-        float flash = std::abs(std::sin(m_frameNumber / 120.f));
-        clearValue = vk::ClearColorValue{ 0.0f, 0.0f, flash, 1.0f };
 
-        vk::ImageSubresourceRange clearRange = utils::imageSubresourceRange(vk::ImageAspectFlagBits::eColor);
 
-        cmd.clearColorImage(m_drawImage.image, vk::ImageLayout::eGeneral, &clearValue, 1, &clearRange);
+        cmd.bindPipeline(vk::PipelineBindPoint::eCompute, m_gradientPipeline);
+
+        cmd.bindDescriptorSets(
+            vk::PipelineBindPoint::eCompute,
+            m_gradientPipelineLayout,
+            0,
+            1,
+            &m_drawImageDescriptors,
+            0,
+            nullptr
+        );
+
+        cmd.dispatch(
+            std::ceil(m_drawExtent.width / 16.0),
+            std::ceil(m_drawExtent.height / 16.0),
+            1
+        );
     }
+
+    void Renderer::initDescriptors() {
+        std::vector<DescriptorAllocator::PoolSizeRatio> sizes = {
+            { vk::DescriptorType::eStorageImage, 1 }
+        };
+
+        m_globalDescriptorAllocator.initPool(
+            m_device,
+            10,
+            sizes
+        );
+
+        {
+            DescriptorLayoutBuilder builder;
+            builder.addBinding(0, vk::DescriptorType::eStorageImage);
+            m_drawImageDescriptorLayout = builder.build(m_device, vk::ShaderStageFlagBits::eCompute);
+        }
+
+        m_drawImageDescriptors = m_globalDescriptorAllocator.allocate(m_device, m_drawImageDescriptorLayout);
+        vk::DescriptorImageInfo imgInfo{};
+        imgInfo.imageLayout = vk::ImageLayout::eGeneral;
+        imgInfo.imageView = m_drawImage.imageView;
+
+        vk::WriteDescriptorSet drawImageWrite{};
+        drawImageWrite.pNext = nullptr;
+
+        drawImageWrite.dstBinding = 0;
+        drawImageWrite.dstSet = m_drawImageDescriptors;
+        drawImageWrite.descriptorCount = 1;
+        drawImageWrite.descriptorType = vk::DescriptorType::eStorageImage;
+        drawImageWrite.pImageInfo = &imgInfo;
+
+        m_device.updateDescriptorSets(1, &drawImageWrite, 0, nullptr);
+
+        m_deletionQueue.pushFunction([&]() {
+            m_globalDescriptorAllocator.destroyPool(m_device);
+            m_device.destroyDescriptorSetLayout(m_drawImageDescriptorLayout, nullptr);
+        });
+    }
+
+    void Renderer::initPipelines() {
+        initBackgroundPipelines();
+    }
+
+
+    void Renderer::initBackgroundPipelines() {
+        vk::PipelineLayoutCreateInfo computeLayout{};
+        computeLayout.pNext = nullptr;
+        computeLayout.pSetLayouts = &m_drawImageDescriptorLayout;
+        computeLayout.setLayoutCount = 1;
+
+        VK_CHECK(m_device.createPipelineLayout(&computeLayout, nullptr, &m_gradientPipelineLayout));
+
+        vk::ShaderModule computeDrawShader;
+        // TODO: Move shaders to resource and handle them better
+        if (!utils::loadShaderModule(
+            "Cragine/include/Renderer/shaders/gradient.comp.spv",
+            m_device,
+            &computeDrawShader
+        )) {
+            LOG_CORE_WARNING("Error when building the compute shader");
+        }
+
+        vk::PipelineShaderStageCreateInfo stageInfo{};
+        stageInfo.pNext = nullptr;
+        stageInfo.stage = vk::ShaderStageFlagBits::eCompute;
+        stageInfo.module = computeDrawShader;
+        stageInfo.pName = "main";
+
+        vk::ComputePipelineCreateInfo computePipelineCreateInfo{};
+        computePipelineCreateInfo.pNext = nullptr;
+        computePipelineCreateInfo.layout = m_gradientPipelineLayout;
+        computePipelineCreateInfo.stage = stageInfo;
+
+        VK_CHECK(m_device.createComputePipelines(VK_NULL_HANDLE, 1, &computePipelineCreateInfo, nullptr, &m_gradientPipeline));
+
+        m_device.destroyShaderModule(computeDrawShader, nullptr);
+
+        m_deletionQueue.pushFunction([&]() {
+            m_device.destroyPipelineLayout(m_gradientPipelineLayout, nullptr);
+            m_device.destroyPipeline(m_gradientPipeline, nullptr);
+        });
+    }
+
 }

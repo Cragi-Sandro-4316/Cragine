@@ -1,6 +1,9 @@
 #include "RendererUtils.h"
+#include "utils/Logger.h"
 #include "vulkan/vulkan.hpp"
-
+#include <cstddef>
+#include <cstdint>
+#include <fstream>
 
 namespace crg::renderer::utils {
     vk::CommandPoolCreateInfo commandPoolCreateInfo(
@@ -232,6 +235,41 @@ namespace crg::renderer::utils {
     	blitInfo.pRegions = &blitRegion;
 
     	cmd.blitImage2(&blitInfo);
+    }
+
+
+    bool loadShaderModule(
+        const char* filePath,
+        vk::Device device,
+        vk::ShaderModule* outShaderModule
+    ) {
+        std::ifstream file(filePath, std::ios::ate | std::ios::binary);
+
+        if (!file.is_open()) {
+            LOG_CORE_WARNING("File not opened");
+            return false;
+        }
+
+        size_t fileSize = (size_t)file.tellg();
+
+        std::vector<uint32_t> buffer(fileSize / sizeof(uint32_t));
+        file.seekg(0);
+
+        file.read((char*)buffer.data(), fileSize);
+
+        file.close();
+
+        vk::ShaderModuleCreateInfo createInfo{};
+        createInfo.pNext = nullptr;
+
+        createInfo.codeSize = buffer.size() * sizeof(uint32_t);
+        createInfo.pCode = buffer.data();
+        vk::ShaderModule shaderModule;
+        if (device.createShaderModule(&createInfo, nullptr, &shaderModule) != vk::Result::eSuccess) {
+            return false;
+        }
+        *outShaderModule = shaderModule;
+        return true;
     }
 
 }

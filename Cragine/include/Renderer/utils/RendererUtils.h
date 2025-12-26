@@ -71,4 +71,10 @@ namespace crg::renderer::utils {
         vk::Extent2D dstSize
     );
 
+    bool loadShaderModule(
+        const char* filePath,
+        vk::Device device,
+        vk::ShaderModule* outShaderModule
+    );
+
 }
