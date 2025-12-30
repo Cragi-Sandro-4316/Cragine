@@ -10,3 +10,6 @@
 [submodule "Cragine/deps/vma"]
 	path = Cragine/deps/vma
 	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+[submodule "Cragine/deps/imgui"]
+	path = Cragine/deps/imgui
+	url = https://github.com/ocornut/imgui.git
