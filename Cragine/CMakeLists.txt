@@ -21,15 +21,11 @@ target_include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/deps/imgui
 )
 
-find_package(Vulkan REQUIRED)
-
-
-add_subdirectory(deps/VkBootstrap)
+add_subdirectory(deps/wgpu)
 
 # Link glfw to your Engine library
 target_link_libraries(
     Cragine PUBLIC
     glfw
-    Vulkan::Vulkan
-    vk-bootstrap
+    webgpu
 )

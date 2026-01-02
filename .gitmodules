@@ -4,12 +4,9 @@
 [submodule "Cragine/deps/spdlog"]
 	path = Cragine/deps/spdlog
 	url = https://github.com/gabime/spdlog.git
-[submodule "Cragine/deps/VkBootstrap"]
-	path = Cragine/deps/VkBootstrap
-	url = https://github.com/charles-lunarg/vk-bootstrap.git
-[submodule "Cragine/deps/vma"]
-	path = Cragine/deps/vma
-	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
 [submodule "Cragine/deps/imgui"]
 	path = Cragine/deps/imgui
 	url = https://github.com/ocornut/imgui.git
+[submodule "Cragine/deps/wgpu"]
+	path = Cragine/deps/wgpu
+	url = https://github.com/eliemichel/WebGPU-distribution.git
