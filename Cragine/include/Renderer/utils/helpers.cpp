@@ -63,4 +63,60 @@ namespace crg::renderer::helpers {
 
     	return userData.adapter;
     }
+
+
+
+    /**
+     * Utility function to get a WebGPU device, so that
+     *     WGPUDevice device = requestDeviceSync(adapter, options);
+     * is roughly equivalent to
+     *     const device = await adapter.requestDevice(descriptor);
+     * It is very similar to requestAdapter
+     */
+    WGPUDevice requestDeviceSync(WGPUAdapter adapter, WGPUDeviceDescriptor const * descriptor) {
+        struct UserData {
+            WGPUDevice device = nullptr;
+            bool requestEnded = false;
+        };
+        UserData userData;
+
+        auto onDeviceRequestEnded = [](
+            WGPURequestDeviceStatus status,
+            WGPUDevice device,
+            WGPUStringView message,
+            void * pUserData1,
+            void * /*pUserData2*/
+        ) {
+            UserData& userData = *reinterpret_cast<UserData*>(pUserData1);
+            if (status == WGPURequestDeviceStatus_Success) {
+                userData.device = device;
+            } else {
+                LOG_CORE_ERROR("Could not get WebGPU device: {}", message.data);
+            }
+            userData.requestEnded = true;
+        };
+
+        WGPURequestDeviceCallbackInfo callbackInfo{};
+        callbackInfo.nextInChain = nullptr;
+        callbackInfo.mode = WGPUCallbackMode_WaitAnyOnly;
+        callbackInfo.callback = onDeviceRequestEnded;
+        callbackInfo.userdata1 = &userData;
+
+        wgpuAdapterRequestDevice(
+            adapter,
+            descriptor,
+            callbackInfo
+        );
+
+        #ifdef __EMSCRIPTEN__
+            while (!userData.requestEnded) {
+                emscripten_sleep(100);
+            }
+        #endif // __EMSCRIPTEN__
+
+        assert(userData.requestEnded);
+
+        return userData.device;
+    }
+
 }

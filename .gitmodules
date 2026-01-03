@@ -10,3 +10,6 @@
 [submodule "Cragine/deps/wgpu"]
 	path = Cragine/deps/wgpu
 	url = https://github.com/eliemichel/WebGPU-distribution.git
+[submodule "Cragine/deps/wgpuGlfw"]
+	path = Cragine/deps/wgpuGlfw
+	url = https://github.com/eliemichel/glfw3webgpu.git

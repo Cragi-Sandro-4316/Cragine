@@ -11,6 +11,11 @@ file(GLOB_RECURSE ENGINE_SRC CMAKE_CONFIGURE_DEPENDS
 
 add_library(Cragine STATIC ${ENGINE_SRC})
 
+TARGET_COMPILE_DEFINITIONS(
+    Cragine
+    PUBLIC GLFW_EXPOSE_NATIVE_WAYLAND
+)
+
 # Add spdlog include dir
 target_include_directories(
     Cragine
@@ -22,10 +27,17 @@ target_include_directories(
 )
 
 add_subdirectory(deps/wgpu)
+add_subdirectory(deps/wgpuGlfw)
+TARGET_COMPILE_DEFINITIONS(
+    glfw3webgpu
+    PUBLIC GLFW_EXPOSE_NATIVE_WAYLAND
+)
+
 
 # Link glfw to your Engine library
 target_link_libraries(
     Cragine PUBLIC
     glfw
     webgpu
+    glfw3webgpu
 )
