@@ -1,8 +1,9 @@
 #pragma once
 
 #include "Window.h"
-#include <webgpu/webgpu.h>
+#define WEBGPU_CPP_IMPLEMENTATIONM
 
+#include <webgpu/webgpu.hpp>
 
 namespace crg::renderer {
 
@@ -28,17 +29,18 @@ namespace crg::renderer {
 
         void fetchQueue();
 
-        std::pair<WGPUSurfaceTexture, WGPUTextureView> getNextSurfaceViewData();
+        std::pair<wgpu::SurfaceTexture, wgpu::TextureView> getNextSurfaceViewData();
 
     private:
 
         Window* m_window;
 
-        WGPUInstance m_instance;
-        WGPUSurface m_surface;
-        WGPUDevice m_device;
-        WGPUAdapter m_adapter;
-        WGPUQueue m_queue;
+        wgpu::Instance m_instance;
+        wgpu::Surface m_surface;
+        wgpu::Device m_device;
+        wgpu::Adapter m_adapter;
+        wgpu::Queue m_queue;
+
     };
 
 }

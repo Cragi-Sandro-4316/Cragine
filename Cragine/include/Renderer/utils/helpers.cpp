@@ -1,14 +1,14 @@
 #include "helpers.h"
 #include "utils/Logger.h"
-#include <webgpu.h>
+#include <webgpu/webgpu.hpp>
 
 namespace crg::renderer::helpers {
 
-    WGPUAdapter requestAdapterSync(WGPUInstance instance, WGPURequestAdapterOptions const * options) {
+    wgpu::Adapter requestAdapterSync(wgpu::Instance instance, wgpu::RequestAdapterOptions const * options) {
     	// A simple structure holding the local information shared with the
     	// onAdapterRequestEnded callback.
     	struct UserData {
-    		WGPUAdapter adapter = nullptr;
+    		wgpu::Adapter adapter = nullptr;
     		bool requestEnded = false;
     	};
     	UserData userData;
@@ -38,7 +38,7 @@ namespace crg::renderer::helpers {
     		userData.requestEnded = true;
     	};
 
-        WGPURequestAdapterCallbackInfo callbackInfo{};
+        wgpu::RequestAdapterCallbackInfo callbackInfo{};
         callbackInfo.nextInChain = nullptr;
         callbackInfo.mode = WGPUCallbackMode_WaitAnyOnly;
         callbackInfo.callback = onAdapterRequestEnded;
@@ -73,9 +73,9 @@ namespace crg::renderer::helpers {
      *     const device = await adapter.requestDevice(descriptor);
      * It is very similar to requestAdapter
      */
-    WGPUDevice requestDeviceSync(WGPUAdapter adapter, WGPUDeviceDescriptor const * descriptor) {
+    wgpu::Device requestDeviceSync(wgpu::Adapter adapter, wgpu::DeviceDescriptor const * descriptor) {
         struct UserData {
-            WGPUDevice device = nullptr;
+            wgpu::Device device = nullptr;
             bool requestEnded = false;
         };
         UserData userData;
@@ -96,7 +96,7 @@ namespace crg::renderer::helpers {
             userData.requestEnded = true;
         };
 
-        WGPURequestDeviceCallbackInfo callbackInfo{};
+        wgpu::RequestDeviceCallbackInfo callbackInfo{};
         callbackInfo.nextInChain = nullptr;
         callbackInfo.mode = WGPUCallbackMode_WaitAnyOnly;
         callbackInfo.callback = onDeviceRequestEnded;

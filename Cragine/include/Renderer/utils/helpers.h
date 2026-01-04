@@ -1,9 +1,9 @@
 #pragma once
 
-#include <webgpu.h>
+#include <webgpu/webgpu.hpp>
 
 namespace crg::renderer::helpers {
-    WGPUAdapter requestAdapterSync(WGPUInstance instance, WGPURequestAdapterOptions const * options);
+    wgpu::Adapter requestAdapterSync(wgpu::Instance instance, wgpu::RequestAdapterOptions const * options);
 
     /**
      * Utility function to get a WebGPU device, so that
@@ -12,6 +12,6 @@ namespace crg::renderer::helpers {
      *     const device = await adapter.requestDevice(descriptor);
      * It is very similar to requestAdapter
      */
-    WGPUDevice requestDeviceSync(WGPUAdapter adapter, WGPUDeviceDescriptor const * descriptor);
+    wgpu::Device requestDeviceSync(wgpu::Adapter adapter, wgpu::DeviceDescriptor const * descriptor);
 
 }

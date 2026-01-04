@@ -1,9 +1,10 @@
+#define WEBGPU_CPP_IMPLEMENTATION
+#include <webgpu/webgpu.hpp>
+
 #include "Renderer.h"
 #include "Renderer/utils/helpers.h"
 #include "utils/Logger.h"
 #include <GLFW/glfw3.h>
-#include <webgpu.h>
-#include <wgpu.h>
 #include <glfw3webgpu.h>
 
 namespace crg::renderer {
@@ -28,18 +29,18 @@ namespace crg::renderer {
     }
 
     Renderer::~Renderer() {
-        wgpuQueueRelease(m_queue);
+        m_queue.release();
         LOG_CORE_INFO("Released wgpu queue");
 
-        wgpuDeviceRelease(m_device);
-        wgpuAdapterRelease(m_adapter);
+        m_device.release();
+        m_adapter.release();
         LOG_CORE_INFO("Released wgpu device and adapter");
 
-        wgpuSurfaceUnconfigure(m_surface);
-        wgpuSurfaceRelease(m_surface);
+        m_surface.unconfigure();
+        m_surface.release();
         LOG_CORE_INFO("Released wgpu surface");
 
-        wgpuInstanceRelease(m_instance);
+        m_instance.release();
         LOG_CORE_INFO("Released wgpu instance");
     }
 
@@ -47,7 +48,7 @@ namespace crg::renderer {
 
     void Renderer::fetchInstance() {
         // Gets the instance
-        WGPUInstanceDescriptor desc{};
+        wgpu::InstanceDescriptor desc{};
         desc.nextInChain = nullptr;
 
         m_instance = wgpuCreateInstance(&desc);
@@ -61,29 +62,18 @@ namespace crg::renderer {
         m_surface = glfwCreateWindowWGPUSurface(m_instance, m_window->getGlfwWindow());
         if (!m_surface) {
             LOG_CORE_ERROR("Could not initialize wgpu surface!");
-
-            int platform = glfwGetPlatform();
-            LOG_CORE_INFO("GLFW platform: {}", platform);
-
-            if (platform == GLFW_PLATFORM_WAYLAND) {
-                LOG_CORE_ERROR("Running on wayland");
-            }
-            else {
-                LOG_CORE_ERROR("Running on x11");
-            }
-
             return;
         }
     }
 
     void Renderer::configureSurface() {
-        WGPUSurfaceConfiguration config{};
+        wgpu::SurfaceConfiguration config{};
         config.nextInChain = nullptr;
         config.width = m_window->getWidth();
         config.height = m_window->getHeight();
 
-        WGPUSurfaceCapabilities capabilities;
-        wgpuSurfaceGetCapabilities(m_surface, m_adapter, &capabilities);
+        wgpu::SurfaceCapabilities capabilities;
+        m_surface.getCapabilities(m_adapter, &capabilities);
 
         config.format = capabilities.formats[0];
 
@@ -95,14 +85,14 @@ namespace crg::renderer {
         config.presentMode = WGPUPresentMode_Fifo;
         config.alphaMode = WGPUCompositeAlphaMode_Auto;
 
-        wgpuSurfaceConfigure(m_surface, &config);
+        m_surface.configure(config);
     }
 
 
     void Renderer::fetchAdapter() {
         // Gets the gpu adapter
         LOG_CORE_INFO("Requesting adapter...");
-        WGPURequestAdapterOptions adapterOptions{};
+        wgpu::RequestAdapterOptions adapterOptions{};
         adapterOptions.nextInChain = nullptr;
         adapterOptions.compatibleSurface = m_surface;
         m_adapter = helpers::requestAdapterSync(m_instance, &adapterOptions);
@@ -112,10 +102,10 @@ namespace crg::renderer {
 
     void Renderer::printAdapterInfo() {
         // Prints gpu limits
-        WGPULimits supportedLimits{};
+        wgpu::Limits supportedLimits{};
         supportedLimits.nextInChain = nullptr;
 
-        bool success = wgpuAdapterGetLimits(m_adapter, &supportedLimits);
+        bool success = m_adapter.getLimits(&supportedLimits);
 
         if (success) {
             LOG_CORE_INFO("Adapter limits: ");
@@ -125,16 +115,16 @@ namespace crg::renderer {
             LOG_CORE_INFO(" - maxTextureArrayLayers: {}", supportedLimits.maxTextureArrayLayers);
         }
 
-        WGPUSupportedFeatures supportedFeatures{};
-        wgpuAdapterGetFeatures(m_adapter, &supportedFeatures);
+        wgpu::SupportedFeatures supportedFeatures{};
+        m_adapter.getFeatures(&supportedFeatures);
         LOG_CORE_INFO("Supported features: ");
         for (size_t i = 0; i < supportedFeatures.featureCount; i++) {
             WGPUFeatureName feature = supportedFeatures.features[i];
             LOG_CORE_INFO("Adapter feature: {}", static_cast<int>(feature));
         }
 
-        WGPUAdapterInfo info{};
-        wgpuAdapterGetInfo(m_adapter, &info);
+        wgpu::AdapterInfo info{};
+        m_adapter.getInfo(&info);
 
         LOG_CORE_INFO("Adapter info: ");
         if (info.vendor.data) {
@@ -161,7 +151,7 @@ namespace crg::renderer {
     void Renderer::fetchDevice() {
         LOG_CORE_INFO("Requesting device...");
 
-        WGPUDeviceDescriptor deviceDescriptor{};
+        wgpu::DeviceDescriptor deviceDescriptor{};
         deviceDescriptor.nextInChain = nullptr;
         deviceDescriptor.requiredFeatureCount = 0;
         deviceDescriptor.requiredLimits = nullptr;
@@ -175,7 +165,7 @@ namespace crg::renderer {
             }
         };
 
-        WGPUDeviceLostCallbackInfo callbackInfo{};
+        wgpu::DeviceLostCallbackInfo callbackInfo{};
         callbackInfo.nextInChain = nullptr;
         callbackInfo.mode = WGPUCallbackMode_WaitAnyOnly;
         callbackInfo.callback = lostCallback;
@@ -188,7 +178,7 @@ namespace crg::renderer {
                 LOG_CORE_ERROR("{}", msg.data);
             }
         };
-        WGPUUncapturedErrorCallbackInfo errorCallbackInfo{};
+        wgpu::UncapturedErrorCallbackInfo errorCallbackInfo{};
 
         errorCallbackInfo.nextInChain = nullptr;
         errorCallbackInfo.callback = errorCallback;
@@ -200,28 +190,28 @@ namespace crg::renderer {
 
 
     void Renderer::fetchQueue() {
-        m_queue = wgpuDeviceGetQueue(m_device);
+        m_queue = m_device.getQueue();
 
         auto onQueueWorkDoneCallback = [](WGPUQueueWorkDoneStatus status, WGPU_NULLABLE void* userdata1, WGPU_NULLABLE void* userdata2){
             LOG_CORE_INFO("Queue work finished with status: {}", (int)status);
         };
-        WGPUQueueWorkDoneCallbackInfo workCallbackInfo{};
+        wgpu::QueueWorkDoneCallbackInfo workCallbackInfo{};
         workCallbackInfo.callback = onQueueWorkDoneCallback;
         workCallbackInfo.mode = WGPUCallbackMode_WaitAnyOnly;
 
-        wgpuQueueOnSubmittedWorkDone(m_queue, workCallbackInfo);
+        m_queue.onSubmittedWorkDone(workCallbackInfo);
     }
 
 
-    std::pair<WGPUSurfaceTexture, WGPUTextureView> Renderer::getNextSurfaceViewData() {
-        WGPUSurfaceTexture surfaceTexture;
-        wgpuSurfaceGetCurrentTexture(m_surface, &surfaceTexture);
+    std::pair<wgpu::SurfaceTexture, wgpu::TextureView> Renderer::getNextSurfaceViewData() {
+        wgpu::SurfaceTexture surfaceTexture;
+        m_surface.getCurrentTexture(&surfaceTexture);
 
         if (surfaceTexture.status != WGPUSurfaceGetCurrentTextureStatus_SuccessOptimal) {
             return { surfaceTexture, nullptr };
         }
 
-        WGPUTextureViewDescriptor viewDescriptor{};
+        wgpu::TextureViewDescriptor viewDescriptor{};
         viewDescriptor.nextInChain = nullptr;
         viewDescriptor.label = WGPUStringView("Surface texture view");
         viewDescriptor.format = wgpuTextureGetFormat(surfaceTexture.texture);
@@ -232,7 +222,7 @@ namespace crg::renderer {
         viewDescriptor.arrayLayerCount = 1;
         viewDescriptor.aspect = WGPUTextureAspect_All;
 
-        WGPUTextureView targetView = wgpuTextureCreateView(surfaceTexture.texture, &viewDescriptor);
+        wgpu::TextureView targetView = wgpuTextureCreateView(surfaceTexture.texture, &viewDescriptor);
 
         return { surfaceTexture, targetView };
     }
@@ -242,24 +232,24 @@ namespace crg::renderer {
         auto [ surfaceTexture, targetView ] = getNextSurfaceViewData();
         if (!targetView) return;
 
-        WGPUCommandEncoderDescriptor encoderDesc{};
+        wgpu::CommandEncoderDescriptor encoderDesc{};
         encoderDesc.nextInChain = nullptr;
         encoderDesc.label = WGPUStringView("Frame encoder");
 
-        auto encoder = wgpuDeviceCreateCommandEncoder(m_device, &encoderDesc);
+        auto encoder = m_device.createCommandEncoder(encoderDesc);
 
 
-        WGPURenderPassDescriptor renderPassDesc{};
+        wgpu::RenderPassDescriptor renderPassDesc{};
         renderPassDesc.nextInChain = nullptr;
 
-        WGPURenderPassColorAttachment renderPassColorAttachment{};
+        wgpu::RenderPassColorAttachment renderPassColorAttachment{};
 
         renderPassColorAttachment.view = targetView;
         renderPassColorAttachment.resolveTarget = nullptr;
 
         renderPassColorAttachment.loadOp = WGPULoadOp_Clear;
         renderPassColorAttachment.storeOp = WGPUStoreOp_Store;
-        renderPassColorAttachment.clearValue = WGPUColor{0.9, 0.1, 0.2, 1.0};
+        renderPassColorAttachment.clearValue = wgpu::Color{0.9, 0.1, 0.2, 1.0};
         renderPassColorAttachment.depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;
 
         renderPassDesc.depthStencilAttachment = nullptr;
@@ -267,25 +257,24 @@ namespace crg::renderer {
         renderPassDesc.colorAttachments = &renderPassColorAttachment;
         renderPassDesc.timestampWrites = nullptr;
 
-        WGPURenderPassEncoder renderPass = wgpuCommandEncoderBeginRenderPass(encoder, &renderPassDesc);
+        wgpu::RenderPassEncoder renderPass = encoder.beginRenderPass(renderPassDesc);
 
-        wgpuRenderPassEncoderEnd(renderPass);
-        wgpuRenderPassEncoderRelease(renderPass);
+        renderPass.end();
+        renderPass.release();
 
+        wgpu::CommandBufferDescriptor cmdDesc = {};
+        wgpu::CommandBuffer cmd = encoder.finish(cmdDesc);
 
-        WGPUCommandBufferDescriptor cmdDesc = {};
-        WGPUCommandBuffer cmd = wgpuCommandEncoderFinish(encoder, &cmdDesc);
 
         // Finally submit the command queue
 
-        wgpuQueueSubmit(m_queue, 1, &cmd);
-        wgpuCommandBufferRelease(cmd);
-        wgpuCommandEncoderRelease(encoder); // release encoder after it's finished
+        m_queue.submit(cmd);
+        cmd.release();
+        encoder.release();
 
-
-        wgpuSurfacePresent(m_surface);
-        wgpuTextureViewRelease(targetView);
-        wgpuDevicePoll(m_device, false, nullptr);
+        m_surface.present();
+        targetView.release();
+        m_device.poll(false, nullptr);
     }
 
 }
