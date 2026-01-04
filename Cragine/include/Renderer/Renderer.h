@@ -29,6 +29,8 @@ namespace crg::renderer {
 
         void fetchQueue();
 
+        void makePipeline();
+
         std::pair<wgpu::SurfaceTexture, wgpu::TextureView> getNextSurfaceViewData();
 
     private:
@@ -37,9 +39,11 @@ namespace crg::renderer {
 
         wgpu::Instance m_instance;
         wgpu::Surface m_surface;
+        wgpu::TextureFormat m_surfaceFormat = wgpu::TextureFormat::Undefined;
         wgpu::Device m_device;
         wgpu::Adapter m_adapter;
         wgpu::Queue m_queue;
+        wgpu::RenderPipeline m_pipeline;
 
     };
 

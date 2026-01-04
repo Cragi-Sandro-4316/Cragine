@@ -1,3 +1,4 @@
+#include <unistd.h>
 #define WEBGPU_CPP_IMPLEMENTATION
 #include <webgpu/webgpu.hpp>
 
@@ -8,6 +9,30 @@
 #include <glfw3webgpu.h>
 
 namespace crg::renderer {
+
+    const  char* shaderSource = R"(
+        @vertex
+        fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> @builtin(position) vec4f {
+           	var p = vec2f(0.0, 0.0);
+           	if (in_vertex_index == 0u) {
+          		p = vec2f(-0.5, -0.5);
+           	} else if (in_vertex_index == 1u) {
+          		p = vec2f(0.5, -0.5);
+           	} else {
+          		p = vec2f(0.0, 0.5);
+           	}
+           	return vec4f(p, 0.0, 1.0);
+        }
+
+        @fragment
+        fn fs_main() -> @location(0) vec4f {
+       	    return vec4f(0.0, 0.4, 1.0, 1.0);
+        }
+
+
+    )";
+
+
     Renderer::Renderer(Window* window) :
     m_window(window) {
         LOG_CORE_INFO("Initializing renderer");
@@ -26,9 +51,14 @@ namespace crg::renderer {
 
 
         fetchQueue();
+
+        makePipeline();
     }
 
     Renderer::~Renderer() {
+        m_pipeline.release();
+        LOG_CORE_INFO("Released wgpu pipeline");
+
         m_queue.release();
         LOG_CORE_INFO("Released wgpu queue");
 
@@ -75,6 +105,7 @@ namespace crg::renderer {
         wgpu::SurfaceCapabilities capabilities;
         m_surface.getCapabilities(m_adapter, &capabilities);
 
+        m_surfaceFormat = capabilities.formats[0];
         config.format = capabilities.formats[0];
 
         config.viewFormatCount = 0;
@@ -228,6 +259,72 @@ namespace crg::renderer {
     }
 
 
+    void Renderer::makePipeline() {
+        wgpu::RenderPipelineDescriptor desc{};
+
+        desc.vertex.bufferCount = 0;
+        desc.vertex.buffers = nullptr;
+
+        wgpu::ShaderModuleDescriptor shaderDesc{};
+
+        wgpu::ShaderSourceWGSL shaderCodeDesc{};
+        shaderCodeDesc.chain.next = nullptr;
+        shaderCodeDesc.chain.sType = wgpu::SType::ShaderSourceWGSL;
+        shaderCodeDesc.code = wgpu::StringView(shaderSource);
+
+        shaderDesc.nextInChain = &shaderCodeDesc.chain;
+
+        wgpu::ShaderModule shaderModule = m_device.createShaderModule(shaderDesc);
+
+        desc.vertex.module = shaderModule;
+        desc.vertex.entryPoint = wgpu::StringView("vs_main");
+        desc.vertex.constantCount = 0;
+        desc.vertex.constants = nullptr;
+
+        desc.primitive.topology = wgpu::PrimitiveTopology::TriangleList;
+        desc.primitive.stripIndexFormat = wgpu::IndexFormat::Undefined;
+        desc.primitive.frontFace = wgpu::FrontFace::CCW;
+        desc.primitive.cullMode = wgpu::CullMode::None;
+
+        wgpu::FragmentState fragState{};
+        fragState.module = shaderModule;
+        fragState.entryPoint = wgpu::StringView("fs_main");
+        fragState.constantCount = 0;
+        fragState.constants = nullptr;
+
+        desc.depthStencil = nullptr;
+
+        wgpu::BlendState blendState{};
+
+        wgpu::ColorTargetState colorTarget{};
+        colorTarget.format = m_surfaceFormat;
+        colorTarget.blend = &blendState;
+        colorTarget.writeMask = wgpu::ColorWriteMask::All;
+
+        fragState.targetCount = 1;
+        fragState.targets = &colorTarget;
+        desc.fragment = &fragState;
+
+
+        blendState.color.srcFactor = wgpu::BlendFactor::SrcAlpha;
+        blendState.color.dstFactor = wgpu::BlendFactor::OneMinusSrcAlpha;
+        blendState.color.operation = wgpu::BlendOperation::Add;
+        blendState.alpha.srcFactor = wgpu::BlendFactor::Zero;
+        blendState.alpha.dstFactor = wgpu::BlendFactor::One;
+        blendState.alpha.operation = wgpu::BlendOperation::Add;
+
+
+        // Samples per pixel
+        desc.multisample.count = 1;
+        // Default value for the mask, meaning "all bits on"
+        desc.multisample.mask = ~0u;
+        // Default value as well (irrelevant for count = 1 anyways)
+        desc.multisample.alphaToCoverageEnabled = false;
+
+        m_pipeline = m_device.createRenderPipeline(desc);
+        shaderModule.release();
+    }
+
     void Renderer::update() {
         auto [ surfaceTexture, targetView ] = getNextSurfaceViewData();
         if (!targetView) return;
@@ -258,6 +355,9 @@ namespace crg::renderer {
         renderPassDesc.timestampWrites = nullptr;
 
         wgpu::RenderPassEncoder renderPass = encoder.beginRenderPass(renderPassDesc);
+
+        renderPass.setPipeline(m_pipeline);
+        renderPass.draw(3, 1, 0, 0);
 
         renderPass.end();
         renderPass.release();
