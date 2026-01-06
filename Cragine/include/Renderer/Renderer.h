@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Window.h"
+#include <cstdint>
 #define WEBGPU_CPP_IMPLEMENTATIONM
 
 #include <webgpu/webgpu.hpp>
@@ -33,6 +34,10 @@ namespace crg::renderer {
 
         std::pair<wgpu::SurfaceTexture, wgpu::TextureView> getNextSurfaceViewData();
 
+        wgpu::Limits getRequiredLimits() const;
+
+        void initializeBuffers();
+
     private:
 
         Window* m_window;
@@ -44,6 +49,12 @@ namespace crg::renderer {
         wgpu::Adapter m_adapter;
         wgpu::Queue m_queue;
         wgpu::RenderPipeline m_pipeline;
+        wgpu::Buffer m_pointBuffer;
+        wgpu::Buffer m_indexBuffer;
+
+        wgpu::Buffer m_colorBuffer;
+        uint32_t m_vertexCount = 0;
+        uint32_t m_indexCount = 0;
 
     };
 

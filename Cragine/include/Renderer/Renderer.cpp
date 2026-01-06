@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <unistd.h>
 #define WEBGPU_CPP_IMPLEMENTATION
 #include <webgpu/webgpu.hpp>
@@ -10,27 +11,57 @@
 
 namespace crg::renderer {
 
-    const  char* shaderSource = R"(
+    const char* shaderSource = R"(
+        struct VertexInput {
+            @location(0) position: vec2f,
+            @location(1) color: vec3f,
+        };
+
+        struct VertexOutput {
+            @builtin(position) position: vec4f,
+
+            @location(0) color: vec3f
+        };
+
         @vertex
-        fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> @builtin(position) vec4f {
-           	var p = vec2f(0.0, 0.0);
-           	if (in_vertex_index == 0u) {
-          		p = vec2f(-0.5, -0.5);
-           	} else if (in_vertex_index == 1u) {
-          		p = vec2f(0.5, -0.5);
-           	} else {
-          		p = vec2f(0.0, 0.5);
-           	}
-           	return vec4f(p, 0.0, 1.0);
+        fn vs_main(in: VertexInput) -> VertexOutput {
+            var out: VertexOutput;
+            out.position = vec4f(in.position, 0.0, 1.0);
+            out.color = in.color;
+
+           	return out;
         }
 
         @fragment
-        fn fs_main() -> @location(0) vec4f {
-       	    return vec4f(0.0, 0.4, 1.0, 1.0);
+        fn fs_main(in: VertexOutput) -> @location(0) vec4f {
+       	    return vec4f(in.color, 1.0);
         }
 
 
     )";
+
+    std::vector<float> pointData = {
+        -0.5, -0.5, // Point #0 (A)
+        +0.5, -0.5, // Point #1
+        +0.5, +0.5, // Point #2 (C)
+        -0.5, +0.5, // Point #3
+    };
+
+    // Define index data
+    // This is a list of indices referencing positions in the pointData
+    std::vector<uint16_t> indexData = {
+        0, 1, 2, // Triangle #0 connects points #0, #1 and #2
+        0, 2, 3  // Triangle #1 connects points #0, #2 and #3
+    };
+
+    std::vector<float> colorData = {
+        1.0, 0.0, 0.0,
+        0.0, 1.0, 0.0,
+        0.0, 0.0, 1.0,
+        1.0, 1.0, 0.0,
+        1.0, 0.0, 1.0,
+        0.0, 1.0, 1.0
+    };
 
 
     Renderer::Renderer(Window* window) :
@@ -53,9 +84,16 @@ namespace crg::renderer {
         fetchQueue();
 
         makePipeline();
+
+        initializeBuffers();
     }
 
     Renderer::~Renderer() {
+        m_indexBuffer.release();
+        m_pointBuffer.release();
+        m_colorBuffer.release();
+        LOG_CORE_INFO("Released wgpu buffers");
+
         m_pipeline.release();
         LOG_CORE_INFO("Released wgpu pipeline");
 
@@ -144,6 +182,8 @@ namespace crg::renderer {
             LOG_CORE_INFO(" - maxTextureDimension2D: {}", supportedLimits.maxTextureDimension2D);
             LOG_CORE_INFO(" - maxTextureDimension3D: {}", supportedLimits.maxTextureDimension3D);
             LOG_CORE_INFO(" - maxTextureArrayLayers: {}", supportedLimits.maxTextureArrayLayers);
+            LOG_CORE_INFO(" - maxVertexAttributes: {}", supportedLimits.maxVertexAttributes);
+
         }
 
         wgpu::SupportedFeatures supportedFeatures{};
@@ -188,6 +228,9 @@ namespace crg::renderer {
         deviceDescriptor.requiredLimits = nullptr;
         deviceDescriptor.defaultQueue.nextInChain = nullptr;
         deviceDescriptor.defaultQueue.label = WGPUStringView("The default queue");
+        auto limits = getRequiredLimits();
+        deviceDescriptor.requiredLimits = &limits;
+
 
         auto lostCallback = [](WGPUDeviceImpl * const *, WGPUDeviceLostReason reason, WGPUStringView message, void *, void *) {
             LOG_CORE_ERROR("Device lost: reason {}", (int)reason);
@@ -217,8 +260,56 @@ namespace crg::renderer {
 
         m_device = helpers::requestDeviceSync(m_adapter, &deviceDescriptor);
         LOG_CORE_INFO("Got device: {}", (void*)m_device);
+
+        wgpu::Limits deviceLimits{};
+        m_device.getLimits(&deviceLimits);
+        LOG_CORE_INFO("Device vertex attribute: {}", deviceLimits.maxVertexAttributes);
     }
 
+
+    wgpu::Limits Renderer::getRequiredLimits() const {
+        wgpu::Limits supportedLimits;
+        m_adapter.getLimits(&supportedLimits);
+
+        wgpu::Limits requiredLimits = wgpu::Default;
+        requiredLimits.maxVertexAttributes = 2;
+        requiredLimits.maxVertexBuffers = 2;
+        requiredLimits.maxBufferSize = 6 * 5 * sizeof(float);
+        requiredLimits.maxVertexBufferArrayStride = 5 * sizeof(float);
+        requiredLimits.maxInterStageShaderVariables = 3;
+
+        return requiredLimits;
+    }
+
+    void Renderer::initializeBuffers() {
+        wgpu::BufferDescriptor bufferDesc{};
+
+        // Vertex buffer
+        bufferDesc.size = pointData.size() * sizeof(float);
+        bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Vertex;
+        bufferDesc.mappedAtCreation = false;
+        m_pointBuffer = m_device.createBuffer(bufferDesc);
+        m_queue.writeBuffer(m_pointBuffer, 0, pointData.data(), bufferDesc.size);
+
+        // Index buffer
+        m_indexCount = static_cast<uint32_t>(indexData.size());
+
+        bufferDesc.size = indexData.size() * sizeof(uint16_t);
+        bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Index;
+        bufferDesc.size = (bufferDesc.size + 3) & ~3; // Round up to the next multiple of 4
+        indexData.resize((indexData.size() + 1) & ~1); // Round up to the next multiple of 2
+        m_indexBuffer = m_device.createBuffer(bufferDesc);
+
+        m_queue.writeBuffer(m_indexBuffer, 0, indexData.data(), bufferDesc.size);
+
+
+        bufferDesc.label = wgpu::StringView("Vertex Color");
+        bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Vertex;
+        bufferDesc.size = colorData.size() * sizeof(float);
+        m_colorBuffer = m_device.createBuffer(bufferDesc);
+        m_queue.writeBuffer(m_colorBuffer, 0, colorData.data(), bufferDesc.size);
+        m_vertexCount = static_cast<uint32_t>(pointData.size() / 2);
+    }
 
     void Renderer::fetchQueue() {
         m_queue = m_device.getQueue();
@@ -262,8 +353,41 @@ namespace crg::renderer {
     void Renderer::makePipeline() {
         wgpu::RenderPipelineDescriptor desc{};
 
-        desc.vertex.bufferCount = 0;
-        desc.vertex.buffers = nullptr;
+        std::vector<wgpu::VertexBufferLayout> vertexBufferLayouts(2);
+
+        std::vector<wgpu::VertexAttribute> vertAttribs(2);
+        // Corresponds to @location(0)
+        vertAttribs[0].shaderLocation = 0;
+        vertAttribs[0].format = wgpu::VertexFormat::Float32x2;
+        vertAttribs[0].offset = 0;
+
+        vertAttribs[1].shaderLocation = 1;
+        vertAttribs[1].format = wgpu::VertexFormat::Float32x3;
+        vertAttribs[1].offset = 2 * sizeof(float);
+
+        wgpu::VertexAttribute posAttrib{};
+        posAttrib.shaderLocation = 0;
+        posAttrib.format = wgpu::VertexFormat::Float32x2;
+        posAttrib.offset = 0;
+
+        vertexBufferLayouts[0].attributeCount = 1;
+        vertexBufferLayouts[0].attributes = &posAttrib;
+        vertexBufferLayouts[0].arrayStride = 2 * sizeof(float);
+        vertexBufferLayouts[0].stepMode = wgpu::VertexStepMode::Vertex;
+
+        wgpu::VertexAttribute colorAttrib{};
+        colorAttrib.shaderLocation = 1;
+        colorAttrib.format = wgpu::VertexFormat::Float32x3;
+        colorAttrib.offset = 0;
+
+        vertexBufferLayouts[1].attributeCount = 1;
+        vertexBufferLayouts[1].attributes = &colorAttrib;
+        vertexBufferLayouts[1].arrayStride = 3 * sizeof(float);
+        vertexBufferLayouts[1].stepMode = wgpu::VertexStepMode::Vertex;
+
+
+        desc.vertex.bufferCount = static_cast<uint32_t>(vertexBufferLayouts.size());
+        desc.vertex.buffers = vertexBufferLayouts.data();
 
         wgpu::ShaderModuleDescriptor shaderDesc{};
 
@@ -357,7 +481,14 @@ namespace crg::renderer {
         wgpu::RenderPassEncoder renderPass = encoder.beginRenderPass(renderPassDesc);
 
         renderPass.setPipeline(m_pipeline);
-        renderPass.draw(3, 1, 0, 0);
+
+        renderPass.setVertexBuffer(0, m_pointBuffer, 0, m_pointBuffer.getSize());
+
+        renderPass.setIndexBuffer(m_indexBuffer, wgpu::IndexFormat::Uint16, 0, m_indexBuffer.getSize());
+
+        renderPass.setVertexBuffer(1, m_colorBuffer, 0, m_colorBuffer.getSize());
+
+        renderPass.drawIndexed(m_indexCount, 1, 0, 0, 0);
 
         renderPass.end();
         renderPass.release();
