@@ -52,8 +52,6 @@ namespace crg::renderer {
         wgpu::Buffer m_pointBuffer;
         wgpu::Buffer m_indexBuffer;
 
-        wgpu::Buffer m_colorBuffer;
-        uint32_t m_vertexCount = 0;
         uint32_t m_indexCount = 0;
 
     };

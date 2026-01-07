@@ -14,6 +14,7 @@ add_library(Cragine STATIC ${ENGINE_SRC})
 TARGET_COMPILE_DEFINITIONS(
     Cragine
     PUBLIC GLFW_EXPOSE_NATIVE_WAYLAND
+    RESOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../assets"
 )
 
 # Add spdlog include dir
