@@ -1,5 +1,6 @@
 #include <cstdint>
 #include <unistd.h>
+#include <webgpu.h>
 
 #define WEBGPU_CPP_IMPLEMENTATION
 #include <webgpu/webgpu.hpp>
@@ -13,49 +14,6 @@
 
 
 namespace crg::renderer {
-
-    const char* shaderSource = R"(
-        /**
-         * A structure with fields labeled with vertex attribute locations can be used
-         * as input to the entry point of a shader.
-         */
-        struct VertexInput {
-            @location(0) position: vec2f,
-            @location(1) color: vec3f,
-        };
-
-        /**
-         * A structure with fields labeled with builtins and locations can also be used
-         * as *output* of the vertex shader, which is also the input of the fragment
-         * shader.
-         */
-        struct VertexOutput {
-           	@builtin(position) position: vec4f,
-           	// The location here does not refer to a vertex attribute, it just means
-           	// that this field must be handled by the rasterizer.
-           	// (It can also refer to another field of another struct that would be used
-           	// as input to the fragment shader.)
-           	@location(0) color: vec3f,
-        };
-
-        @vertex
-        fn vs_main(in: VertexInput) -> VertexOutput {
-           	//                         ^^^^^^^^^^^^ We return a custom struct
-           	var out: VertexOutput; // create the output struct
-           	let ratio = 640.0 / 480.0; // The width and height of the target surface
-           	let offset = vec2f(-0.6875, -0.463); // The offset that we want to apply to the position
-           	out.position = vec4f(in.position.x + offset.x, (in.position.y + offset.y) * ratio, 0.0, 1.0);
-           	out.color = in.color; // forward the color attribute to the fragment shader
-           	return out;
-        }
-
-        @fragment
-        fn fs_main(in: VertexOutput) -> @location(0) vec4f {
-           	//     ^^^^^^^^^^^^^^^^ Use for instance the same struct as what the vertex outputs
-           	return vec4f(in.color, 1.0); // use the interpolated color coming from the vertex shader
-        }
-
-    )";
 
 
     Renderer::Renderer(Window* window) :
@@ -77,16 +35,24 @@ namespace crg::renderer {
 
         fetchQueue();
 
-        makePipeline();
 
         initializeBuffers();
+        createBindGroupLayout();
+        initializeBindings();
+
+        makePipeline();
     }
 
     Renderer::~Renderer() {
         m_indexBuffer.release();
         m_pointBuffer.release();
+        m_uniformBuffer.release();
         LOG_CORE_INFO("Released wgpu buffers");
 
+
+        m_layout.release();
+        m_bindGroupLayout.release();
+        m_bindGroup.release();
         m_pipeline.release();
         LOG_CORE_INFO("Released wgpu pipeline");
 
@@ -269,6 +235,9 @@ namespace crg::renderer {
         requiredLimits.maxBufferSize = 15 * 5 * sizeof(float);
         requiredLimits.maxVertexBufferArrayStride = 5 * sizeof(float);
         requiredLimits.maxInterStageShaderVariables = 3;
+        requiredLimits.maxBindGroups = 1;
+        requiredLimits.maxUniformBuffersPerShaderStage = 1;
+        requiredLimits.maxUniformBufferBindingSize = 16 * 4;
 
         return requiredLimits;
     }
@@ -303,12 +272,18 @@ namespace crg::renderer {
         bufferDesc.size = indexData.size() * sizeof(uint16_t);
         bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Index;
         bufferDesc.size = (bufferDesc.size + 3) & ~3; // Round up to the next multiple of 4
-        indexData.resize((indexData.size() + 1) & ~1); // Round up to the next multiple of 2
         m_indexBuffer = m_device.createBuffer(bufferDesc);
 
         m_queue.writeBuffer(m_indexBuffer, 0, indexData.data(), bufferDesc.size);
 
 
+        bufferDesc.size = 4 * sizeof(float);
+        bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Uniform;
+        bufferDesc.label = wgpu::StringView("Uniform");
+        bufferDesc.mappedAtCreation = false;
+        m_uniformBuffer = m_device.createBuffer(bufferDesc);
+        float currentTime = 1.0f;
+        m_queue.writeBuffer(m_uniformBuffer, 0, &currentTime, sizeof(float));
     }
 
     void Renderer::fetchQueue() {
@@ -353,7 +328,7 @@ namespace crg::renderer {
     void Renderer::makePipeline() {
         wgpu::RenderPipelineDescriptor desc{};
 
-        std::vector<wgpu::VertexBufferLayout> vertexBufferLayouts(1);
+        wgpu::VertexBufferLayout vertexBufferLayout;
 
         std::vector<wgpu::VertexAttribute> vertAttribs(2);
         // Corresponds to @location(0)
@@ -366,13 +341,13 @@ namespace crg::renderer {
         vertAttribs[1].offset = 2 * sizeof(float);
 
 
-        vertexBufferLayouts[0].attributeCount = 2;
-        vertexBufferLayouts[0].attributes = vertAttribs.data();
-        vertexBufferLayouts[0].arrayStride = 5 * sizeof(float);
-        vertexBufferLayouts[0].stepMode = wgpu::VertexStepMode::Vertex;
+        vertexBufferLayout.attributeCount = static_cast<uint32_t>(vertAttribs.size());
+        vertexBufferLayout.attributes = vertAttribs.data();
+        vertexBufferLayout.arrayStride = 5 * sizeof(float);
+        vertexBufferLayout.stepMode = wgpu::VertexStepMode::Vertex;
 
-        desc.vertex.bufferCount = static_cast<uint32_t>(vertexBufferLayouts.size());
-        desc.vertex.buffers = vertexBufferLayouts.data();
+        desc.vertex.bufferCount = 1;
+        desc.vertex.buffers = &vertexBufferLayout;
 
         LOG_CORE_INFO("Loading shader...");
         wgpu::ShaderModule shaderModule = ModelLoader::loadShader(RESOURCE_DIR"/shader.wgsl", m_device);
@@ -420,6 +395,7 @@ namespace crg::renderer {
         blendState.alpha.operation = wgpu::BlendOperation::Add;
 
 
+        desc.depthStencil = nullptr;
         // Samples per pixel
         desc.multisample.count = 1;
         // Default value for the mask, meaning "all bits on"
@@ -427,8 +403,56 @@ namespace crg::renderer {
         // Default value as well (irrelevant for count = 1 anyways)
         desc.multisample.alphaToCoverageEnabled = false;
 
+
+    	// Create the pipeline layout
+    	wgpu::PipelineLayoutDescriptor layoutDesc{};
+    	layoutDesc.bindGroupLayoutCount = 1;
+        WGPUBindGroupLayout rawLayout = m_bindGroupLayout;
+    	layoutDesc.bindGroupLayouts = &rawLayout;
+    	m_layout = m_device.createPipelineLayout(layoutDesc);
+
+        desc.layout = m_layout;
+
         m_pipeline = m_device.createRenderPipeline(desc);
         shaderModule.release();
+    }
+
+
+    void Renderer::createBindGroupLayout() {
+        wgpu::BindGroupLayoutEntry bindingLayout{};
+        bindingLayout.binding = 0;
+        bindingLayout.visibility = wgpu::ShaderStage::Vertex;
+        bindingLayout.buffer.type = wgpu::BufferBindingType::Uniform;
+        bindingLayout.buffer.minBindingSize = sizeof(float);
+
+        wgpu::BindGroupLayoutDescriptor bindGroupLayoutDesc{};
+        bindGroupLayoutDesc.entryCount = 1;
+        bindGroupLayoutDesc.entries = &bindingLayout;
+
+        m_bindGroupLayout = m_device.createBindGroupLayout(bindGroupLayoutDesc);
+    }
+
+
+    void Renderer::initializeBindings() {
+        // Create a binding
+    	wgpu::BindGroupEntry binding{};
+    	// The index of the binding (the entries in bindGroupDesc can be in any order)
+    	binding.binding = 0;
+    	// The buffer it is actually bound to
+    	binding.buffer = m_uniformBuffer;
+    	// We can specify an offset within the buffer, so that a single buffer can hold
+    	// multiple uniform blocks.
+    	binding.offset = 0;
+    	// And we specify again the size of the buffer.
+    	binding.size = 4 * sizeof(float);
+
+    	// A bind group contains one or multiple bindings
+    	wgpu::BindGroupDescriptor bindGroupDesc{};
+    	bindGroupDesc.layout = m_bindGroupLayout;
+    	// There must be as many bindings as declared in the layout!
+    	bindGroupDesc.entryCount = 1;
+    	bindGroupDesc.entries = &binding;
+    	m_bindGroup = m_device.createBindGroup(bindGroupDesc);
     }
 
     void Renderer::update() {
@@ -467,6 +491,11 @@ namespace crg::renderer {
         renderPass.setVertexBuffer(0, m_pointBuffer, 0, m_pointBuffer.getSize());
 
         renderPass.setIndexBuffer(m_indexBuffer, wgpu::IndexFormat::Uint16, 0, m_indexBuffer.getSize());
+
+        float t = static_cast<float>(glfwGetTime());
+        m_queue.writeBuffer(m_uniformBuffer, 0, &t, sizeof(float));
+
+        renderPass.setBindGroup(0, m_bindGroup, 0, nullptr);
 
         renderPass.drawIndexed(m_indexCount, 1, 0, 0, 0);
 

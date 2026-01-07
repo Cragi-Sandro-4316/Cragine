@@ -37,7 +37,8 @@ namespace crg::renderer {
         wgpu::Limits getRequiredLimits() const;
 
         void initializeBuffers();
-
+        void initializeBindings();
+        void createBindGroupLayout();
     private:
 
         Window* m_window;
@@ -51,7 +52,10 @@ namespace crg::renderer {
         wgpu::RenderPipeline m_pipeline;
         wgpu::Buffer m_pointBuffer;
         wgpu::Buffer m_indexBuffer;
-
+        wgpu::Buffer m_uniformBuffer;
+        wgpu::BindGroupLayout m_bindGroupLayout;
+        wgpu::BindGroup m_bindGroup;
+        wgpu::PipelineLayout m_layout;
         uint32_t m_indexCount = 0;
 
     };
