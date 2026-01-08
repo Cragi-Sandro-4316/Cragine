@@ -14,4 +14,11 @@ namespace crg::renderer::helpers {
      */
     wgpu::Device requestDeviceSync(wgpu::Adapter adapter, wgpu::DeviceDescriptor const * descriptor);
 
+    /**
+     * Round up "value" to the next multiple of step
+     */
+    uint32_t ceilToNextMultiple(
+        uint32_t value,
+        uint32_t step
+    );
 }

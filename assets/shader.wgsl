@@ -21,8 +21,12 @@ struct VertexOutput {
 	@location(0) color: vec3f,
 };
 
-// Var in the uniform address space
-@group(0) @binding(0) var<uniform> uTime: f32;
+struct MyUniforms {
+    color: vec4f,
+    time: f32
+};
+
+@group(0) @binding(0) var<uniform> uMyUniforms: MyUniforms;
 
 @vertex
 fn vs_main(in: VertexInput) -> VertexOutput {
@@ -30,7 +34,7 @@ fn vs_main(in: VertexInput) -> VertexOutput {
 	var out: VertexOutput; // create the output struct
 	let ratio = 640.0 / 480.0; // The width and height of the target surface
 	var offset = vec2f(-0.6875, -0.463); // The offset that we want to apply to the position
-	offset += 0.3 * vec2f(cos(uTime), sin(uTime));
+	offset += 0.3 * vec2f(cos(uMyUniforms.time), sin(uMyUniforms.time));
 	out.position = vec4f(in.position.x + offset.x, (in.position.y + offset.y) * ratio, 0.0, 1.0);
 	out.color = in.color; // forward the color attribute to the fragment shader
 	return out;
@@ -39,7 +43,9 @@ fn vs_main(in: VertexInput) -> VertexOutput {
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4f {
 	//     ^^^^^^^^^^^^^^^^ Use for instance the same struct as what the vertex outputs
-	let linear_color = pow(in.color, vec3(2.2));
+	let color = in.color * uMyUniforms.color.rgb;
+
+	let linear_color = pow(color, vec3f(2.2));
 
 	return vec4f(linear_color, 1.0); // use the interpolated color coming from the vertex shader
 }

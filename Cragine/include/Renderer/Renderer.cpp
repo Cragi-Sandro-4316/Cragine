@@ -1,3 +1,5 @@
+#include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <unistd.h>
 #include <webgpu.h>
@@ -222,6 +224,11 @@ namespace crg::renderer {
         wgpu::Limits deviceLimits{};
         m_device.getLimits(&deviceLimits);
         LOG_CORE_INFO("Device vertex attribute: {}", deviceLimits.maxVertexAttributes);
+
+        m_uniformStride = helpers::ceilToNextMultiple(
+            (uint32_t)sizeof(MyUniform),
+            (uint32_t)deviceLimits.minUniformBufferOffsetAlignment
+        );
     }
 
 
@@ -238,6 +245,7 @@ namespace crg::renderer {
         requiredLimits.maxBindGroups = 1;
         requiredLimits.maxUniformBuffersPerShaderStage = 1;
         requiredLimits.maxUniformBufferBindingSize = 16 * 4;
+        requiredLimits.maxDynamicUniformBuffersPerPipelineLayout = 1;
 
         return requiredLimits;
     }
@@ -277,13 +285,23 @@ namespace crg::renderer {
         m_queue.writeBuffer(m_indexBuffer, 0, indexData.data(), bufferDesc.size);
 
 
-        bufferDesc.size = 4 * sizeof(float);
+        bufferDesc.size = m_uniformStride + sizeof(MyUniform);
         bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Uniform;
         bufferDesc.label = wgpu::StringView("Uniform");
         bufferDesc.mappedAtCreation = false;
         m_uniformBuffer = m_device.createBuffer(bufferDesc);
-        float currentTime = 1.0f;
-        m_queue.writeBuffer(m_uniformBuffer, 0, &currentTime, sizeof(float));
+
+        MyUniform uniform;
+
+        // Upload first value
+        uniform.time = 1.0f;
+        uniform.color = { 0.0f, 1.0f, 0.4f, 1.0f };
+        m_queue.writeBuffer(m_uniformBuffer, 0, &uniform, sizeof(MyUniform));
+
+        // Upload second value
+        uniform.time = -1.0f;
+        uniform.color = { 1.0f, 1.0f, 1.0f, 1.0f };
+        m_queue.writeBuffer(m_uniformBuffer, m_uniformStride, &uniform, sizeof(MyUniform));
     }
 
     void Renderer::fetchQueue() {
@@ -421,9 +439,11 @@ namespace crg::renderer {
     void Renderer::createBindGroupLayout() {
         wgpu::BindGroupLayoutEntry bindingLayout{};
         bindingLayout.binding = 0;
-        bindingLayout.visibility = wgpu::ShaderStage::Vertex;
+        bindingLayout.visibility = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment;
         bindingLayout.buffer.type = wgpu::BufferBindingType::Uniform;
-        bindingLayout.buffer.minBindingSize = sizeof(float);
+        bindingLayout.buffer.minBindingSize = sizeof(MyUniform);
+
+        bindingLayout.buffer.hasDynamicOffset = true;
 
         wgpu::BindGroupLayoutDescriptor bindGroupLayoutDesc{};
         bindGroupLayoutDesc.entryCount = 1;
@@ -444,7 +464,7 @@ namespace crg::renderer {
     	// multiple uniform blocks.
     	binding.offset = 0;
     	// And we specify again the size of the buffer.
-    	binding.size = 4 * sizeof(float);
+    	binding.size = sizeof(MyUniform);
 
     	// A bind group contains one or multiple bindings
     	wgpu::BindGroupDescriptor bindGroupDesc{};
@@ -492,12 +512,51 @@ namespace crg::renderer {
 
         renderPass.setIndexBuffer(m_indexBuffer, wgpu::IndexFormat::Uint16, 0, m_indexBuffer.getSize());
 
-        float t = static_cast<float>(glfwGetTime());
-        m_queue.writeBuffer(m_uniformBuffer, 0, &t, sizeof(float));
 
-        renderPass.setBindGroup(0, m_bindGroup, 0, nullptr);
 
+        uint32_t dynamicOffset = 0;
+
+        // Set binding group
+        dynamicOffset = 0 * m_uniformStride;
+        renderPass.setBindGroup(0, m_bindGroup, 1, &dynamicOffset);
         renderPass.drawIndexed(m_indexCount, 1, 0, 0, 0);
+
+        // Write on first offset
+        float time = static_cast<float>(glfwGetTime());
+        m_queue.writeBuffer(m_uniformBuffer, dynamicOffset + offsetof(MyUniform, time), &time, sizeof(float));
+
+        float colors[4] = {
+            (float)std::abs(std::sin(time)),
+            (float)std::abs(std::sin(time)),
+            0.0f,
+            1.0f
+        };
+        m_queue.writeBuffer(m_uniformBuffer, dynamicOffset + offsetof(MyUniform, color), &colors, 4 * sizeof(float));
+
+
+        // Set binding group with different uniform offset
+        dynamicOffset = 1 * m_uniformStride;
+        renderPass.setBindGroup(0, m_bindGroup, 1, &dynamicOffset);
+        renderPass.drawIndexed(m_indexCount, 1, 0, 0, 0);
+
+        // Write on second offset
+        auto time2 = static_cast<float>(glfwGetTime()) + 5;
+        m_queue.writeBuffer(m_uniformBuffer, dynamicOffset + offsetof(MyUniform, time), &time2, sizeof(float));
+
+        float colors2[4] = {
+            (float)std::abs(std::cos(time)),
+            0.0f,
+            (float)std::abs(std::cos(time)),
+            1.0f
+        };
+        m_queue.writeBuffer(m_uniformBuffer, dynamicOffset + offsetof(MyUniform, color), &colors2, 4 * sizeof(float));
+
+
+        // m_queue.writeBuffer(m_uniformBuffer, offsetof(MyUniform, color), colors, 4 * sizeof(float));
+
+        // renderPass.setBindGroup(0, m_bindGroup, 0, nullptr);
+
+        // renderPass.drawIndexed(m_indexCount, 1, 0, 0, 0);
 
         renderPass.end();
         renderPass.release();

@@ -58,6 +58,15 @@ namespace crg::renderer {
         wgpu::PipelineLayout m_layout;
         uint32_t m_indexCount = 0;
 
+        uint32_t m_uniformStride = 0;
+
+        struct MyUniform {
+            std::array<float, 4> color;
+            float time;
+            float _padding[3];
+        };
+        static_assert(sizeof(MyUniform) % 16 == 0, "size of uniform not a multiple of 16");
+
     };
 
 }

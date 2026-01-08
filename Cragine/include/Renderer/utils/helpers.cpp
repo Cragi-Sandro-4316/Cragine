@@ -1,5 +1,6 @@
 #include "helpers.h"
 #include "utils/Logger.h"
+#include <cstdint>
 #include <webgpu/webgpu.hpp>
 
 namespace crg::renderer::helpers {
@@ -117,6 +118,14 @@ namespace crg::renderer::helpers {
         assert(userData.requestEnded);
 
         return userData.device;
+    }
+
+    uint32_t ceilToNextMultiple(
+        uint32_t value,
+        uint32_t step
+    ) {
+        uint32_t divideAndCeil = value / step + (value % step == 0 ? 0 : 1);
+        return step * divideAndCeil;
     }
 
 }
