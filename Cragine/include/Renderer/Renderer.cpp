@@ -46,6 +46,10 @@ namespace crg::renderer {
     }
 
     Renderer::~Renderer() {
+        m_depthTextureView.release();
+        m_depthTexture.destroy();
+        m_depthTexture.release();
+
         m_indexBuffer.release();
         m_pointBuffer.release();
         m_uniformBuffer.release();
@@ -240,12 +244,17 @@ namespace crg::renderer {
         requiredLimits.maxVertexAttributes = 2;
         requiredLimits.maxVertexBuffers = 2;
         requiredLimits.maxBufferSize = 15 * 5 * sizeof(float);
-        requiredLimits.maxVertexBufferArrayStride = 5 * sizeof(float);
+        requiredLimits.maxVertexBufferArrayStride = 6 * sizeof(float);
         requiredLimits.maxInterStageShaderVariables = 3;
         requiredLimits.maxBindGroups = 1;
         requiredLimits.maxUniformBuffersPerShaderStage = 1;
         requiredLimits.maxUniformBufferBindingSize = 16 * 4;
         requiredLimits.maxDynamicUniformBuffersPerPipelineLayout = 1;
+
+        requiredLimits.maxTextureDimension1D = 480;
+        requiredLimits.maxTextureDimension2D = 8192;
+        requiredLimits.maxTextureArrayLayers = 1;
+
 
         return requiredLimits;
     }
@@ -257,7 +266,7 @@ namespace crg::renderer {
         std::vector<uint16_t> indexData;
 
         LOG_CORE_INFO("Location: {}", RESOURCE_DIR "/model.txt");
-        bool success = ModelLoader::loadGeometry(RESOURCE_DIR "/model.txt", pointData, indexData);
+        bool success = ModelLoader::loadGeometry(RESOURCE_DIR "/model.txt", pointData, indexData, 3);
 
         if (!success) {
             LOG_CORE_ERROR("Failed to load geometry");
@@ -337,6 +346,7 @@ namespace crg::renderer {
         viewDescriptor.arrayLayerCount = 1;
         viewDescriptor.aspect = WGPUTextureAspect_All;
 
+
         wgpu::TextureView targetView = wgpuTextureCreateView(surfaceTexture.texture, &viewDescriptor);
 
         return { surfaceTexture, targetView };
@@ -351,17 +361,17 @@ namespace crg::renderer {
         std::vector<wgpu::VertexAttribute> vertAttribs(2);
         // Corresponds to @location(0)
         vertAttribs[0].shaderLocation = 0;
-        vertAttribs[0].format = wgpu::VertexFormat::Float32x2;
+        vertAttribs[0].format = wgpu::VertexFormat::Float32x3;
         vertAttribs[0].offset = 0;
 
         vertAttribs[1].shaderLocation = 1;
         vertAttribs[1].format = wgpu::VertexFormat::Float32x3;
-        vertAttribs[1].offset = 2 * sizeof(float);
+        vertAttribs[1].offset = 3 * sizeof(float);
 
 
         vertexBufferLayout.attributeCount = static_cast<uint32_t>(vertAttribs.size());
         vertexBufferLayout.attributes = vertAttribs.data();
-        vertexBufferLayout.arrayStride = 5 * sizeof(float);
+        vertexBufferLayout.arrayStride = 6 * sizeof(float);
         vertexBufferLayout.stepMode = wgpu::VertexStepMode::Vertex;
 
         desc.vertex.bufferCount = 1;
@@ -431,8 +441,45 @@ namespace crg::renderer {
 
         desc.layout = m_layout;
 
+        wgpu::DepthStencilState depthStencilState = wgpu::Default;
+
+        depthStencilState.depthCompare = wgpu::CompareFunction::Less;
+        depthStencilState.depthWriteEnabled = wgpu::OptionalBool::True;
+        wgpu::TextureFormat depthTextureFormat = wgpu::TextureFormat::Depth24Plus;
+        depthStencilState.format = depthTextureFormat;
+        depthStencilState.stencilReadMask = 0;
+        depthStencilState.stencilWriteMask = 0;
+
+        wgpu::TextureDescriptor depthTextureDesc;
+        depthTextureDesc.dimension = wgpu::TextureDimension::_2D;
+        depthTextureDesc.format = depthTextureFormat;
+        depthTextureDesc.mipLevelCount = 1;
+        depthTextureDesc.sampleCount = 1;
+        depthTextureDesc.size = {m_window->getWidth(), m_window->getHeight(), 1};
+        depthTextureDesc.usage = wgpu::TextureUsage::RenderAttachment;
+        depthTextureDesc.viewFormatCount = 1;
+        depthTextureDesc.viewFormats = (WGPUTextureFormat*)&depthTextureFormat;
+        m_depthTexture = m_device.createTexture(depthTextureDesc);
+
+
+        wgpu::TextureViewDescriptor depthTextureViewDesc;
+        depthTextureViewDesc.aspect = wgpu::TextureAspect::DepthOnly;
+        depthTextureViewDesc.baseArrayLayer = 0;
+        depthTextureViewDesc.arrayLayerCount = 1;
+        depthTextureViewDesc.baseMipLevel = 0;
+        depthTextureViewDesc.mipLevelCount = 1;
+        depthTextureViewDesc.dimension = wgpu::TextureViewDimension::_2D;
+        depthTextureViewDesc.format = depthTextureFormat;
+        m_depthTextureView = m_depthTexture.createView(depthTextureViewDesc);
+
+
+
+        desc.depthStencil = &depthStencilState;
+
+
         m_pipeline = m_device.createRenderPipeline(desc);
         shaderModule.release();
+
     }
 
 
@@ -499,7 +546,26 @@ namespace crg::renderer {
         renderPassColorAttachment.clearValue = wgpu::Color{0.1, 0.1, 0.1, 1.0};
         renderPassColorAttachment.depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;
 
-        renderPassDesc.depthStencilAttachment = nullptr;
+        wgpu::RenderPassDepthStencilAttachment depthStencilAttachment;
+
+        depthStencilAttachment.view = m_depthTextureView;
+
+        // The initial value of the depth buffer, meaning "far"
+        depthStencilAttachment.depthClearValue = 1.0f;
+        // Operation settings comparable to the color attachment
+        depthStencilAttachment.depthLoadOp = wgpu::LoadOp::Clear;
+        depthStencilAttachment.depthStoreOp = wgpu::StoreOp::Store;
+        // we could turn off writing to the depth buffer globally here
+        depthStencilAttachment.depthReadOnly = false;
+
+        // Stencil setup, mandatory but unused
+        depthStencilAttachment.stencilClearValue = 0;
+        depthStencilAttachment.stencilLoadOp = wgpu::LoadOp::Clear;
+        depthStencilAttachment.stencilStoreOp = wgpu::StoreOp::Store;
+        depthStencilAttachment.stencilReadOnly = true;
+
+
+        renderPassDesc.depthStencilAttachment = &depthStencilAttachment;
         renderPassDesc.colorAttachmentCount = 1;
         renderPassDesc.colorAttachments = &renderPassColorAttachment;
         renderPassDesc.timestampWrites = nullptr;

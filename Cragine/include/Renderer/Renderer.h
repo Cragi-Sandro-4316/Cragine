@@ -58,6 +58,10 @@ namespace crg::renderer {
         wgpu::PipelineLayout m_layout;
         uint32_t m_indexCount = 0;
 
+        wgpu::TextureView m_depthTextureView;
+        wgpu::Texture m_depthTexture;
+
+
         uint32_t m_uniformStride = 0;
 
         struct MyUniform {
