@@ -13,3 +13,6 @@
 [submodule "Cragine/deps/wgpuGlfw"]
 	path = Cragine/deps/wgpuGlfw
 	url = https://github.com/eliemichel/glfw3webgpu.git
+[submodule "Cragine/deps/glm"]
+	path = Cragine/deps/glm
+	url = https://github.com/g-truc/glm.git

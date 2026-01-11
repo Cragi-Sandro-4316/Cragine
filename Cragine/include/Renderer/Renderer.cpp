@@ -1,6 +1,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <glm/ext/vector_float4.hpp>
 #include <unistd.h>
 #include <webgpu.h>
 
@@ -243,12 +244,12 @@ namespace crg::renderer {
         wgpu::Limits requiredLimits = wgpu::Default;
         requiredLimits.maxVertexAttributes = 2;
         requiredLimits.maxVertexBuffers = 2;
-        requiredLimits.maxBufferSize = 15 * 5 * sizeof(float);
+        requiredLimits.maxBufferSize = supportedLimits.maxBufferSize;
         requiredLimits.maxVertexBufferArrayStride = 6 * sizeof(float);
         requiredLimits.maxInterStageShaderVariables = 3;
         requiredLimits.maxBindGroups = 1;
         requiredLimits.maxUniformBuffersPerShaderStage = 1;
-        requiredLimits.maxUniformBufferBindingSize = 16 * 4;
+        requiredLimits.maxUniformBufferBindingSize = supportedLimits.maxUniformBufferBindingSize;
         requiredLimits.maxDynamicUniformBuffersPerPipelineLayout = 1;
 
         requiredLimits.maxTextureDimension1D = 480;
@@ -304,13 +305,13 @@ namespace crg::renderer {
 
         // Upload first value
         uniform.time = 1.0f;
-        uniform.color = { 0.0f, 1.0f, 0.4f, 1.0f };
+        uniform.color = glm::vec4(1.);
+
         m_queue.writeBuffer(m_uniformBuffer, 0, &uniform, sizeof(MyUniform));
 
         // Upload second value
-        uniform.time = -1.0f;
-        uniform.color = { 1.0f, 1.0f, 1.0f, 1.0f };
-        m_queue.writeBuffer(m_uniformBuffer, m_uniformStride, &uniform, sizeof(MyUniform));
+        MyUniform u2{};
+        // m_queue.writeBuffer(m_uniformBuffer, m_uniformStride, &u2, sizeof(MyUniform));
     }
 
     void Renderer::fetchQueue() {
@@ -603,19 +604,19 @@ namespace crg::renderer {
         // Set binding group with different uniform offset
         dynamicOffset = 1 * m_uniformStride;
         renderPass.setBindGroup(0, m_bindGroup, 1, &dynamicOffset);
-        renderPass.drawIndexed(m_indexCount, 1, 0, 0, 0);
+        // renderPass.drawIndexed(m_indexCount, 1, 0, 0, 0);
 
-        // Write on second offset
-        auto time2 = static_cast<float>(glfwGetTime()) + 5;
-        m_queue.writeBuffer(m_uniformBuffer, dynamicOffset + offsetof(MyUniform, time), &time2, sizeof(float));
+        // // Write on second offset
+        // auto time2 = static_cast<float>(glfwGetTime()) + 5;
+        // m_queue.writeBuffer(m_uniformBuffer, dynamicOffset + offsetof(MyUniform, time), &time2, sizeof(float));
 
-        float colors2[4] = {
-            (float)std::abs(std::cos(time)),
-            0.0f,
-            (float)std::abs(std::cos(time)),
-            1.0f
-        };
-        m_queue.writeBuffer(m_uniformBuffer, dynamicOffset + offsetof(MyUniform, color), &colors2, 4 * sizeof(float));
+        // float colors2[4] = {
+        //     (float)std::abs(std::cos(time)),
+        //     0.0f,
+        //     (float)std::abs(std::cos(time)),
+        //     1.0f
+        // };
+        // m_queue.writeBuffer(m_uniformBuffer, dynamicOffset + offsetof(MyUniform, color), &colors2, 4 * sizeof(float));
 
 
         // m_queue.writeBuffer(m_uniformBuffer, offsetof(MyUniform, color), colors, 4 * sizeof(float));

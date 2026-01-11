@@ -2,12 +2,14 @@
 
 #include "Window.h"
 #include <cstdint>
+#include <glm/ext/matrix_float4x4.hpp>
+#include <glm/ext/vector_float3.hpp>
 #define WEBGPU_CPP_IMPLEMENTATIONM
 
 #include <webgpu/webgpu.hpp>
+#include <glm/glm.hpp>
 
 namespace crg::renderer {
-
     class Renderer {
     public:
         Renderer(Window* window);
@@ -40,6 +42,7 @@ namespace crg::renderer {
         void initializeBindings();
         void createBindGroupLayout();
     private:
+        const float PI = 3.14159265358979323846f;
 
         Window* m_window;
 
@@ -61,11 +64,15 @@ namespace crg::renderer {
         wgpu::TextureView m_depthTextureView;
         wgpu::Texture m_depthTexture;
 
-
         uint32_t m_uniformStride = 0;
 
         struct MyUniform {
-            std::array<float, 4> color;
+
+            glm::mat4x4 projectionMatrix;
+            glm::mat4x4 viewMatrix;
+            glm::mat4x4 modelMatrix;
+
+            glm::vec4 color;
             float time;
             float _padding[3];
         };
