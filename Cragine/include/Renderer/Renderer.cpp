@@ -2,6 +2,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <glm/ext/vector_float4.hpp>
+#include <memory>
+#include <type_traits>
 #include <unistd.h>
 #include <webgpu.h>
 
@@ -51,9 +53,8 @@ namespace crg::renderer {
         m_depthTexture.destroy();
         m_depthTexture.release();
 
-        m_indexBuffer.release();
-        m_pointBuffer.release();
-        m_uniformBuffer.release();
+        m_uniform.release();
+        m_vertexData.release();
         LOG_CORE_INFO("Released wgpu buffers");
 
 
@@ -243,7 +244,7 @@ namespace crg::renderer {
 
         wgpu::Limits requiredLimits = wgpu::Default;
         requiredLimits.maxVertexAttributes = 2;
-        requiredLimits.maxVertexBuffers = 2;
+        requiredLimits.maxVertexBuffers = 1;
         requiredLimits.maxBufferSize = supportedLimits.maxBufferSize;
         requiredLimits.maxVertexBufferArrayStride = 6 * sizeof(float);
         requiredLimits.maxInterStageShaderVariables = 3;
@@ -273,33 +274,13 @@ namespace crg::renderer {
             LOG_CORE_ERROR("Failed to load geometry");
             exit(1);
         }
-        m_indexCount = static_cast<uint32_t>(indexData.size());
+
+        m_vertexData = std::make_unique<VertexData>(m_device, m_queue, pointData, indexData);
+
+        m_uniform = std::make_unique<Uniform<MyUniform>>(m_device, m_queue);
+
 
         wgpu::BufferDescriptor bufferDesc{};
-
-        // Vertex buffer
-        bufferDesc.size = pointData.size() * sizeof(float);
-        bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Vertex;
-        bufferDesc.mappedAtCreation = false;
-        m_pointBuffer = m_device.createBuffer(bufferDesc);
-        m_queue.writeBuffer(m_pointBuffer, 0, pointData.data(), bufferDesc.size);
-
-        // Index buffer
-        m_indexCount = static_cast<uint32_t>(indexData.size());
-
-        bufferDesc.size = indexData.size() * sizeof(uint16_t);
-        bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Index;
-        bufferDesc.size = (bufferDesc.size + 3) & ~3; // Round up to the next multiple of 4
-        m_indexBuffer = m_device.createBuffer(bufferDesc);
-
-        m_queue.writeBuffer(m_indexBuffer, 0, indexData.data(), bufferDesc.size);
-
-
-        bufferDesc.size = m_uniformStride + sizeof(MyUniform);
-        bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Uniform;
-        bufferDesc.label = wgpu::StringView("Uniform");
-        bufferDesc.mappedAtCreation = false;
-        m_uniformBuffer = m_device.createBuffer(bufferDesc);
 
         MyUniform uniform;
 
@@ -307,11 +288,7 @@ namespace crg::renderer {
         uniform.time = 1.0f;
         uniform.color = glm::vec4(1.);
 
-        m_queue.writeBuffer(m_uniformBuffer, 0, &uniform, sizeof(MyUniform));
-
-        // Upload second value
-        MyUniform u2{};
-        // m_queue.writeBuffer(m_uniformBuffer, m_uniformStride, &u2, sizeof(MyUniform));
+        m_uniform->update(uniform);
     }
 
     void Renderer::fetchQueue() {
@@ -357,8 +334,6 @@ namespace crg::renderer {
     void Renderer::makePipeline() {
         wgpu::RenderPipelineDescriptor desc{};
 
-        wgpu::VertexBufferLayout vertexBufferLayout;
-
         std::vector<wgpu::VertexAttribute> vertAttribs(2);
         // Corresponds to @location(0)
         vertAttribs[0].shaderLocation = 0;
@@ -370,13 +345,17 @@ namespace crg::renderer {
         vertAttribs[1].offset = 3 * sizeof(float);
 
 
-        vertexBufferLayout.attributeCount = static_cast<uint32_t>(vertAttribs.size());
-        vertexBufferLayout.attributes = vertAttribs.data();
-        vertexBufferLayout.arrayStride = 6 * sizeof(float);
-        vertexBufferLayout.stepMode = wgpu::VertexStepMode::Vertex;
+        auto& layout = m_vertexData->layout();
+
+
+
+        layout.attributeCount = static_cast<uint32_t>(vertAttribs.size());
+        layout.attributes = vertAttribs.data();
+        layout.arrayStride = 6 * sizeof(float);
+        layout.stepMode = wgpu::VertexStepMode::Vertex;
 
         desc.vertex.bufferCount = 1;
-        desc.vertex.buffers = &vertexBufferLayout;
+        desc.vertex.buffers = &layout;
 
         LOG_CORE_INFO("Loading shader...");
         wgpu::ShaderModule shaderModule = ModelLoader::loadShader(RESOURCE_DIR"/shader.wgsl", m_device);
@@ -507,7 +486,7 @@ namespace crg::renderer {
     	// The index of the binding (the entries in bindGroupDesc can be in any order)
     	binding.binding = 0;
     	// The buffer it is actually bound to
-    	binding.buffer = m_uniformBuffer;
+    	binding.buffer = m_uniform->getBuffer();
     	// We can specify an offset within the buffer, so that a single buffer can hold
     	// multiple uniform blocks.
     	binding.offset = 0;
@@ -575,55 +554,25 @@ namespace crg::renderer {
 
         renderPass.setPipeline(m_pipeline);
 
-        renderPass.setVertexBuffer(0, m_pointBuffer, 0, m_pointBuffer.getSize());
+        renderPass.setVertexBuffer(0, m_vertexData->vertexBuffer(), 0, m_vertexData->vertexBuffer().getSize());
 
-        renderPass.setIndexBuffer(m_indexBuffer, wgpu::IndexFormat::Uint16, 0, m_indexBuffer.getSize());
+        renderPass.setIndexBuffer(m_vertexData->indexBuffer(), wgpu::IndexFormat::Uint16, 0, m_vertexData->indexBuffer().getSize());
 
 
-
-        uint32_t dynamicOffset = 0;
-
-        // Set binding group
-        dynamicOffset = 0 * m_uniformStride;
-        renderPass.setBindGroup(0, m_bindGroup, 1, &dynamicOffset);
-        renderPass.drawIndexed(m_indexCount, 1, 0, 0, 0);
-
-        // Write on first offset
-        float time = static_cast<float>(glfwGetTime());
-        m_queue.writeBuffer(m_uniformBuffer, dynamicOffset + offsetof(MyUniform, time), &time, sizeof(float));
-
-        float colors[4] = {
-            (float)std::abs(std::sin(time)),
-            (float)std::abs(std::sin(time)),
-            0.0f,
-            1.0f
+        float t = static_cast<float>(glfwGetTime());
+        glm::vec4 color = {
+            std::abs(std::sin(t)),
+            std::abs(std::sin(t)),
+            0.f,
+            1.f
         };
-        m_queue.writeBuffer(m_uniformBuffer, dynamicOffset + offsetof(MyUniform, color), &colors, 4 * sizeof(float));
+        m_uniform->writeField<float>(&t, offsetof(MyUniform, time));
+        m_uniform->writeField<glm::vec4>(&color, offsetof(MyUniform, color));
 
 
-        // Set binding group with different uniform offset
-        dynamicOffset = 1 * m_uniformStride;
-        renderPass.setBindGroup(0, m_bindGroup, 1, &dynamicOffset);
-        // renderPass.drawIndexed(m_indexCount, 1, 0, 0, 0);
-
-        // // Write on second offset
-        // auto time2 = static_cast<float>(glfwGetTime()) + 5;
-        // m_queue.writeBuffer(m_uniformBuffer, dynamicOffset + offsetof(MyUniform, time), &time2, sizeof(float));
-
-        // float colors2[4] = {
-        //     (float)std::abs(std::cos(time)),
-        //     0.0f,
-        //     (float)std::abs(std::cos(time)),
-        //     1.0f
-        // };
-        // m_queue.writeBuffer(m_uniformBuffer, dynamicOffset + offsetof(MyUniform, color), &colors2, 4 * sizeof(float));
-
-
-        // m_queue.writeBuffer(m_uniformBuffer, offsetof(MyUniform, color), colors, 4 * sizeof(float));
-
-        // renderPass.setBindGroup(0, m_bindGroup, 0, nullptr);
-
-        // renderPass.drawIndexed(m_indexCount, 1, 0, 0, 0);
+        uint32_t offset = 0;
+        renderPass.setBindGroup(0, m_bindGroup, 1, &offset);
+        renderPass.drawIndexed(m_vertexData->indexCount(), 1, 0, 0, 0);
 
         renderPass.end();
         renderPass.release();

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Renderer/BufferHelpers/Uniform.h"
+#include "Renderer/BufferHelpers/VertexData.h"
 #include "Window.h"
 #include <cstdint>
 #include <glm/ext/matrix_float4x4.hpp>
@@ -44,6 +46,18 @@ namespace crg::renderer {
     private:
         const float PI = 3.14159265358979323846f;
 
+        struct MyUniform {
+
+            // glm::mat4x4 projectionMatrix;
+            // glm::mat4x4 viewMatrix;
+            // glm::mat4x4 modelMatrix;
+
+            glm::vec4 color;
+            float time;
+            float _padding[3];
+        };
+        static_assert(sizeof(MyUniform) % 16 == 0, "size of uniform not a multiple of 16");
+
         Window* m_window;
 
         wgpu::Instance m_instance;
@@ -53,30 +67,21 @@ namespace crg::renderer {
         wgpu::Adapter m_adapter;
         wgpu::Queue m_queue;
         wgpu::RenderPipeline m_pipeline;
-        wgpu::Buffer m_pointBuffer;
-        wgpu::Buffer m_indexBuffer;
-        wgpu::Buffer m_uniformBuffer;
         wgpu::BindGroupLayout m_bindGroupLayout;
         wgpu::BindGroup m_bindGroup;
         wgpu::PipelineLayout m_layout;
-        uint32_t m_indexCount = 0;
+
+
+        std::unique_ptr<VertexData> m_vertexData;
+        std::unique_ptr<Uniform<MyUniform>> m_uniform;
+
 
         wgpu::TextureView m_depthTextureView;
         wgpu::Texture m_depthTexture;
 
         uint32_t m_uniformStride = 0;
 
-        struct MyUniform {
 
-            glm::mat4x4 projectionMatrix;
-            glm::mat4x4 viewMatrix;
-            glm::mat4x4 modelMatrix;
-
-            glm::vec4 color;
-            float time;
-            float _padding[3];
-        };
-        static_assert(sizeof(MyUniform) % 16 == 0, "size of uniform not a multiple of 16");
 
     };
 
