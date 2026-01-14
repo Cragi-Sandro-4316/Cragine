@@ -10,6 +10,8 @@
 
 #include <webgpu/webgpu.hpp>
 #include <glm/glm.hpp>
+#include <glm/ext.hpp>
+
 
 namespace crg::renderer {
     class Renderer {
@@ -48,15 +50,17 @@ namespace crg::renderer {
 
         struct MyUniform {
 
-            // glm::mat4x4 projectionMatrix;
-            // glm::mat4x4 viewMatrix;
-            // glm::mat4x4 modelMatrix;
+            glm::mat4x4 projectionMatrix;
+            glm::mat4x4 viewMatrix;
+            glm::mat4x4 modelMatrix;
 
             glm::vec4 color;
             float time;
             float _padding[3];
         };
         static_assert(sizeof(MyUniform) % 16 == 0, "size of uniform not a multiple of 16");
+
+        MyUniform uniformOps();
 
         Window* m_window;
 

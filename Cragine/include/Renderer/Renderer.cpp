@@ -230,11 +230,6 @@ namespace crg::renderer {
         wgpu::Limits deviceLimits{};
         m_device.getLimits(&deviceLimits);
         LOG_CORE_INFO("Device vertex attribute: {}", deviceLimits.maxVertexAttributes);
-
-        m_uniformStride = helpers::ceilToNextMultiple(
-            (uint32_t)sizeof(MyUniform),
-            (uint32_t)deviceLimits.minUniformBufferOffsetAlignment
-        );
     }
 
 
@@ -465,7 +460,7 @@ namespace crg::renderer {
 
     void Renderer::createBindGroupLayout() {
         wgpu::BindGroupLayoutEntry bindingLayout{};
-        bindingLayout.binding = 0;
+        bindingLayout.binding = 0;  // Binding(0) in wgsl
         bindingLayout.visibility = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment;
         bindingLayout.buffer.type = wgpu::BufferBindingType::Uniform;
         bindingLayout.buffer.minBindingSize = sizeof(MyUniform);
@@ -559,15 +554,9 @@ namespace crg::renderer {
         renderPass.setIndexBuffer(m_vertexData->indexBuffer(), wgpu::IndexFormat::Uint16, 0, m_vertexData->indexBuffer().getSize());
 
 
-        float t = static_cast<float>(glfwGetTime());
-        glm::vec4 color = {
-            std::abs(std::sin(t)),
-            std::abs(std::sin(t)),
-            0.f,
-            1.f
-        };
-        m_uniform->writeField<float>(&t, offsetof(MyUniform, time));
-        m_uniform->writeField<glm::vec4>(&color, offsetof(MyUniform, color));
+        auto uniformData = uniformOps();
+
+        m_uniform->update(uniformData);
 
 
         uint32_t offset = 0;
@@ -590,6 +579,87 @@ namespace crg::renderer {
         m_surface.present();
         targetView.release();
         m_device.poll(false, nullptr);
+    }
+
+
+    // TODO: temporary function to avoid boilerplate
+    Renderer::MyUniform Renderer::uniformOps() {
+
+        MyUniform uniformData{};
+        float t = static_cast<float>(glfwGetTime());
+        glm::vec4 color = {
+            std::abs(std::sin(t)),
+            std::abs(std::sin(t)),
+            0.f,
+            1.f
+        };
+        // Scale the object
+        glm::mat4x4 S = transpose(glm::mat4x4(
+            0.3,  0.0, 0.0, 0.0,
+            0.0,  0.3, 0.0, 0.0,
+            0.0,  0.0, 0.3, 0.0,
+            0.0,  0.0, 0.0, 1.0
+        ));
+
+        // Translate the object
+        glm::mat4x4 T1 = transpose(glm::mat4x4(
+            1.0,  0.0, 0.0, 0.5,
+            0.0,  1.0, 0.0, 0.0,
+            0.0,  0.0, 1.0, 0.0,
+            0.0,  0.0, 0.0, 1.0
+        ));
+
+        // Rotate the object
+        float angle1 = (float)glfwGetTime();
+        float c1 = cos(angle1);
+        float s1 = sin(angle1);
+        glm::mat4x4 R1 = transpose(glm::mat4x4(
+             c1,  s1, 0.0, 0.0,
+            -s1,  c1, 0.0, 0.0,
+            0.0, 0.0, 1.0, 0.0,
+            0.0, 0.0, 0.0, 1.0
+        ));
+
+        // Translate the view
+        glm::vec3 focalPoint(0.0, 0.0, -2.0);
+        glm::mat4x4 T2 = transpose(glm::mat4x4(
+            1.0,  0.0, 0.0, -focalPoint.x,
+            0.0,  1.0, 0.0, -focalPoint.y,
+            0.0,  0.0, 1.0, -focalPoint.z,
+            0.0,  0.0, 0.0,     1.0
+        ));
+
+        // Rotate the view point
+        float angle2 = 3.0 * PI / 4.0;
+        float c2 = cos(angle2);
+        float s2 = sin(angle2);
+        glm::mat4x4 R2 = transpose(glm::mat4x4(
+            1.0, 0.0, 0.0, 0.0,
+            0.0,  c2,  s2, 0.0,
+            0.0, -s2,  c2, 0.0,
+            0.0, 0.0, 0.0, 1.0
+        ));
+
+        float ratio = 640.0f / 480.0f;
+        float focalLength = 2.0;
+        float near = 0.01f;
+        float far = 100.0f;
+        float divider = 1 / (focalLength * (far - near));
+        uniformData.projectionMatrix = transpose(glm::mat4x4(
+            1.0, 0.0, 0.0, 0.0,
+            0.0, ratio, 0.0, 0.0,
+            0.0, 0.0, far * divider, -far * near * divider,
+            0.0, 0.0, 1.0 / focalLength, 0.0
+        ));
+
+
+
+        uniformData.viewMatrix = T2 * R2;
+
+        uniformData.time = t;
+        uniformData.color = color;
+        uniformData.modelMatrix = R1 * T1 * S;
+        return uniformData;
     }
 
 }
