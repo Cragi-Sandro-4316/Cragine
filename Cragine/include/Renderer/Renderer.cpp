@@ -238,11 +238,11 @@ namespace crg::renderer {
         m_adapter.getLimits(&supportedLimits);
 
         wgpu::Limits requiredLimits = wgpu::Default;
-        requiredLimits.maxVertexAttributes = 2;
+        requiredLimits.maxVertexAttributes = 3;
         requiredLimits.maxVertexBuffers = 1;
         requiredLimits.maxBufferSize = supportedLimits.maxBufferSize;
-        requiredLimits.maxVertexBufferArrayStride = 6 * sizeof(float);
-        requiredLimits.maxInterStageShaderVariables = 3;
+        requiredLimits.maxVertexBufferArrayStride = sizeof(VertexAttributes);
+        requiredLimits.maxInterStageShaderVariables = 6;
         requiredLimits.maxBindGroups = 1;
         requiredLimits.maxUniformBuffersPerShaderStage = 1;
         requiredLimits.maxUniformBufferBindingSize = supportedLimits.maxUniformBufferBindingSize;
@@ -263,7 +263,7 @@ namespace crg::renderer {
         std::vector<uint16_t> indexData;
 
         LOG_CORE_INFO("Location: {}", RESOURCE_DIR "/model.txt");
-        bool success = ModelLoader::loadGeometry(RESOURCE_DIR "/model.txt", pointData, indexData, 3);
+        bool success = ModelLoader::loadGeometry(RESOURCE_DIR "/model.txt", pointData, indexData, 6);
 
         if (!success) {
             LOG_CORE_ERROR("Failed to load geometry");
@@ -329,15 +329,22 @@ namespace crg::renderer {
     void Renderer::makePipeline() {
         wgpu::RenderPipelineDescriptor desc{};
 
-        std::vector<wgpu::VertexAttribute> vertAttribs(2);
-        // Corresponds to @location(0)
+        std::vector<wgpu::VertexAttribute> vertAttribs(3);
+
+        // Corresponds to @location(0) position
         vertAttribs[0].shaderLocation = 0;
         vertAttribs[0].format = wgpu::VertexFormat::Float32x3;
-        vertAttribs[0].offset = 0;
+        vertAttribs[0].offset = offsetof(VertexAttributes, position);
 
+        // Corresponds to @location(1) normal
         vertAttribs[1].shaderLocation = 1;
         vertAttribs[1].format = wgpu::VertexFormat::Float32x3;
-        vertAttribs[1].offset = 3 * sizeof(float);
+        vertAttribs[1].offset = offsetof(VertexAttributes, normal);
+
+        // Corresponds to @location(2) color
+        vertAttribs[2].shaderLocation = 2;
+        vertAttribs[2].format = wgpu::VertexFormat::Float32x3;
+        vertAttribs[2].offset = offsetof(VertexAttributes, color);
 
 
         auto& layout = m_vertexData->layout();
@@ -346,7 +353,7 @@ namespace crg::renderer {
 
         layout.attributeCount = static_cast<uint32_t>(vertAttribs.size());
         layout.attributes = vertAttribs.data();
-        layout.arrayStride = 6 * sizeof(float);
+        layout.arrayStride = sizeof(VertexAttributes);
         layout.stepMode = wgpu::VertexStepMode::Vertex;
 
         desc.vertex.bufferCount = 1;

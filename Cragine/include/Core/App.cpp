@@ -1,14 +1,8 @@
 #include "App.h"
-#include "Ecs/Components/QueryResult.h"
 #include "Ecs/Systems/SystemScheduler.h"
-#include "Events/EventParam.h"
-#include "InputModule/InputManager.h"
-#include "Resources/ResourceParam.h"
 #include "utils/Logger.h"
-#include "Ecs/Components/QueryParam.h"
 
 #include <GLFW/glfw3.h>
-#include <string>
 
 namespace crg {
 
