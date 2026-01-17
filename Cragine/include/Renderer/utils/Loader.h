@@ -6,6 +6,7 @@
 #include <sstream>
 #include <string>
 #include <webgpu/webgpu.hpp>
+#include "../BufferHelpers/VertexData.h"
 
 namespace crg::renderer {
     class ModelLoader {
@@ -59,6 +60,8 @@ namespace crg::renderer {
            	}
            	return true;
         }
+
+        static bool loadObjFile(const std::filesystem::path& path, std::vector<VertexAttributes>& vertexData);
 
         static wgpu::ShaderModule loadShader(
             const std::filesystem::path& path,

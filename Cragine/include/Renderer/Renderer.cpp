@@ -259,18 +259,17 @@ namespace crg::renderer {
     void Renderer::initializeBuffers() {
 
         // Load mesh data
-        std::vector<float> pointData;
-        std::vector<uint16_t> indexData;
+        std::vector<VertexAttributes> vertexData;
 
-        LOG_CORE_INFO("Location: {}", RESOURCE_DIR "/model.txt");
-        bool success = ModelLoader::loadGeometry(RESOURCE_DIR "/model.txt", pointData, indexData, 6);
+        LOG_CORE_INFO("Location: {}", RESOURCE_DIR "/mammoth.obj");
+        bool success = ModelLoader::loadObjFile(RESOURCE_DIR "/mammoth.obj", vertexData);
 
         if (!success) {
             LOG_CORE_ERROR("Failed to load geometry");
             exit(1);
         }
 
-        m_vertexData = std::make_unique<VertexData>(m_device, m_queue, pointData, indexData);
+        m_vertexData = std::make_unique<VertexData>(m_device, m_queue, vertexData/*, indexData*/);
 
         m_uniform = std::make_unique<Uniform<MyUniform>>(m_device, m_queue);
 
@@ -556,9 +555,13 @@ namespace crg::renderer {
 
         renderPass.setPipeline(m_pipeline);
 
+
+        // renderPass.setIndexBuffer(m_vertexData->indexBuffer(), wgpu::IndexFormat::Uint16, 0, m_vertexData->indexBuffer().getSize());
+
+        uint32_t idxCount = static_cast<int>(m_vertexData->getVertexData().size());
+
         renderPass.setVertexBuffer(0, m_vertexData->vertexBuffer(), 0, m_vertexData->vertexBuffer().getSize());
 
-        renderPass.setIndexBuffer(m_vertexData->indexBuffer(), wgpu::IndexFormat::Uint16, 0, m_vertexData->indexBuffer().getSize());
 
 
         auto uniformData = uniformOps();
@@ -568,7 +571,10 @@ namespace crg::renderer {
 
         uint32_t offset = 0;
         renderPass.setBindGroup(0, m_bindGroup, 1, &offset);
-        renderPass.drawIndexed(m_vertexData->indexCount(), 1, 0, 0, 0);
+        // renderPass.drawIndexed(m_vertexData->indexCount(), 1, 0, 0, 0);
+
+        renderPass.draw(idxCount, 1, 0, 0);
+
 
         renderPass.end();
         renderPass.release();

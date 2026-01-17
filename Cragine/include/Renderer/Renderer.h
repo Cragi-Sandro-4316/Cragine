@@ -21,6 +21,9 @@ namespace crg::renderer {
 
         void update();
 
+
+
+
     private:
         void fetchInstance();
 
@@ -48,11 +51,7 @@ namespace crg::renderer {
     private:
         const float PI = 3.14159265358979323846f;
 
-        struct VertexAttributes {
-            glm::vec3 position;
-            glm::vec3 normal;
-            glm::vec3 color;
-        };
+
 
         struct MyUniform {
 
