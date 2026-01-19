@@ -1,9 +1,11 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <glm/ext/matrix_float4x4.hpp>
+#include <glm/ext/matrix_transform.hpp>
+#include <glm/ext/vector_float3.hpp>
 #include <glm/ext/vector_float4.hpp>
 #include <memory>
-#include <type_traits>
 #include <unistd.h>
 #include <webgpu.h>
 
@@ -40,29 +42,39 @@ namespace crg::renderer {
 
         fetchQueue();
 
-
         initializeBuffers();
         createBindGroupLayout();
+        makePipeline();
         initializeBindings();
 
-        makePipeline();
     }
 
     Renderer::~Renderer() {
-        m_depthTextureView.release();
-        m_depthTexture.destroy();
-        m_depthTexture.release();
-
-        m_uniform.release();
-        m_vertexData.release();
-        LOG_CORE_INFO("Released wgpu buffers");
-
+        if (m_device) {
+            m_device.poll(true, nullptr);
+        }
 
         m_layout.release();
         m_bindGroupLayout.release();
         m_bindGroup.release();
         m_pipeline.release();
         LOG_CORE_INFO("Released wgpu pipeline");
+
+
+        m_depthTextureView.release();
+        m_textureView.release();
+
+        m_depthTexture.destroy();
+        m_texture.release();
+
+        // m_depthTexture.release();
+        // m_texture.destroy();
+
+        m_uniform.release();
+        m_vertexData.release();
+        LOG_CORE_INFO("Released wgpu buffers");
+
+
 
         m_queue.release();
         LOG_CORE_INFO("Released wgpu queue");
@@ -262,14 +274,14 @@ namespace crg::renderer {
         std::vector<VertexAttributes> vertexData;
 
         LOG_CORE_INFO("Location: {}", RESOURCE_DIR "/mammoth.obj");
-        bool success = ModelLoader::loadObjFile(RESOURCE_DIR "/mammoth.obj", vertexData);
+        bool success = ModelLoader::loadObjFile(RESOURCE_DIR "/plane.obj", vertexData);
 
         if (!success) {
             LOG_CORE_ERROR("Failed to load geometry");
             exit(1);
         }
 
-        m_vertexData = std::make_unique<VertexData>(m_device, m_queue, vertexData/*, indexData*/);
+        m_vertexData = std::make_unique<VertexData>(m_device, m_queue, vertexData);
 
         m_uniform = std::make_unique<Uniform<MyUniform>>(m_device, m_queue);
 
@@ -281,6 +293,10 @@ namespace crg::renderer {
         // Upload first value
         uniform.time = 1.0f;
         uniform.color = glm::vec4(1.);
+        uniform.modelMatrix = glm::mat4x4(1.);
+        uniform.viewMatrix = glm::scale(glm::mat4x4(1.), glm::vec3(1.));
+        uniform.projectionMatrix = glm::ortho(-1, 1, -1, 1, -1, 1);
+
 
         m_uniform->update(uniform);
     }
@@ -454,6 +470,53 @@ namespace crg::renderer {
         m_depthTextureView = m_depthTexture.createView(depthTextureViewDesc);
 
 
+        wgpu::TextureDescriptor textureDesc;
+        textureDesc.dimension = wgpu::TextureDimension::_2D;
+        textureDesc.size = { 256, 256, 1 };
+        textureDesc.mipLevelCount = 1;
+        textureDesc.sampleCount = 1;
+        textureDesc.format = wgpu::TextureFormat::RGBA8Unorm;
+        textureDesc.usage = wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::CopyDst;
+        textureDesc.viewFormatCount = 0;
+        textureDesc.viewFormats = nullptr;
+
+        m_texture = m_device.createTexture(textureDesc);
+
+        wgpu::TextureViewDescriptor textureViewDesc;
+        textureViewDesc.aspect = wgpu::TextureAspect::All;
+        textureViewDesc.baseArrayLayer = 0;
+        textureViewDesc.arrayLayerCount = 1;
+        textureViewDesc.baseMipLevel = 0;
+        textureViewDesc.mipLevelCount = 1;
+        textureViewDesc.dimension = wgpu::TextureViewDimension::_2D;
+        textureViewDesc.format = textureDesc.format;
+        m_textureView = m_texture.createView(textureViewDesc);
+
+
+        // Create image data
+        std::vector<uint8_t> pixels(4 * textureDesc.size.width * textureDesc.size.height);
+        for (uint32_t i = 0; i < textureDesc.size.width; ++i) {
+            for (uint32_t j = 0; j < textureDesc.size.height; ++j) {
+                uint8_t *p = &pixels[4 * (j * textureDesc.size.width + i)];
+                p[0] = (uint8_t)i; // r
+                p[1] = (uint8_t)j; // g
+                p[2] = 128; // b
+                p[3] = 255; // a
+            }
+        }
+
+        wgpu::TexelCopyTextureInfo destination;
+        destination.texture = m_texture;
+        destination.mipLevel = 0;
+        destination.origin = { 0, 0, 0 };
+        destination.aspect = wgpu::TextureAspect::All;
+
+        wgpu::TexelCopyBufferLayout source;
+        source.offset = 0;
+        source.bytesPerRow = 4 * textureDesc.size.width;
+        source.rowsPerImage = textureDesc.size.height;
+
+        m_queue.writeTexture(destination, pixels.data(), pixels.size(), source, textureDesc.size);
 
         desc.depthStencil = &depthStencilState;
 
@@ -465,17 +528,24 @@ namespace crg::renderer {
 
 
     void Renderer::createBindGroupLayout() {
-        wgpu::BindGroupLayoutEntry bindingLayout{};
+        std::vector<wgpu::BindGroupLayoutEntry> bindingLayoutEntries(2);
+        auto& bindingLayout = bindingLayoutEntries[0];
         bindingLayout.binding = 0;  // Binding(0) in wgsl
         bindingLayout.visibility = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment;
         bindingLayout.buffer.type = wgpu::BufferBindingType::Uniform;
         bindingLayout.buffer.minBindingSize = sizeof(MyUniform);
-
         bindingLayout.buffer.hasDynamicOffset = true;
 
+        auto& textureBindingLayout = bindingLayoutEntries[1];
+        textureBindingLayout.binding = 1;
+        textureBindingLayout.visibility = wgpu::ShaderStage::Fragment;
+        textureBindingLayout.texture.sampleType = wgpu::TextureSampleType::Float;
+        textureBindingLayout.texture.viewDimension = wgpu::TextureViewDimension::_2D;
+
+
         wgpu::BindGroupLayoutDescriptor bindGroupLayoutDesc{};
-        bindGroupLayoutDesc.entryCount = 1;
-        bindGroupLayoutDesc.entries = &bindingLayout;
+        bindGroupLayoutDesc.entryCount = (uint32_t)bindingLayoutEntries.size();
+        bindGroupLayoutDesc.entries = bindingLayoutEntries.data();
 
         m_bindGroupLayout = m_device.createBindGroupLayout(bindGroupLayoutDesc);
     }
@@ -483,23 +553,20 @@ namespace crg::renderer {
 
     void Renderer::initializeBindings() {
         // Create a binding
-    	wgpu::BindGroupEntry binding{};
-    	// The index of the binding (the entries in bindGroupDesc can be in any order)
-    	binding.binding = 0;
-    	// The buffer it is actually bound to
-    	binding.buffer = m_uniform->getBuffer();
-    	// We can specify an offset within the buffer, so that a single buffer can hold
-    	// multiple uniform blocks.
-    	binding.offset = 0;
-    	// And we specify again the size of the buffer.
-    	binding.size = sizeof(MyUniform);
+    	std::vector<wgpu::BindGroupEntry> bindings(2);
+    	bindings[0].binding = 0;
+    	bindings[0].buffer = m_uniform->getBuffer();
+    	bindings[0].offset = 0;
+    	bindings[0].size = sizeof(MyUniform);
+
+        bindings[1].binding = 1;
+        bindings[1].textureView = m_textureView;
 
     	// A bind group contains one or multiple bindings
     	wgpu::BindGroupDescriptor bindGroupDesc{};
     	bindGroupDesc.layout = m_bindGroupLayout;
-    	// There must be as many bindings as declared in the layout!
-    	bindGroupDesc.entryCount = 1;
-    	bindGroupDesc.entries = &binding;
+    	bindGroupDesc.entryCount = (uint32_t)bindings.size();
+    	bindGroupDesc.entries = bindings.data();
     	m_bindGroup = m_device.createBindGroup(bindGroupDesc);
     }
 

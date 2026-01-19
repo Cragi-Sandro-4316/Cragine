@@ -80,6 +80,8 @@ namespace crg::renderer {
         wgpu::BindGroup m_bindGroup;
         wgpu::PipelineLayout m_layout;
 
+        wgpu::Texture m_texture;
+        wgpu::TextureView m_textureView;
 
         std::unique_ptr<VertexData> m_vertexData;
         std::unique_ptr<Uniform<MyUniform>> m_uniform;
