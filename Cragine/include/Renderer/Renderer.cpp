@@ -250,7 +250,7 @@ namespace crg::renderer {
         m_adapter.getLimits(&supportedLimits);
 
         wgpu::Limits requiredLimits = wgpu::Default;
-        requiredLimits.maxVertexAttributes = 3;
+        requiredLimits.maxVertexAttributes = 4;
         requiredLimits.maxVertexBuffers = 1;
         requiredLimits.maxBufferSize = supportedLimits.maxBufferSize;
         requiredLimits.maxVertexBufferArrayStride = sizeof(VertexAttributes);
@@ -273,8 +273,7 @@ namespace crg::renderer {
         // Load mesh data
         std::vector<VertexAttributes> vertexData;
 
-        LOG_CORE_INFO("Location: {}", RESOURCE_DIR "/mammoth.obj");
-        bool success = ModelLoader::loadObjFile(RESOURCE_DIR "/plane.obj", vertexData);
+        bool success = ModelLoader::loadObjFile(RESOURCE_DIR "/mammoth.obj", vertexData);
 
         if (!success) {
             LOG_CORE_ERROR("Failed to load geometry");
@@ -293,9 +292,10 @@ namespace crg::renderer {
         // Upload first value
         uniform.time = 1.0f;
         uniform.color = glm::vec4(1.);
-        uniform.modelMatrix = glm::mat4x4(1.);
-        uniform.viewMatrix = glm::scale(glm::mat4x4(1.), glm::vec3(1.));
-        uniform.projectionMatrix = glm::ortho(-1, 1, -1, 1, -1, 1);
+        uniform.modelMatrix = glm::mat4x4(1.0);
+        uniform.viewMatrix = glm::lookAt(glm::vec3(-0.5f, -2.5f, 2.0f), glm::vec3(0.0f), glm::vec3(0, 0, 1)); // the last argument indicates our Up direction convention
+        uniform.projectionMatrix = glm::perspective(45 * PI / 180, 640.0f / 480.0f, 0.01f, 100.0f);
+
 
 
         m_uniform->update(uniform);
@@ -344,7 +344,7 @@ namespace crg::renderer {
     void Renderer::makePipeline() {
         wgpu::RenderPipelineDescriptor desc{};
 
-        std::vector<wgpu::VertexAttribute> vertAttribs(3);
+        std::vector<wgpu::VertexAttribute> vertAttribs(4);
 
         // Corresponds to @location(0) position
         vertAttribs[0].shaderLocation = 0;
@@ -360,6 +360,11 @@ namespace crg::renderer {
         vertAttribs[2].shaderLocation = 2;
         vertAttribs[2].format = wgpu::VertexFormat::Float32x3;
         vertAttribs[2].offset = offsetof(VertexAttributes, color);
+
+        // Corresponds to @location(3) uv
+        vertAttribs[3].shaderLocation = 3;
+        vertAttribs[3].format = wgpu::VertexFormat::Float32x2;
+        vertAttribs[3].offset = offsetof(VertexAttributes, uv);
 
 
         auto& layout = m_vertexData->layout();
@@ -498,9 +503,9 @@ namespace crg::renderer {
         for (uint32_t i = 0; i < textureDesc.size.width; ++i) {
             for (uint32_t j = 0; j < textureDesc.size.height; ++j) {
                 uint8_t *p = &pixels[4 * (j * textureDesc.size.width + i)];
-                p[0] = (uint8_t)i; // r
-                p[1] = (uint8_t)j; // g
-                p[2] = 128; // b
+                p[0] = (i / 16) % 2 == (j / 16) % 2 ? 255 : 0; // r
+                p[1] = ((i - j) / 16) % 2 == 0 ? 255 : 0; // g
+                p[2] = ((i + j) / 16) % 2 == 0 ? 255 : 0; // b
                 p[3] = 255; // a
             }
         }

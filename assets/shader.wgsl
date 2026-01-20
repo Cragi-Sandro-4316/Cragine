@@ -2,12 +2,14 @@ struct VertexInput {
 	@location(0) position: vec3f,
 	@location(1) normal: vec3f, // new attribute
 	@location(2) color: vec3f,
+	@location(3) uv: vec2f
 };
 
 struct VertexOutput {
 	@builtin(position) position: vec4f,
 	@location(0) color: vec3f,
 	@location(1) normal: vec3f, // <--- Add a normal output
+	@location(2) uv: vec2f
 };
 
 /**
@@ -32,6 +34,8 @@ fn vs_main(in: VertexInput) -> VertexOutput {
 	// Forward the normal
     out.normal = (uMyUniforms.modelMatrix * vec4f(in.normal, 0.0)).xyz;
 	out.color = in.color;
+
+	out.uv = in.uv;
 	return out;
 }
 
@@ -55,7 +59,9 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4f {
 	// return vec4f(corrected_color, uMyUniforms.color.a);
 	//
 	// Fetch a texel from the texture
-	let color = textureLoad(gradientTexture, vec2<i32>(in.position.xy), 0).rgb;
+
+	let texelCoords = vec2i(in.uv * vec2f(textureDimensions(gradientTexture)));
+	let color = textureLoad(gradientTexture, texelCoords, 0).rgb;
 
 	// Gamma-correction
 	let corrected_color = pow(color, vec3f(2.2));
