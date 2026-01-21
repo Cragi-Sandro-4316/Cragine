@@ -260,6 +260,8 @@ namespace crg::renderer {
         requiredLimits.maxUniformBufferBindingSize = supportedLimits.maxUniformBufferBindingSize;
         requiredLimits.maxDynamicUniformBuffersPerPipelineLayout = 1;
 
+        requiredLimits.maxSamplersPerShaderStage = 1;
+
         requiredLimits.maxTextureDimension1D = 480;
         requiredLimits.maxTextureDimension2D = 8192;
         requiredLimits.maxTextureArrayLayers = 1;
@@ -273,7 +275,7 @@ namespace crg::renderer {
         // Load mesh data
         std::vector<VertexAttributes> vertexData;
 
-        bool success = ModelLoader::loadObjFile(RESOURCE_DIR "/mammoth.obj", vertexData);
+        bool success = ModelLoader::loadObjFile(RESOURCE_DIR "/plane.obj", vertexData);
 
         if (!success) {
             LOG_CORE_ERROR("Failed to load geometry");
@@ -474,11 +476,14 @@ namespace crg::renderer {
         depthTextureViewDesc.format = depthTextureFormat;
         m_depthTextureView = m_depthTexture.createView(depthTextureViewDesc);
 
+        desc.depthStencil = &depthStencilState;
+
+
 
         wgpu::TextureDescriptor textureDesc;
         textureDesc.dimension = wgpu::TextureDimension::_2D;
         textureDesc.size = { 256, 256, 1 };
-        textureDesc.mipLevelCount = 1;
+        textureDesc.mipLevelCount = 8;
         textureDesc.sampleCount = 1;
         textureDesc.format = wgpu::TextureFormat::RGBA8Unorm;
         textureDesc.usage = wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::CopyDst;
@@ -492,39 +497,106 @@ namespace crg::renderer {
         textureViewDesc.baseArrayLayer = 0;
         textureViewDesc.arrayLayerCount = 1;
         textureViewDesc.baseMipLevel = 0;
-        textureViewDesc.mipLevelCount = 1;
+        textureViewDesc.mipLevelCount = 8;
         textureViewDesc.dimension = wgpu::TextureViewDimension::_2D;
         textureViewDesc.format = textureDesc.format;
         m_textureView = m_texture.createView(textureViewDesc);
 
 
-        // Create image data
-        std::vector<uint8_t> pixels(4 * textureDesc.size.width * textureDesc.size.height);
-        for (uint32_t i = 0; i < textureDesc.size.width; ++i) {
-            for (uint32_t j = 0; j < textureDesc.size.height; ++j) {
-                uint8_t *p = &pixels[4 * (j * textureDesc.size.width + i)];
-                p[0] = (i / 16) % 2 == (j / 16) % 2 ? 255 : 0; // r
-                p[1] = ((i - j) / 16) % 2 == 0 ? 255 : 0; // g
-                p[2] = ((i + j) / 16) % 2 == 0 ? 255 : 0; // b
-                p[3] = 255; // a
-            }
-        }
 
-        wgpu::TexelCopyTextureInfo destination;
-        destination.texture = m_texture;
-        destination.mipLevel = 0;
-        destination.origin = { 0, 0, 0 };
-        destination.aspect = wgpu::TextureAspect::All;
+        // Create a sampler
+        wgpu::SamplerDescriptor samplerDesc;
+        samplerDesc.addressModeU = wgpu::AddressMode::Repeat;
+        samplerDesc.addressModeV = wgpu::AddressMode::MirrorRepeat;
+        samplerDesc.addressModeW = wgpu::AddressMode::ClampToEdge;
+        samplerDesc.magFilter = wgpu::FilterMode::Linear;
+        samplerDesc.minFilter = wgpu::FilterMode::Linear;
+        samplerDesc.mipmapFilter = wgpu::MipmapFilterMode::Linear;
+        samplerDesc.lodMinClamp = 0.0f;
+        samplerDesc.lodMaxClamp = 8.0f;
+        samplerDesc.compare = wgpu::CompareFunction::Undefined;
+        samplerDesc.maxAnisotropy = 1;
+        m_sampler = m_device.createSampler(samplerDesc);
 
-        wgpu::TexelCopyBufferLayout source;
-        source.offset = 0;
-        source.bytesPerRow = 4 * textureDesc.size.width;
-        source.rowsPerImage = textureDesc.size.height;
 
-        m_queue.writeTexture(destination, pixels.data(), pixels.size(), source, textureDesc.size);
 
-        desc.depthStencil = &depthStencilState;
+        // // Create image data
+        // std::vector<uint8_t> pixels(4 * textureDesc.size.width * textureDesc.size.height);
+        // for (uint32_t i = 0; i < textureDesc.size.width; ++i) {
+        //     for (uint32_t j = 0; j < textureDesc.size.height; ++j) {
+        //         uint8_t *p = &pixels[4 * (j * textureDesc.size.width + i)];
+        //         p[0] = (i / 16) % 2 == (j / 16) % 2 ? 255 : 0; // r
+        //         p[1] = ((i - j) / 16) % 2 == 0 ? 255 : 0; // g
+        //         p[2] = ((i + j) / 16) % 2 == 0 ? 255 : 0; // b
+        //         p[3] = 255; // a
+        //     }
+        // }
 
+        // wgpu::TexelCopyTextureInfo destination;
+        // destination.texture = m_texture;
+        // destination.mipLevel = 0;
+        // destination.origin = { 0, 0, 0 };
+        // destination.aspect = wgpu::TextureAspect::All;
+
+        // wgpu::TexelCopyBufferLayout source;
+        // source.offset = 0;
+        // source.bytesPerRow = 4 * textureDesc.size.width;
+        // source.rowsPerImage = textureDesc.size.height;
+
+        // m_queue.writeTexture(destination, pixels.data(), pixels.size(), source, textureDesc.size);
+
+
+        // Create and upload texture data, one mip level at a time
+    	wgpu::TexelCopyTextureInfo destination;
+    	destination.texture = m_texture;
+    	destination.origin = { 0, 0, 0 };
+    	destination.aspect = wgpu::TextureAspect::All;
+
+    	wgpu::TexelCopyBufferLayout source;
+    	source.offset = 0;
+
+    	wgpu::Extent3D mipLevelSize = textureDesc.size;
+    	std::vector<uint8_t> previousLevelPixels;
+    	for (uint32_t level = 0; level < textureDesc.mipLevelCount; ++level) {
+    		// Create image data
+    		std::vector<uint8_t> pixels(4 * mipLevelSize.width * mipLevelSize.height);
+    		for (uint32_t i = 0; i < mipLevelSize.width; ++i) {
+    			for (uint32_t j = 0; j < mipLevelSize.height; ++j) {
+    				uint8_t* p = &pixels[4 * (j * mipLevelSize.width + i)];
+    				if (level == 0) {
+    					p[0] = (i / 16) % 2 == (j / 16) % 2 ? 255 : 0; // r
+    					p[1] = ((i - j) / 16) % 2 == 0 ? 255 : 0; // g
+    					p[2] = ((i + j) / 16) % 2 == 0 ? 255 : 0; // b
+    				} else {
+    					// Get the corresponding 4 pixels from the previous level
+    					uint8_t* p00 = &previousLevelPixels[4 * ((2 * j + 0) * (2 * mipLevelSize.width) + (2 * i + 0))];
+    					uint8_t* p01 = &previousLevelPixels[4 * ((2 * j + 0) * (2 * mipLevelSize.width) + (2 * i + 1))];
+    					uint8_t* p10 = &previousLevelPixels[4 * ((2 * j + 1) * (2 * mipLevelSize.width) + (2 * i + 0))];
+    					uint8_t* p11 = &previousLevelPixels[4 * ((2 * j + 1) * (2 * mipLevelSize.width) + (2 * i + 1))];
+    					// Average
+    					p[0] = (p00[0] + p01[0] + p10[0] + p11[0]) / 4;
+    					p[1] = (p00[1] + p01[1] + p10[1] + p11[1]) / 4;
+    					p[2] = (p00[2] + p01[2] + p10[2] + p11[2]) / 4;
+    				}
+    				p[3] = 255; // a
+    			}
+    		}
+
+    		// Change this to the current level
+    		destination.mipLevel = level;
+
+    		// Compute from the mip level size
+    		source.bytesPerRow = 4 * mipLevelSize.width;
+    		source.rowsPerImage = mipLevelSize.height;
+
+    		m_queue.writeTexture(destination, pixels.data(), pixels.size(), source, mipLevelSize);
+
+    		// The size of the next mip level:
+    		// (see https://www.w3.org/TR/webgpu/#logical-miplevel-specific-texture-extent)
+    		mipLevelSize.width /= 2;
+    		mipLevelSize.height /= 2;
+    		previousLevelPixels = std::move(pixels);
+    	}
 
         m_pipeline = m_device.createRenderPipeline(desc);
         shaderModule.release();
@@ -533,7 +605,7 @@ namespace crg::renderer {
 
 
     void Renderer::createBindGroupLayout() {
-        std::vector<wgpu::BindGroupLayoutEntry> bindingLayoutEntries(2);
+        std::vector<wgpu::BindGroupLayoutEntry> bindingLayoutEntries(3);
         auto& bindingLayout = bindingLayoutEntries[0];
         bindingLayout.binding = 0;  // Binding(0) in wgsl
         bindingLayout.visibility = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment;
@@ -548,6 +620,12 @@ namespace crg::renderer {
         textureBindingLayout.texture.viewDimension = wgpu::TextureViewDimension::_2D;
 
 
+        auto& samplerBindingLayout = bindingLayoutEntries[2];
+        samplerBindingLayout.binding = 2;
+        samplerBindingLayout.visibility = wgpu::ShaderStage::Fragment;
+        samplerBindingLayout.sampler.type = wgpu::SamplerBindingType::Filtering;
+
+
         wgpu::BindGroupLayoutDescriptor bindGroupLayoutDesc{};
         bindGroupLayoutDesc.entryCount = (uint32_t)bindingLayoutEntries.size();
         bindGroupLayoutDesc.entries = bindingLayoutEntries.data();
@@ -558,7 +636,7 @@ namespace crg::renderer {
 
     void Renderer::initializeBindings() {
         // Create a binding
-    	std::vector<wgpu::BindGroupEntry> bindings(2);
+    	std::vector<wgpu::BindGroupEntry> bindings(3);
     	bindings[0].binding = 0;
     	bindings[0].buffer = m_uniform->getBuffer();
     	bindings[0].offset = 0;
@@ -566,6 +644,10 @@ namespace crg::renderer {
 
         bindings[1].binding = 1;
         bindings[1].textureView = m_textureView;
+
+        bindings[2].binding = 2;
+        bindings[2].sampler = m_sampler;
+
 
     	// A bind group contains one or multiple bindings
     	wgpu::BindGroupDescriptor bindGroupDesc{};
@@ -636,10 +718,17 @@ namespace crg::renderer {
 
 
 
-        auto uniformData = uniformOps();
+        // auto uniformData = uniformOps();
 
-        m_uniform->update(uniformData);
+        // LOG_CORE_ERROR("Loop!");
 
+        float viewZ = glm::mix(0.0f, 0.25f, cos(2 * PI * glfwGetTime() / 4) * 0.5 + 0.5);
+        LOG_CORE_INFO("view z: {}", viewZ);
+        glm::mat4x4 viewMatrix = glm::lookAt(glm::vec3(-0.5f, -1.5f, viewZ + 0.25f), glm::vec3(0.0f), glm::vec3(0, 0, 1));
+
+        m_uniform->writeField(&viewMatrix, offsetof(MyUniform, viewMatrix));
+
+        // m_uniform->update(uniformData);
 
         uint32_t offset = 0;
         renderPass.setBindGroup(0, m_bindGroup, 1, &offset);

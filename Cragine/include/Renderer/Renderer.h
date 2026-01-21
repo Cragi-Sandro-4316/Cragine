@@ -80,6 +80,7 @@ namespace crg::renderer {
         wgpu::BindGroup m_bindGroup;
         wgpu::PipelineLayout m_layout;
 
+        wgpu::Sampler m_sampler;
         wgpu::Texture m_texture;
         wgpu::TextureView m_textureView;
 
