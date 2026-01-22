@@ -26,6 +26,7 @@ target_include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/deps/vma/include
     ${CMAKE_CURRENT_SOURCE_DIR}/deps/imgui
     ${CMAKE_CURRENT_SOURCE_DIR}/deps/tiny_obj_loader
+    ${CMAKE_CURRENT_SOURCE_DIR}/deps/image_loader
 )
 
 add_subdirectory(deps/wgpu)
