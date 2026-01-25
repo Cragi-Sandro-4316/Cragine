@@ -42,6 +42,15 @@ namespace crg::renderer {
         wgpu::Buffer getBuffer() const { return m_buffer; }
         uint32_t getStride() const { return m_stride; }
 
+
+        // releases all resources
+        void terminate() {
+            m_buffer.destroy();
+            m_buffer.release();
+            m_stride = 0;
+            m_maxInstances = 0;
+        }
+
     private:
 
         uint32_t getMinAlignment() {

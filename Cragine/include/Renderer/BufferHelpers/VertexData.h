@@ -20,7 +20,7 @@ namespace crg::renderer {
             wgpu::Device& device,
             wgpu::Queue& queue,
             std::vector<VertexAttributes> vertexData,
-            const wgpu::VertexBufferLayout& layout = wgpu::VertexBufferLayout{},
+            const wgpu::VertexBufferLayout& layout,
             wgpu::BufferUsage usage = wgpu::BufferUsage::Vertex | wgpu::BufferUsage::CopyDst
         ) :
         m_device(device),
@@ -77,6 +77,14 @@ namespace crg::renderer {
 
         std::vector<VertexAttributes>& getVertexData() {
             return m_vertexData;
+        }
+
+        // Releases all resources
+        void terminate() {
+            m_vertexBuffer.destroy();
+            m_vertexBuffer.release();
+            m_vertexData.clear();
+
         }
 
     private:

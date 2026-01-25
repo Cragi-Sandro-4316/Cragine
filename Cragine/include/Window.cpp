@@ -19,7 +19,7 @@ namespace crg {
         LOG_CORE_TRACE("Window Created!");
         glfwInit();
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-        glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE); // TODO: change this
+        glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE); // TODO: change this
 
         m_window = glfwCreateWindow(
             m_width,

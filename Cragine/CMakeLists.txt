@@ -17,6 +17,8 @@ TARGET_COMPILE_DEFINITIONS(
     RESOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../assets"
 )
 
+
+
 # Add spdlog include dir
 target_include_directories(
     Cragine
@@ -37,6 +39,8 @@ TARGET_COMPILE_DEFINITIONS(
     glfw3webgpu
     PUBLIC GLFW_EXPOSE_NATIVE_WAYLAND
 )
+
+
 
 
 # Link glfw to your Engine library
