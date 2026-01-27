@@ -1,8 +1,13 @@
 #include "App.h"
+#include "Commands/Commands.h"
+#include "Ecs/Components/QueryParam.h"
+#include "Ecs/Components/QueryResult.h"
+#include "Ecs/Entities/Entity.h"
 #include "Ecs/Systems/SystemScheduler.h"
 #include "utils/Logger.h"
 
 #include <GLFW/glfw3.h>
+#include <string>
 
 namespace crg {
 
@@ -19,13 +24,27 @@ namespace crg {
         );
     }
 
+    struct Sample {
+        std::string str;
+    };
 
+    void spawnCam (ecs::Commands commands) {
+        commands.get().spawnEntity<Sample>({
+            Sample{
+                .str = "gigie"
+            }
+        });
+    }
 
     void App::run() {
 
         LOG_CORE_TRACE("App running");
 
+        addSystem(ecs::Schedule::Startup, spawnCam);
+
+
         int i = 0;
+        m_systemScheduler.startup(m_ecsWorld);
         while(!glfwWindowShouldClose(m_window->getGlfwWindow())) {
             glfwPollEvents();
             // LOG_CORE_TRACE("Frame: {}", i);

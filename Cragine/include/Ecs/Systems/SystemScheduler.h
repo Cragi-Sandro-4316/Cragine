@@ -45,6 +45,12 @@ namespace crg::ecs {
             }
         }
 
+        void startup(World& world) {
+            for (const auto& system : m_startupSystems) {
+                system->run(world);
+            }
+        }
+
     private:
 
         World& m_world;
