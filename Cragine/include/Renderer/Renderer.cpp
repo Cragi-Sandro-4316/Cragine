@@ -286,14 +286,13 @@ namespace crg::renderer {
         desc.vertex.buffers = &m_vertexLayout;
 
         LOG_CORE_INFO("Loading shader...");
-        wgpu::ShaderModule shaderModule = ModelLoader::loadShader(RESOURCE_DIR"/shader.wgsl", m_device);
-        LOG_CORE_INFO("shader module: {}", (void*)shaderModule);
-        if (!shaderModule) {
+        LOG_CORE_INFO("shader module: {}", (void*)m_shaderModule);
+        if (!m_shaderModule) {
             LOG_CORE_ERROR("Could not load shader");
             return false;
         }
 
-        desc.vertex.module = shaderModule;
+        desc.vertex.module = m_shaderModule;
         desc.vertex.entryPoint = wgpu::StringView("vs_main");
         desc.vertex.constantCount = 0;
         desc.vertex.constants = nullptr;
@@ -304,7 +303,7 @@ namespace crg::renderer {
         desc.primitive.cullMode = wgpu::CullMode::None;
 
         wgpu::FragmentState fragState{};
-        fragState.module = shaderModule;
+        fragState.module = m_shaderModule;
         fragState.entryPoint = wgpu::StringView("fs_main");
         fragState.constantCount = 0;
         fragState.constants = nullptr;
@@ -359,7 +358,7 @@ namespace crg::renderer {
 
 
         m_pipeline = m_device.createRenderPipeline(desc);
-        shaderModule.release();
+        m_shaderModule.release();
         return true;
     }
 
@@ -664,6 +663,7 @@ namespace crg::renderer {
         encoder.release();
 
         m_surface.present();
+        wgpuTextureRelease(surfaceTexture.texture);
         targetView.release();
         m_device.poll(false, nullptr);
     }

@@ -4,6 +4,8 @@
 #include "Ecs/Components/QueryResult.h"
 #include "Ecs/Entities/Entity.h"
 #include "Ecs/Systems/SystemScheduler.h"
+#include "InputModule/InputManager.h"
+#include "Resources/ResourceParam.h"
 #include "utils/Logger.h"
 
 #include <GLFW/glfw3.h>
@@ -28,19 +30,27 @@ namespace crg {
         std::string str;
     };
 
-    void spawnCam (ecs::Commands commands) {
-        commands.get().spawnEntity<Sample>({
-            Sample{
-                .str = "gigie"
-            }
-        });
+    void spawnCam (
+        ecs::Res<InputManager> inputManager,
+        ecs::Commands commands
+    ) {
+
+        LOG_CORE_INFO("Mouse position: x {}, y {}",
+            inputManager.get().mousePosition().first,
+            inputManager.get().mousePosition().second
+        );
+        // commands.get().spawnEntity<Sample>({
+        //     Sample{
+        //         .str = "gigie"
+        //     }
+        // });
     }
 
     void App::run() {
 
         LOG_CORE_TRACE("App running");
 
-        addSystem(ecs::Schedule::Startup, spawnCam);
+        addSystem(ecs::Schedule::Update, spawnCam);
 
 
         int i = 0;

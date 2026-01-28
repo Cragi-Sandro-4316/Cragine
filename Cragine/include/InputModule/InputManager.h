@@ -70,6 +70,13 @@ namespace crg {
             return m_keyStates[m_current][index] && !m_keyStates[!m_current][index];
         }
 
+        std::pair<double, double> mouseMovement() const {
+            return m_mouseMovement;
+        }
+
+        std::pair<double, double> mousePosition() const {
+            return m_mousePosition;
+        }
 
     private:
 
@@ -92,6 +99,15 @@ namespace crg {
 
             }
 
+            m_mouseMovement = {
+                - m_mousePosition.first,
+                - m_mousePosition.second
+            };
+
+            glfwGetCursorPos(m_window, &m_mousePosition.first, &m_mousePosition.second);
+
+            m_mouseMovement.first += m_mousePosition.first;
+            m_mouseMovement.second += m_mousePosition.second;
 
         }
 
@@ -101,6 +117,10 @@ namespace crg {
         mutable std::unordered_map<KeyCode, size_t> m_keyIndices;
 
         mutable std::vector<bool> m_keyStates[2];
+
+        mutable std::pair<double, double> m_mousePosition;
+
+        mutable std::pair<double, double> m_mouseMovement;
 
         bool m_current = true;
 
