@@ -2,7 +2,7 @@
 #include <bit>
 #include <webgpu/webgpu.hpp>
 
-#define TINYOBJLOADER_IMPLEMENTATION
+// #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
 
 #define STB_IMAGE_IMPLEMENTATION

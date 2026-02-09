@@ -3,7 +3,7 @@
 #include "InputModule/InputModule.h"
 #include "Module/Module.h"
 #include "Core/App.h"
-#include "Renderer/RendererModule.h"
+#include "Rendererr/RendererModule.h"
 
 namespace crg {
     class DefaultModules : public Module {

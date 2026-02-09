@@ -5,6 +5,7 @@
 #include "Ecs/Entities/Entity.h"
 #include "Ecs/Systems/SystemScheduler.h"
 #include "InputModule/InputManager.h"
+#include "Rendererr/Components/MeshHandle.h"
 #include "Resources/ResourceParam.h"
 #include "utils/Logger.h"
 
@@ -39,18 +40,19 @@ namespace crg {
             inputManager.get().mousePosition().first,
             inputManager.get().mousePosition().second
         );
-        // commands.get().spawnEntity<Sample>({
-        //     Sample{
-        //         .str = "gigie"
-        //     }
-        // });
+        commands.get().spawnEntity<MeshHandle>({
+            MeshHandle{
+                .path = "/pyramid.obj"
+            }
+        });
+
     }
 
     void App::run() {
 
         LOG_CORE_TRACE("App running");
 
-        addSystem(ecs::Schedule::Update, spawnCam);
+        addSystem(ecs::Schedule::Startup, spawnCam);
 
 
         int i = 0;

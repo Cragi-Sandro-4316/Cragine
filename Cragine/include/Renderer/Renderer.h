@@ -128,8 +128,6 @@ namespace crg::renderer {
     private:
         const float PI = 3.14159265358979323846f;
 
-
-
         struct MyUniform {
 
             glm::mat4x4 projectionMatrix;
