@@ -5,6 +5,8 @@
 #include <fstream>
 #include <webgpu/webgpu.hpp>
 
+#include <stb_image.h>
+
 namespace crg::renderer {
     struct MeshData;
 
@@ -37,6 +39,20 @@ namespace crg::renderer {
             shaderDesc.nextInChain = &shaderCodeDesc.chain;
             return device.createShaderModule(shaderDesc);
         }
+
+        static wgpu::Texture loadTexture(
+            const std::filesystem::path& path,
+            wgpu::Device device,
+            wgpu::TextureView* pTextureView
+        );
+
+        static void writeMipMaps(
+            wgpu::Device device,
+            wgpu::Texture texture,
+            wgpu::Extent3D textureSize,
+            [[maybe_unused]] uint32_t mipLevelCount, // not used yet
+            const unsigned char* pixelData
+        );
 
     private:
 

@@ -1,18 +1,25 @@
 #pragma once
 
 #include "Ecs/Components/QueryResult.h"
+#include "Renderer/utils/helpers.h"
 #include "Rendererr/Components/MeshPool.h"
+#include "Rendererr/Components/ShaderManager.h"
+#include "Rendererr/Components/UniformData.h"
 #include "Rendererr/RenderContext.h"
+#include "Rendererr/utils/Uniform.h"
+#include "Rendererr/utils/VertexData.h"
 #include "Resources/ResourceParam.h"
 #include "utils/Logger.h"
+#include <array>
+#include <cstdint>
 #include <glm/ext/vector_float3.hpp>
+#include <memory>
 #include <webgpu.h>
 #include <webgpu/webgpu.hpp>
 
 namespace crg::renderer {
 
-    struct MeshHandle;
-    struct MeshPool;
+
 
     struct FrameData {
         wgpu::SurfaceTexture surfaceTexture;
@@ -21,8 +28,10 @@ namespace crg::renderer {
         wgpu::CommandEncoder encoder;
 
         struct RenderItem {
-            wgpu::Buffer vertexBuffer;
             uint32_t vertexCount = 0;
+            wgpu::BindGroup bindGroup;
+            std::unique_ptr<Uniform<UniformData>> uniformBuffer;
+            std::unique_ptr<VertexBuffer> vertexBuffer;
         };
 
         std::vector<RenderItem> items;
@@ -67,13 +76,28 @@ namespace crg::renderer {
 
     };
 
+
+
+    inline uint32_t ceilToNextMultiple(uint32_t value, uint32_t step) {
+        uint32_t divideAndCeil = value / step + (value % step == 0 ? 0 : 1);
+        return step * divideAndCeil;
+    }
+
+    inline uint32_t getMinAlignment(wgpu::Device& device) {
+        wgpu::Limits limits{};
+        device.getLimits(&limits);
+        return static_cast<uint32_t>(limits.minUniformBufferOffsetAlignment);
+    }
+
     inline void extractData(
         ecs::ResMut<FrameData> frameDataRes,
+        ecs::Res<ShaderManager> shaderManagerRes,
         ecs::ResMut<RenderContext> renderContextRes,
         ecs::Res<MeshPool> meshPoolRes
     ) {
         auto& frameData = frameDataRes.get();
         auto& meshPool = meshPoolRes.get();
+        auto& shaderManager = shaderManagerRes.get();
         auto& renderContext = renderContextRes.get();
 
         frameData.items.clear();
@@ -85,17 +109,56 @@ namespace crg::renderer {
         vertDesc.usage = wgpu::BufferUsage::Vertex | wgpu::BufferUsage::CopyDst;
         vertDesc.mappedAtCreation = false;
 
+        wgpu::BufferDescriptor uniformDesc{};
+        vertDesc.size = ceilToNextMultiple(sizeof(UniformData), getMinAlignment(renderContext.device));
+        vertDesc.usage = wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst;
+        vertDesc.mappedAtCreation = false;
 
         for (uint32_t i = 0; i < frameData.items.size(); i++) {
-            frameData.items[i].vertexBuffer = renderContext.device.createBuffer(vertDesc);
+            // Init buffers
+            // frameData.items[i].vertexBuffer = renderContext.device.createBuffer(vertDesc);
 
-            renderContext.queue.writeBuffer(
-                frameData.items[i].vertexBuffer,
-                0,
-                &meshPool.meshes()[i].attributes,
-                meshPool.meshes().size() * sizeof(VertexAttributes)
+            auto& mesh = meshPool.meshes()[i];
+
+            frameData.items[i].vertexBuffer = std::make_unique<VertexBuffer>(
+                renderContext.device,
+                renderContext.queue,
+                mesh.attributes
             );
+            LOG_CORE_INFO("Created vertex buffer");
+
+            frameData.items[i].uniformBuffer = std::make_unique<Uniform<UniformData>>(
+                renderContext.device,
+                renderContext.queue
+            );
+            LOG_CORE_INFO("Created uniform buffer");
+
             frameData.items[i].vertexCount = meshPool.meshes()[i].attributes.size();
+
+            UniformData uniform{};
+
+            frameData.items[i].uniformBuffer->update(uniform);
+
+            // make bind group
+            std::array<wgpu::BindGroupEntry, 3> bindings;
+
+            bindings[0].binding = 0;
+            bindings[0].buffer = frameData.items[i].uniformBuffer->getBuffer();
+            bindings[0].offset = 0;
+            bindings[0].size = sizeof(UniformData);
+
+            bindings[1].binding = 1;
+           	bindings[1].textureView = shaderManager.getShader(0).textureViews[0];
+
+           	bindings[2].binding = 2;
+           	bindings[2].sampler = renderContext.sampler;
+
+            wgpu::BindGroupDescriptor bindGroupDesc;
+           	bindGroupDesc.layout = shaderManager.getShader(0).bindGroupLayout;
+           	bindGroupDesc.entryCount = (uint32_t)bindings.size();
+           	bindGroupDesc.entries = bindings.data();
+           	frameData.items[i].bindGroup = renderContext.device.createBindGroup(bindGroupDesc);
+
         }
     }
 
@@ -144,10 +207,11 @@ namespace crg::renderer {
 
         renderPass.setPipeline(renderContext.pipeline);
 
-        // for (auto& item : frameData.items) {
-        //     renderPass.setVertexBuffer(0, item.vertexBuffer, 0, item.vertexBuffer.getSize());
-        //     renderPass.draw(item.vertexCount, 1, 0, 0);
-        // }
+        for (auto& item : frameData.items) {
+            renderPass.setBindGroup(0, item.bindGroup, 0, nullptr);
+            renderPass.setVertexBuffer(0, item.vertexBuffer->vertexBuffer(), 0, item.vertexBuffer->vertexBuffer().getSize());
+            renderPass.draw(item.vertexCount, 1, 0, 0);
+        }
 
         renderPass.end();
         renderPass.release();

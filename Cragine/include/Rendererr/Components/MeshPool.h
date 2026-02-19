@@ -22,28 +22,6 @@ namespace crg::renderer {
     };
 
     struct MeshData {
-        // std::vector<glm::vec3> positions;
-        // std::vector<glm::vec3> normals;
-        // std::vector<glm::vec3> colors;
-        // std::vector<glm::vec2> uvs;
-
-        // inline void clear() {
-        //     positions.clear();
-        //     normals.clear();
-        //     colors.clear();
-        //     uvs.clear();
-        // }
-
-        // inline void resize(size_t size) {
-        //     positions.resize(size);
-        //     normals.resize(size);
-        //     colors.resize(size);
-        //     uvs.resize(size);
-        // }
-
-        // inline size_t size() {
-        //     return positions.size();
-        // }
 
         std::vector<VertexAttributes> attributes;
 
