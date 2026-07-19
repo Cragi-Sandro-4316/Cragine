@@ -11,6 +11,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Set opt level
 set(CMAKE_CXX_FLAGS_RELEASE "-Wall -Os")
 
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
+
 include_directories(Cragine/include)
 
 # Add Engine project

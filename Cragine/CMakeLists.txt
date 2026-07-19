@@ -34,10 +34,12 @@ target_include_directories(
 add_subdirectory(deps/wgpu)
 add_subdirectory(deps/wgpuGlfw)
 add_subdirectory(deps/glm)
+add_subdirectory(deps/glfw)
 
 TARGET_COMPILE_DEFINITIONS(
     glfw3webgpu
     PUBLIC GLFW_EXPOSE_NATIVE_WAYLAND
+    GLFW_INCLUDE_NONE
 )
 
 
@@ -49,4 +51,5 @@ target_link_libraries(
     glfw
     webgpu
     glfw3webgpu
+    glm::glm
 )

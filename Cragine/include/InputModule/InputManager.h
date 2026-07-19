@@ -16,7 +16,7 @@ namespace crg {
         : m_window(window) {
             LOG_CORE_INFO("Creating InputManager. {}", (void*) this);
 
-            KeyCode allKeys[] = {
+            constexpr KeyCode allKeys[] = {
                 KeyCode::KeySpace,KeyCode::KeyApostrophe,KeyCode::KeyComma,KeyCode::KeyMinus,KeyCode::KeyPeriod,KeyCode::KeySlash,KeyCode::KeyD0,
                 KeyCode::KeyD1,KeyCode::KeyD2,KeyCode::KeyD3,KeyCode::KeyD4,KeyCode::KeyD5,KeyCode::KeyD6,KeyCode::KeyD7,
                 KeyCode::KeyD8,KeyCode::KeyD9,KeyCode::KeySemicolon,KeyCode::KeyEqual,KeyCode::KeyA,KeyCode::KeyB,
@@ -37,7 +37,7 @@ namespace crg {
                 KeyCode::KeyRightShift,KeyCode::KeyRightControl,KeyCode::KeyRightAlt,KeyCode::KeyRightSuper,KeyCode::KeyMenu,KeyCode::KeyLast,
             };
 
-            size_t NUM_KEYS = sizeof(allKeys) / sizeof(allKeys[0]);
+            constexpr size_t NUM_KEYS = sizeof(allKeys) / sizeof(allKeys[0]);
 
             for (size_t i = 0; i < NUM_KEYS; i++) {
                 m_keyIndices[allKeys[i]] = i;

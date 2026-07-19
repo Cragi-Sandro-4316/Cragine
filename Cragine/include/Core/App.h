@@ -1,12 +1,13 @@
 #pragma once
-#include "Ecs/Systems/SystemScheduler.h"
-#include "Ecs/World.h"
+#include "Ecs/Ecs.h"
 #include "Module/Module.h"
 #include "Window.h"
 #include <memory>
 
 
 namespace crg {
+
+
     class App {
     public:
         App();
@@ -17,9 +18,10 @@ namespace crg {
 
         void run();
 
+
+
         App& addModule(Module&& module) {
             module.build(*this);
-
 
             return *this;
         }
@@ -34,12 +36,12 @@ namespace crg {
 
         template <typename R, typename... Args>
         void addSystem(const ecs::Schedule schedule, R (*system)(Args...)) {
-            m_systemScheduler.addSystem(schedule, system);
+            m_world.addSystem(schedule, system);
         }
 
         template<typename ResourceName, typename... Args>
         void addResource(Args&&... args) {
-            m_ecsWorld.getResourceManager().newResource<ResourceName>(
+            m_world.getResourceManager().registerResource<ResourceName>(
                 std::forward<Args>(args)...
             );
         }
@@ -50,9 +52,9 @@ namespace crg {
 
     private:
 
-        ecs::World m_ecsWorld;
+        ecs::World m_world;
 
-        ecs::SystemScheduler m_systemScheduler{m_ecsWorld};
+        // ecs::SystemScheduler m_systemScheduler{m_ecsWorld};
 
         std::unique_ptr<Window> m_window;
 

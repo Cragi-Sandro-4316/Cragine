@@ -1,0 +1,161 @@
+#include "Window.h"
+#define WEBGPU_CPP_IMPLEMENTATION
+
+#include "RenderContext.h"
+#include "glfw3webgpu.h"
+#include "utils/Logger.h"
+
+namespace crg::renderer {
+
+    RenderContext::RenderContext(Window* window)
+    : window(window) {
+        if (!initInstance()) return;
+
+        if (!initSurface()) return;
+
+        getAdapter();
+
+        initDevice();
+        queue = device.getQueue();
+
+        surface.getCapabilities(adapter, &capabilities);
+
+
+        surfaceFormat = capabilities.formats[0];
+
+
+        config = wgpu::SurfaceConfiguration{};
+        config.format = capabilities.formats[0];
+        config.nextInChain = nullptr;
+        config.width = window->getWidth();
+        config.height = window->getHeight();
+
+        config.viewFormatCount = 0;
+        config.viewFormats = nullptr;
+
+        config.usage = WGPUTextureUsage_RenderAttachment;
+        config.device = device;
+        config.presentMode = WGPUPresentMode_Fifo;
+        config.alphaMode = WGPUCompositeAlphaMode_Auto;
+
+        surface.configure(config);
+
+        LOG_CORE_INFO("Created gpu handler");
+    }
+
+
+    bool RenderContext::initInstance() {
+        wgpu::InstanceDescriptor desc{};
+        desc.nextInChain = nullptr;
+
+        instance = wgpu::createInstance(desc);
+
+        if (!instance) {
+            LOG_CORE_ERROR("Could not initialize wgpu");
+            return false;
+        }
+        return true;
+    }
+
+    bool RenderContext::initSurface() {
+        surface = glfwCreateWindowWGPUSurface(instance, window->getGlfwWindow());
+
+       if (!surface) {
+           LOG_CORE_ERROR("Could not initialize Surface");
+           return false;
+       }
+       return true;
+    }
+
+    void RenderContext::getAdapter() {
+        wgpu::RequestAdapterOptions adaptOpt{};
+        adaptOpt.nextInChain = nullptr;
+        adaptOpt.compatibleSurface = surface;
+
+        adapter = instance.requestAdapter(adaptOpt);
+    }
+
+    wgpu::Limits RenderContext::getRequiredLimits() {
+        wgpu::Limits supportedLimits;
+        adapter.getLimits(&supportedLimits);
+
+        return supportedLimits;
+    }
+
+    void RenderContext::initDevice() {
+        auto limits = getRequiredLimits();
+
+        wgpu::DeviceDescriptor deviceDescriptor{};
+        deviceDescriptor.label = WGPUStringView("Device");
+        deviceDescriptor.nextInChain = nullptr;
+        deviceDescriptor.requiredFeatureCount = 0;
+        deviceDescriptor.requiredLimits = &limits;
+        deviceDescriptor.defaultQueue.label = WGPUStringView("Default queue");
+        deviceDescriptor.defaultQueue.nextInChain = nullptr;
+
+        auto lostCallback = [](WGPUDeviceImpl* const *, WGPUDeviceLostReason reason, WGPUStringView message, void*, void*) {
+            LOG_CORE_ERROR("Device lost: reason {}", (char*)reason);
+            if (message.data) {
+                LOG_CORE_ERROR("{}", message.data);
+            }
+        };
+
+        wgpu::DeviceLostCallbackInfo callbackInfo{};
+        callbackInfo.nextInChain = nullptr;
+        callbackInfo.mode = WGPUCallbackMode_WaitAnyOnly;
+        callbackInfo.callback = lostCallback;
+
+        deviceDescriptor.deviceLostCallbackInfo = callbackInfo;
+
+        auto errorCallback = [](WGPUDeviceImpl *const *, WGPUErrorType err, WGPUStringView msg, void *, void *){
+            LOG_CORE_ERROR("Device lost: reason {}", (int)err);
+            if (msg.data) {
+                LOG_CORE_ERROR("{}", msg.data);
+            }
+        };
+        wgpu::UncapturedErrorCallbackInfo errorCallbackInfo{};
+        errorCallbackInfo.nextInChain = nullptr;
+        errorCallbackInfo.callback = errorCallback;
+
+
+        device = adapter.requestDevice(deviceDescriptor);
+    }
+
+
+    // void GpuHandler::initDepthBuffer() {
+    //     // Create the depth texture
+    //    	wgpu::TextureDescriptor depthTextureDesc;
+    //    	depthTextureDesc.dimension = wgpu::TextureDimension::_2D;
+    //    	depthTextureDesc.format = depthTextureFormat;
+    //    	depthTextureDesc.mipLevelCount = 1;
+    //    	depthTextureDesc.sampleCount = 1;
+    //    	depthTextureDesc.size = {
+    //         window->getWidth(),
+    //         window->getHeight(),
+    //         1
+    //     };
+    //    	depthTextureDesc.usage = wgpu::TextureUsage::RenderAttachment;
+    //    	depthTextureDesc.viewFormatCount = 1;
+    //    	depthTextureDesc.viewFormats = (WGPUTextureFormat*)&depthTextureFormat;
+    //    	depthTexture = device.createTexture(depthTextureDesc);
+    //    	std::cout << "Depth texture: " << depthTexture << std::endl;
+
+    //    	// Create the view of the depth texture manipulated by the rasterizer
+    //    	wgpu::TextureViewDescriptor depthTextureViewDesc;
+    //    	depthTextureViewDesc.aspect = wgpu::TextureAspect::DepthOnly;
+    //    	depthTextureViewDesc.baseArrayLayer = 0;
+    //    	depthTextureViewDesc.arrayLayerCount = 1;
+    //    	depthTextureViewDesc.baseMipLevel = 0;
+    //    	depthTextureViewDesc.mipLevelCount = 1;
+    //    	depthTextureViewDesc.dimension = wgpu::TextureViewDimension::_2D;
+    //    	depthTextureViewDesc.format = depthTextureFormat;
+    //    	depthView = depthTexture.createView(depthTextureViewDesc);
+    //    	std::cout << "Depth texture view: " << depthView << std::endl;
+    // }
+
+
+
+
+
+
+}

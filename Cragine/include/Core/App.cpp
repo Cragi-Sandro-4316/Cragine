@@ -1,16 +1,12 @@
 #include "App.h"
-#include "Commands/Commands.h"
-#include "Ecs/Components/QueryParam.h"
-#include "Ecs/Components/QueryResult.h"
-#include "Ecs/Entities/Entity.h"
-#include "Ecs/Systems/SystemScheduler.h"
+#include "Ecs/Ecs.h"
+#include "Ecs/Schedule.h"
+#include "Ecs/SystemParams/ResParam.h"
 #include "InputModule/InputManager.h"
-#include "Rendererr/Components/MeshHandle.h"
-#include "Resources/ResourceParam.h"
+#include "InputModule/KeyCode.h"
 #include "utils/Logger.h"
 
 #include <GLFW/glfw3.h>
-#include <string>
 
 namespace crg {
 
@@ -27,46 +23,51 @@ namespace crg {
         );
     }
 
+
     struct Sample {
-        std::string str;
+        std::string x = "sample";
     };
 
-    void spawnCam (
-        ecs::Res<InputManager> inputManager,
-        ecs::Commands commands
-    ) {
+    struct Sample2 {
+        std::string x = "sample2";
+    };
 
-        LOG_CORE_INFO("Mouse position: x {}, y {}",
-            inputManager.get().mousePosition().first,
-            inputManager.get().mousePosition().second
-        );
-        commands.get().spawnEntity<MeshHandle>({
-            MeshHandle{
-                .path = "/pyramid.obj"
-            }
-        });
+    struct Foo {
+        int x;
+    };
+
+
+    void inputTest(
+        Res<InputManager> rInputManager
+    ) {
+        auto& inputManager = rInputManager.get();
+        if (inputManager.keyPressed(KeyCode::KeyA)) {
+            LOG_CORE_INFO("Pressed A");
+        }
 
     }
 
-    void App::run() {
 
+    void App::run() {
         LOG_CORE_TRACE("App running");
 
-        addSystem(ecs::Schedule::Startup, spawnCam);
-
-
         int i = 0;
-        m_systemScheduler.startup(m_ecsWorld);
+
+        m_world.addSystem(Schedule::Update, inputTest);
+
+        m_world.runSystems(Schedule::Startup);
         while(!glfwWindowShouldClose(m_window->getGlfwWindow())) {
             glfwPollEvents();
-            // LOG_CORE_TRACE("Frame: {}", i);
 
-            m_systemScheduler.update(m_ecsWorld);
+            m_world.runCommands();
 
-            m_ecsWorld.getEventManager()->swapBuffers();
-            // break;
+            m_world.runSystems(Schedule::Update);
+
+            m_world.getEventManager()->swapBuffers();
+            m_world.getEventManager()->clearAll();
+
             // i++;
-            if (i == 1) {
+            if (i == 3) {
                 break;
             }
         }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Ecs/Systems/SystemParam.h"
+#include "ISystem.h"
 #include <functional>
 #include <tuple>
 #include <utility>
@@ -9,61 +10,40 @@ namespace crg::ecs {
 
     class World;
 
-    template<typename... Params>
-    struct SystemWrapper;
+    template<typename... Args>
+    class System : public ISystem {
+    public:
+        using FnType = std::function<void(Args...)>;
 
-    template<typename... Params>
-    struct SystemWrapper<void(Params...)> {
-        using FnType =  std::function<void(Params...)>;
-        FnType fn;
-
-        std::tuple<typename SystemParam<Params>::State...> states;
+        // Stores the function pointer and pre caches the param state
+        System(FnType function, World& world) :
+        fn(std::move(function)),
+        m_states(std::make_tuple(SystemParam<Args>::init(world)...)) {}
 
 
-        SystemWrapper(FnType function, World& world) : fn(std::move(function)) {
-            states = std::make_tuple(SystemParam<Params>::init(world)...);
+        // Invokes the system
+        virtual void run(World& world) override {
+            invoke(world, std::make_index_sequence<sizeof...(Args)>{});
         }
 
+    private:
+        std::tuple<typename SystemParam<Args>::State...> m_states;
 
+        FnType fn;
+
+
+        // Fetches the parameters and invokes the function with std::apply
         template<std::size_t... Is>
         void invoke(World& world, std::index_sequence<Is...>) {
-
             auto args = std::make_tuple(
-                SystemParam<Params>::fetch(&std::get<Is>(states), world)...
+                SystemParam<Args>::fetch(&std::get<Is>(m_states), world)...
             );
 
             std::apply(fn, args);
         }
 
-        void run(World& world) {
-            invoke(
-                world,
-                std::make_index_sequence<sizeof...(Params)>{}
-            );
 
-        }
 
     };
-
-
-    class BaseSystem {
-    public:
-        virtual ~BaseSystem() = default;
-
-        virtual void run(World& world) = 0;
-    };
-
-    template <typename... Params>
-    struct System final : public BaseSystem {
-        SystemWrapper<void(Params...)> systemImpl;
-
-        System(typename SystemWrapper<void(Params...)>::FnType func, World& world) :
-        systemImpl(std::move(func), world) {}
-
-        void run(World& world) override {
-            systemImpl.run(world);
-        }
-    };
-
 
 }

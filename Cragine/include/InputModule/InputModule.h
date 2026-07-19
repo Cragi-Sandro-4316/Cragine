@@ -1,11 +1,9 @@
 #pragma once
 
-#include "Ecs/Systems/SystemScheduler.h"
 #include "InputManager.h"
 #include "Module/Module.h"
 #include "Core/App.h"
 #include "InputManager.h"
-#include "Resources/ResourceParam.h"
 #include <GLFW/glfw3.h>
 
 namespace crg {
@@ -18,8 +16,10 @@ namespace crg {
             app.addSystem(ecs::Schedule::Update, updateInputs);
         }
 
-        static void updateInputs(ecs::ResMut<InputManager> res) {
-            auto& inputManager = res.get();
+        static void updateInputs(
+            ResMut<InputManager> rInputManager
+        ) {
+            auto& inputManager = rInputManager.get();
             inputManager.update();
 
         }
