@@ -1,9 +1,13 @@
 #pragma once
 
+#include "RenderModule/Managers/MeshServer.h"
 #include "RenderModule/Material/Material.h"
 #include "RenderModule/RenderContext.h"
 #include "utils/Logger.h"
 #include <fstream>
+#include <vector>
+#include <webgpu/webgpu.hpp>
+#include <webgpu/webgpu.h>
 
 
 namespace crg::renderer {
@@ -13,7 +17,39 @@ namespace crg::renderer {
     class MaterialCache {
     public:
 
-        MaterialID newMaterial(RenderContext renderContext) {
+        MaterialID newMaterial(RenderContext renderContext, MeshServer& meshServer) {
+
+            // GET VERTICES:
+            auto [buffer, buffDesc] = meshServer.newTri(
+                renderContext.device,
+                renderContext.queue
+            );
+
+            // Vertex attributes:
+
+            std::vector<wgpu::VertexAttribute> vertAttributes;
+            // Position
+            vertAttributes.emplace_back(WGPUVertexAttribute {
+                .format = wgpu::VertexFormat::Float32x3,
+                .offset = offsetof(Vertex, position),
+                .shaderLocation = 0
+            });
+
+            // Color
+            vertAttributes.emplace_back(WGPUVertexAttribute {
+                .format = wgpu::VertexFormat::Float32x3,
+                .offset = offsetof(Vertex, color),
+                .shaderLocation = 1
+            });
+
+            wgpu::VertexBufferLayout buffLayout{};
+            buffLayout.arrayStride = sizeof(Vertex);
+            buffLayout.stepMode = wgpu::VertexStepMode::Vertex;
+            buffLayout.attributeCount = vertAttributes.size();
+            buffLayout.attributes = vertAttributes.data();
+
+
+
             // FILE READING:
             std::ifstream file("../assets/fragVert.wgsl");
 
@@ -55,8 +91,8 @@ namespace crg::renderer {
             vertState.nextInChain = nullptr;
             vertState.module = shader;
             vertState.entryPoint = wgpu::StringView("vs_main");
-            vertState.bufferCount = 0;
-            vertState.buffers = nullptr;
+            vertState.bufferCount = 1;
+            vertState.buffers = &buffLayout;
             vertState.constantCount = 0;
             vertState.constants = nullptr;
 
@@ -87,7 +123,7 @@ namespace crg::renderer {
             primitiveState.nextInChain = nullptr;
             primitiveState.topology = wgpu::PrimitiveTopology::TriangleList;
             primitiveState.frontFace = wgpu::FrontFace::CCW;
-            primitiveState.cullMode = wgpu::CullMode::Back;
+            primitiveState.cullMode = wgpu::CullMode::Back;      // CULL MODEEEE
             primitiveState.unclippedDepth = false;
             primitiveState.stripIndexFormat = wgpu::IndexFormat::Undefined;
 
@@ -108,6 +144,10 @@ namespace crg::renderer {
             Material material{};
             material.m_pipeline = pipeline;
             material.m_shaderModules = {shader};
+            material.m_buffer = buffer;
+            material.m_buffDesc = buffDesc;
+            material.m_vertexCount = 3;
+
 
             m_materialCache.emplace_back(material);
 

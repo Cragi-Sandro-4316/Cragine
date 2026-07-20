@@ -9,7 +9,7 @@ namespace crg::renderer {
 
 
     void RenderBackend::newMaterial() {
-        m_materialCache.newMaterial(m_renderContext);
+        m_materialCache.newMaterial(m_renderContext, m_meshServer);
     }
 
 

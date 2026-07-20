@@ -58,11 +58,12 @@ namespace crg::renderer {
         wgpu::RenderPassEncoder renderPass = cmdEncoder.beginRenderPass(renderPassDesc);
 
 
+        const Material& material = materialCache.getMaterial(0);
+        renderPass.setPipeline(material.m_pipeline);
 
-        renderPass.setPipeline(materialCache.getMaterial(0).m_pipeline);
+        renderPass.setVertexBuffer(0, material.m_buffer, 0, material.m_buffer.getSize());
 
-
-        renderPass.draw(3, 1, 0, 0);
+        renderPass.draw(material.m_vertexCount, 1, 0, 0);
 
         renderPass.end();
         renderPass.release();

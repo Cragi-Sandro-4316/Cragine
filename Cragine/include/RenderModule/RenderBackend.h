@@ -1,5 +1,6 @@
 #pragma once
 #include "RenderModule/Managers/MaterialCache.h"
+#include "RenderModule/Managers/MeshServer.h"
 #include "RenderModule/RenderContext.h"
 #include "Window.h"
 #include <webgpu.h>
@@ -23,6 +24,7 @@ namespace crg::renderer {
 
         MaterialCache m_materialCache{};
 
+        MeshServer m_meshServer{};
 
 
     };
