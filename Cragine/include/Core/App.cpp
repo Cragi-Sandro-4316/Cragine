@@ -48,6 +48,7 @@ namespace crg {
     }
 
 
+
     void App::run() {
         LOG_CORE_TRACE("App running");
 

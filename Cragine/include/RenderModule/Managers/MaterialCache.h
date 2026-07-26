@@ -17,7 +17,14 @@ namespace crg::renderer {
     class MaterialCache {
     public:
 
-        MaterialID newMaterial(RenderContext renderContext, MeshServer& meshServer) {
+
+        MaterialID newMaterial(
+            RenderContext renderContext,
+            MeshServer& meshServer
+        ) {
+
+            const char* path = "../assets/fragVert.wgsl";
+
 
             // GET VERTICES:
             auto [buffer, buffDesc] = meshServer.newTri(
@@ -51,7 +58,7 @@ namespace crg::renderer {
 
 
             // FILE READING:
-            std::ifstream file("../assets/fragVert.wgsl");
+            std::ifstream file(path);
 
             if (!file.is_open()) {
                 LOG_CORE_ERROR("Failed to open file");
@@ -91,8 +98,8 @@ namespace crg::renderer {
             vertState.nextInChain = nullptr;
             vertState.module = shader;
             vertState.entryPoint = wgpu::StringView("vs_main");
-            vertState.bufferCount = 1;
-            vertState.buffers = &buffLayout;
+            vertState.bufferCount = 0;
+            vertState.buffers = nullptr;
             vertState.constantCount = 0;
             vertState.constants = nullptr;
 
@@ -123,7 +130,7 @@ namespace crg::renderer {
             primitiveState.nextInChain = nullptr;
             primitiveState.topology = wgpu::PrimitiveTopology::TriangleList;
             primitiveState.frontFace = wgpu::FrontFace::CCW;
-            primitiveState.cullMode = wgpu::CullMode::Back;      // CULL MODEEEE
+            primitiveState.cullMode = wgpu::CullMode::Back;
             primitiveState.unclippedDepth = false;
             primitiveState.stripIndexFormat = wgpu::IndexFormat::Undefined;
 
@@ -147,7 +154,6 @@ namespace crg::renderer {
             material.m_buffer = buffer;
             material.m_buffDesc = buffDesc;
             material.m_vertexCount = 3;
-
 
             m_materialCache.emplace_back(material);
 
