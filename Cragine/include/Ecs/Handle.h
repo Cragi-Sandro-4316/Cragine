@@ -1,6 +1,6 @@
 #pragma once
 
-namespace crg::ecs {
+namespace crg {
     template<typename T>
     struct Handle;
 }

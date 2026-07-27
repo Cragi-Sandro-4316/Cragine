@@ -6,7 +6,6 @@
 
 #define BUFFER_TYPE(type) (type*)nullptr
 
-
 namespace crg::renderer {
 
 

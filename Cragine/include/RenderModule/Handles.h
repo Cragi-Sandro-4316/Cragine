@@ -1,13 +1,11 @@
 #pragma once
 #include "Ecs/Ecs.h"
+#include "RenderModule/Buffers/Buffer.h"
 
 
-namespace crg::ecs {
-
-
+namespace crg {
 
     struct TextureAtlas{};
-    struct Buffer{};
 
 
     template<>
@@ -16,8 +14,8 @@ namespace crg::ecs {
     };
 
     template<>
-    struct Handle<Buffer> {
-
+    struct Handle<renderer::Buffer> {
+        size_t id;
     };
 
 
