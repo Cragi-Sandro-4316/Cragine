@@ -16,18 +16,18 @@ namespace crg::renderer {
 
         static std::vector<Vertex> verts = {
             Vertex {
-                .position = vec3(0., 0.75, 0.),
-                .color = vec3(1., 0., 0.)
+                .position = vec4(0., 0.75, 0., 1.),
+                .color = vec4(1., 0., 0., 1.)       // This vertex is black
             },
             Vertex {
-                .position = vec3(-0.75, -0.75, 0.),
-                .color = vec3(0., 1., 0.)
+                .position = vec4(-0.75, -0.75, 0., 1.),
+                .color = vec4(0., 1., 0., 1.)       // this vertex is red
             },
             Vertex {
-                .position = vec3(0.75, -0.75, 0.),
-                .color = vec3(0., 0., 1.)
+                .position = vec4(0.75, -0.75, 0., 1.),
+                .color = vec4(0., 0., 1., 1.)       // this vertex is green
             },
-        };;
+        };
 
         std::vector<Handle<Buffer>> bufferHandle = { renderBackend.newBuffer<Vertex>(3) };
 
@@ -99,7 +99,7 @@ namespace crg::renderer {
 
             renderPass.setBindGroup(0, material.m_binding, 0, nullptr);
 
-            renderPass.draw(material.m_vertexCount , 2, 0, 0);
+            renderPass.draw(material.m_vertexCount , 1, 0, 0);
 
         }
 

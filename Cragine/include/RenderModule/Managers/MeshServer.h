@@ -16,13 +16,13 @@ namespace crg::renderer {
 
             std::vector<Vertex> vertices {
                 Vertex {
-                    .position = vec3(-0.75, -0.75, 0.),
+                    .position = vec4(-0.75, -0.75, 0., 1.),
                 },
                 Vertex {
-                    .position = vec3(0.75, -0.75, 0.),
+                    .position = vec4(0.75, -0.75, 0., 1.),
                 },
                 Vertex {
-                    .position = vec3(0., 0.75, 0.),
+                    .position = vec4(0., 0.75, 0., 1.),
                 },
             };
 

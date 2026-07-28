@@ -1,6 +1,6 @@
 struct Vertex {
-    position: vec3f,
-    color: vec3f,
+    position: vec4f,
+    color: vec4f,
 };
 
 @group(0) @binding(0) var<storage, read_write> vertex_buffer: array<Vertex>;
@@ -15,8 +15,8 @@ fn vs_main(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
     var vertex = vertex_buffer[vertexIndex];
 
     var out: VertexOutput;
-    out.position = vec4f(vertex.position, 1);
-    out.color = vec4f(vertex.color, 1);
+    out.position = vertex.position;
+    out.color = vertex.color;
 
     return out;
 }

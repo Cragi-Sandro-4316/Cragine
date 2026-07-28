@@ -11,17 +11,17 @@
 
 namespace crg::renderer {
 
-    static const std::vector<Vertex> verts = {
-        Vertex {
-            .position = vec3(0., 0.5, 0.),
-        },
-        Vertex {
-            .position = vec3(-0.5, -0.5, 0.),
-        },
-        Vertex {
-            .position = vec3(0.5, -0.5, 0.),
-        },
-    };
+    // static const std::vector<Vertex> verts = {
+    //     Vertex {
+    //         .position = vec3(0., 0.5, 0.),
+    //     },
+    //     Vertex {
+    //         .position = vec3(-0.5, -0.5, 0.),
+    //     },
+    //     Vertex {
+    //         .position = vec3(0.5, -0.5, 0.),
+    //     },
+    // };
 
 
 

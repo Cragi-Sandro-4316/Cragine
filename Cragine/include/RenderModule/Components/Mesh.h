@@ -7,9 +7,8 @@ using namespace glm;
 namespace crg::renderer {
 
     struct Vertex {
-        vec3 position;
-        vec3 color;
-        vec2 _pad;
+        vec4 position;
+        vec4 color;
     };
 
     struct Mesh {
