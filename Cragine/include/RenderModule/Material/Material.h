@@ -9,13 +9,13 @@ namespace crg::renderer {
         wgpu::RenderPipeline m_pipeline;
         std::vector<wgpu::ShaderModule> m_shaderModules;
 
-
-        wgpu::Buffer m_buffer;
-        wgpu::BufferDescriptor m_buffDesc;
+        // std::vector<Buffer*> m_buffers;
 
         uint32_t m_vertexCount;
 
         wgpu::BindGroup m_binding;
+
+        wgpu::BindGroupLayout m_bindingLayout;
 
         // std::array<wgpu::BindGroup, 4> m_bindings;
 

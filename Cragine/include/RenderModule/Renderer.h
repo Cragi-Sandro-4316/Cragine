@@ -1,10 +1,10 @@
 #pragma once
 #include "Ecs/Ecs.h"
+#include "RenderModule/Components/Mesh.h"
 #include "RenderModule/Material/Material.h"
 #include "RenderModule/RenderBackend.h"
+#include "glm/fwd.hpp"
 #include <GLFW/glfw3.h>
-#include <webgpu/webgpu.hpp>
-
 
 namespace crg::renderer {
 
@@ -14,7 +14,43 @@ namespace crg::renderer {
     ) {
         auto& renderBackend = rGpuHandler.get();
 
-        renderBackend.newMaterial();
+        static std::vector<Vertex> verts = {
+            Vertex {
+                .position = vec3(0., 0.75, 0.),
+                .color = vec3(1., 0., 0.)
+            },
+            Vertex {
+                .position = vec3(-0.75, -0.75, 0.),
+                .color = vec3(0., 1., 0.)
+            },
+            Vertex {
+                .position = vec3(0.75, -0.75, 0.),
+                .color = vec3(0., 0., 1.)
+            },
+        };;
+
+        std::vector<Handle<Buffer>> bufferHandle = { renderBackend.newBuffer<Vertex>(3) };
+
+        Buffer& buffer = renderBackend.getBuffer(bufferHandle[0]);
+
+        buffer.write(
+            verts[0],
+            0
+        );
+
+        buffer.write(
+            verts[1],
+            1
+        );
+
+        buffer.write(
+            verts[2],
+            2
+        );
+
+        renderBackend.newMaterial("../assets/fragVert.wgsl", bufferHandle);
+
+        LOG_CORE_INFO("Material created");
     }
 
     static void render(
@@ -46,7 +82,7 @@ namespace crg::renderer {
         colorAttachments.emplace_back();
         colorAttachments[0].view = imgView;
         colorAttachments[0].loadOp = wgpu::LoadOp::Clear;
-        colorAttachments[0].clearValue = wgpu::Color(1., 1., 0., 0.0);
+        colorAttachments[0].clearValue = wgpu::Color(0.3, 0.3, 0.3, 0.0);
         colorAttachments[0].storeOp = wgpu::StoreOp::Store;
 
         wgpu::RenderPassDescriptor renderPassDesc{};
@@ -58,12 +94,14 @@ namespace crg::renderer {
         wgpu::RenderPassEncoder renderPass = cmdEncoder.beginRenderPass(renderPassDesc);
 
 
-        const Material& material = materialCache.getMaterial(0);
-        renderPass.setPipeline(material.m_pipeline);
+        for (auto& material : materialCache.getMaterials()) {
+            renderPass.setPipeline(material.m_pipeline);
 
-        renderPass.setVertexBuffer(0, material.m_buffer, 0, material.m_buffer.getSize());
+            renderPass.setBindGroup(0, material.m_binding, 0, nullptr);
 
-        renderPass.draw(material.m_vertexCount, 1, 0, 0);
+            renderPass.draw(material.m_vertexCount , 2, 0, 0);
+
+        }
 
         renderPass.end();
         renderPass.release();

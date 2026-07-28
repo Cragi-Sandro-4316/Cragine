@@ -1,5 +1,8 @@
 #include "Window.h"
 #define WEBGPU_CPP_IMPLEMENTATION
+#include <webgpu.h>
+#include <webgpu/webgpu.hpp>
+#include <wgpu.h>
 
 #include "RenderContext.h"
 #include "glfw3webgpu.h"
@@ -85,13 +88,27 @@ namespace crg::renderer {
     void RenderContext::initDevice() {
         auto limits = getRequiredLimits();
 
+        wgpu::SupportedFeatures supportedFeatures;
+        adapter.getFeatures(&supportedFeatures);
+
+        // TODO: Cleanup feature requesting
+        LOG_CORE_INFO("vertex writable storage: {}", (int)WGPUNativeFeature_VertexWritableStorage);
+
+        LOG_CORE_INFO("Supported features: ");
+        for (size_t i = 0;  i < supportedFeatures.featureCount; i++) {
+            LOG_CORE_INFO("{}", (int)supportedFeatures.features[i]);
+        }
+
         wgpu::DeviceDescriptor deviceDescriptor{};
+
         deviceDescriptor.label = WGPUStringView("Device");
         deviceDescriptor.nextInChain = nullptr;
-        deviceDescriptor.requiredFeatureCount = 0;
+        deviceDescriptor.requiredFeatureCount = supportedFeatures.featureCount;
+        deviceDescriptor.requiredFeatures = supportedFeatures.features;
         deviceDescriptor.requiredLimits = &limits;
         deviceDescriptor.defaultQueue.label = WGPUStringView("Default queue");
         deviceDescriptor.defaultQueue.nextInChain = nullptr;
+
 
         auto lostCallback = [](WGPUDeviceImpl* const *, WGPUDeviceLostReason reason, WGPUStringView message, void*, void*) {
             LOG_CORE_ERROR("Device lost: reason {}", (char*)reason);

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "RenderModule/Buffers/Buffer.h"
 #include "RenderModule/Managers/MeshServer.h"
 #include "RenderModule/Material/Material.h"
 #include "RenderModule/RenderContext.h"
@@ -19,45 +20,86 @@ namespace crg::renderer {
 
 
         MaterialID newMaterial(
+            std::string path,
             RenderContext renderContext,
-            MeshServer& meshServer
+            MeshServer& meshServer,
+            std::vector<Buffer*>* buffers = nullptr
         ) {
 
-            const char* path = "../assets/fragVert.wgsl";
+            LOG_CORE_INFO("Creating material at path: {}", path);
+            // // Vertex attributes:
+
+            // std::vector<wgpu::VertexAttribute> vertAttributes;
+            // // Position
+            // vertAttributes.emplace_back(WGPUVertexAttribute {
+            //     .format = wgpu::VertexFormat::Float32x3,
+            //     .offset = offsetof(Vertex, position),
+            //     .shaderLocation = 0
+            // });
+
+            // // Color
+            // vertAttributes.emplace_back(WGPUVertexAttribute {
+            //     .format = wgpu::VertexFormat::Float32x3,
+            //     .offset = offsetof(Vertex, color),
+            //     .shaderLocation = 1
+            // });
+
+            // wgpu::VertexBufferLayout buffLayout{};
+            // buffLayout.arrayStride = sizeof(Vertex);
+            // buffLayout.stepMode = wgpu::VertexStepMode::Vertex;
+            // buffLayout.attributeCount = vertAttributes.size();
+            // buffLayout.attributes = vertAttributes.data();
+
+            // BIND GROUP LAYOUT ENTRIES:
+
+            if (!buffers) {
+                LOG_CORE_ERROR("Material creation error: no buffers given");
+            }
+            std::vector<wgpu::BindGroupLayoutEntry> layoutEntries(buffers->size());
+
+            for (size_t i = 0; i < buffers->size(); i++) {
+                Buffer& buffer = *buffers->at(i);
+
+                layoutEntries[i].nextInChain = nullptr;
+                layoutEntries[i].binding = i;
+                layoutEntries[i].buffer = buffer.getBindingLayout();
+                layoutEntries[i].visibility = buffer.getStageVisibility();
+            }
 
 
-            // GET VERTICES:
-            auto [buffer, buffDesc] = meshServer.newTri(
-                renderContext.device,
-                renderContext.queue
-            );
+            // BIND GROUP LAYOUT:
 
-            // Vertex attributes:
+            wgpu::BindGroupLayoutDescriptor bindGroupLayoutDesc{};
+            bindGroupLayoutDesc.nextInChain = nullptr;
+            bindGroupLayoutDesc.entryCount = layoutEntries.size();
+            bindGroupLayoutDesc.entries = layoutEntries.data();
 
-            std::vector<wgpu::VertexAttribute> vertAttributes;
-            // Position
-            vertAttributes.emplace_back(WGPUVertexAttribute {
-                .format = wgpu::VertexFormat::Float32x3,
-                .offset = offsetof(Vertex, position),
-                .shaderLocation = 0
-            });
+            const wgpu::BindGroupLayout bindGroupLayout = renderContext.device.createBindGroupLayout(bindGroupLayoutDesc);
 
-            // Color
-            vertAttributes.emplace_back(WGPUVertexAttribute {
-                .format = wgpu::VertexFormat::Float32x3,
-                .offset = offsetof(Vertex, color),
-                .shaderLocation = 1
-            });
+            // BIND GROUP ENTRIES:
 
-            wgpu::VertexBufferLayout buffLayout{};
-            buffLayout.arrayStride = sizeof(Vertex);
-            buffLayout.stepMode = wgpu::VertexStepMode::Vertex;
-            buffLayout.attributeCount = vertAttributes.size();
-            buffLayout.attributes = vertAttributes.data();
+            std::vector<wgpu::BindGroupEntry> bindGroupEntries(layoutEntries.size());
+            for (size_t i = 0; i < bindGroupEntries.size(); i++) {
+                Buffer& buffer = *buffers->at(i);
+
+                bindGroupEntries[i].nextInChain = nullptr;
+                bindGroupEntries[i].binding = i;
+                bindGroupEntries[i].buffer = buffer.getRawHandle();
+                bindGroupEntries[i].size = buffer.getByteSize();
+                bindGroupEntries[i].offset = 0;
+            }
 
 
+            // BIND GROUP:
+            wgpu::BindGroupDescriptor bindGroupDesc{};
+            bindGroupDesc.nextInChain = nullptr;
+            bindGroupDesc.layout = bindGroupLayout;
+            bindGroupDesc.entryCount = bindGroupEntries.size();
+            bindGroupDesc.entries = bindGroupEntries.data();
 
-            // FILE READING:
+            wgpu::BindGroup bindGroup = renderContext.device.createBindGroup(bindGroupDesc);
+
+            // // FILE READING:
             std::ifstream file(path);
 
             if (!file.is_open()) {
@@ -82,8 +124,8 @@ namespace crg::renderer {
 
             // Pipeline code:
             wgpu::PipelineLayoutDescriptor pipelineLayoutDesc{};
-            pipelineLayoutDesc.bindGroupLayoutCount = 0;
-            pipelineLayoutDesc.bindGroupLayouts = nullptr;
+            pipelineLayoutDesc.bindGroupLayoutCount = 1;
+            pipelineLayoutDesc.bindGroupLayouts = (WGPUBindGroupLayout*) &bindGroupLayout;
             pipelineLayoutDesc.label = wgpu::StringView("Sum pipeline shi");
             pipelineLayoutDesc.nextInChain = nullptr;
 
@@ -151,8 +193,8 @@ namespace crg::renderer {
             Material material{};
             material.m_pipeline = pipeline;
             material.m_shaderModules = {shader};
-            material.m_buffer = buffer;
-            material.m_buffDesc = buffDesc;
+            material.m_binding = bindGroup;
+            material.m_bindingLayout = bindGroupLayout;
             material.m_vertexCount = 3;
 
             m_materialCache.emplace_back(material);
@@ -164,6 +206,9 @@ namespace crg::renderer {
             return m_materialCache[matID];
         }
 
+        const std::vector<Material>& getMaterials() {
+            return m_materialCache;
+        }
 
     private:
         std::vector<Material> m_materialCache;

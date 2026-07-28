@@ -1,17 +1,34 @@
 #pragma once
 
+#include "RenderModule/Components/Mesh.h"
 #include "utils/Assert.h"
+#include "utils/Logger.h"
 #include <cstddef>
+#include <typeindex>
 #include <webgpu/webgpu.hpp>
 
 #define BUFFER_TYPE(type) (type*)nullptr
 
 namespace crg::renderer {
 
+    static const std::vector<Vertex> verts = {
+        Vertex {
+            .position = vec3(0., 0.5, 0.),
+        },
+        Vertex {
+            .position = vec3(-0.5, -0.5, 0.),
+        },
+        Vertex {
+            .position = vec3(0.5, -0.5, 0.),
+        },
+    };
+
+
 
     class Buffer {
     public:
         struct TypeDesc {
+            std::type_index typeID = typeid(void);
             size_t size;
             size_t align;
         };
@@ -21,28 +38,94 @@ namespace crg::renderer {
             size_t size,
             T* typePtr,
             wgpu::Device& device,
+            wgpu::Queue& queue,
+            wgpu::BufferBindingType bindingType = wgpu::BufferBindingType::Storage,
+            wgpu::ShaderStage shaderStage = wgpu::ShaderStage::Vertex,
             wgpu::BufferUsage bufferUsage = WGPUBufferUsage_Storage | WGPUBufferUsage_CopyDst
         ):
-        m_size(size) {
+        m_size(size),
+        m_shaderStage(shaderStage),
+        m_queue(queue) {
             m_typeDesc = {
+                .typeID = typeid(T),
                 .size = sizeof(T),
                 .align = alignof(T)
             };
 
+            LOG_CORE_INFO("size: {}", sizeof(T));
+
             ASSERT(
-                alignof(T) == 4 ||
-                alignof(T) == 8 ||
-                alignof(T) == 16,
-                "Buffer struct '{}' does not follow wgpu alignment requirements", typeid(T).name()
+                sizeof(T) % 16 == 0,
+                "Buffer struct '{}' does not follow wgpu alignment requirements. alignment: {}", typeid(T).name(), alignof(T)
             );
 
             wgpu::BufferDescriptor bufferDesc{};
+            bufferDesc.label = wgpu::StringView("Buffer");
             bufferDesc.mappedAtCreation = false;
-            bufferDesc.size = m_typeDesc.size * m_size;
+            bufferDesc.size = m_typeDesc.size * size;
             bufferDesc.usage = bufferUsage;
 
             m_buffer = device.createBuffer(bufferDesc);
+
+            m_bindingLayout.nextInChain = nullptr;
+            m_bindingLayout.type = bindingType;
+            m_bindingLayout.hasDynamicOffset = false;
+            m_bindingLayout.minBindingSize = m_typeDesc.size * m_size;
+
         }
+
+
+        wgpu::Buffer getRawHandle() {
+            return m_buffer;
+        }
+
+        wgpu::BufferBindingLayout getBindingLayout() {
+            return m_bindingLayout;
+        }
+
+        wgpu::ShaderStage getStageVisibility() {
+            return m_shaderStage;
+        }
+
+        size_t getByteSize() {
+            return m_size * m_typeDesc.size;
+        }
+
+        template<typename T>
+        void writeBuffer(std::vector<T>& data) {
+            if (typeid(T) != m_typeDesc.typeID) {
+                LOG_CORE_ERROR("GPU BUFFER: write type mismatch");
+                return;
+            }
+
+            m_queue.writeBuffer(
+                m_buffer,
+                0,
+                data.data(),
+                data.size() * m_typeDesc.size
+            );
+        }
+
+
+        template<typename T>
+        void write(T& data, size_t index) {
+            if (typeid(T) != m_typeDesc.typeID) {
+                LOG_CORE_ERROR("GPU BUFFER WRITE: type mismatch");
+                return;
+            }
+            if (index > m_size) {
+                LOG_CORE_ERROR("GPU BUFFER WRITE: index out of bounds");
+                return;
+            }
+
+            m_queue.writeBuffer(
+                m_buffer,
+                m_typeDesc.size * index,
+                &data,
+                m_typeDesc.size
+            );
+        }
+
 
 
     private:
@@ -53,7 +136,11 @@ namespace crg::renderer {
 
         wgpu::Buffer m_buffer;
 
+        wgpu::BufferBindingLayout m_bindingLayout;
 
+        wgpu::ShaderStage m_shaderStage;
+
+        wgpu::Queue& m_queue;
     };
 
 

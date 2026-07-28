@@ -1,23 +1,27 @@
 struct Vertex {
-    @location(0) position: vec3<f32>,
-    @location(1) color: vec3<f32>
+    position: vec3f,
+    color: vec3f,
 };
 
+@group(0) @binding(0) var<storage, read_write> vertex_buffer: array<Vertex>;
 
-struct VertexPayload {
-    @builtin(position) position: vec4<f32>,
-    @location(0) color: vec3<f32>
+struct VertexOutput {
+    @builtin(position) position: vec4f,
+    @location(0) color: vec4f,
 };
 
 @vertex
-fn vs_main(vertex: Vertex) -> VertexPayload {
-    var out: VertexPayload;
-    out.position = vec4<f32>(vertex.position, 1.0);
-    out.color = vertex.color;
+fn vs_main(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
+    var vertex = vertex_buffer[vertexIndex];
+
+    var out: VertexOutput;
+    out.position = vec4f(vertex.position, 1);
+    out.color = vec4f(vertex.color, 1);
+
     return out;
 }
 
 @fragment
-fn fs_main(in: VertexPayload) -> @location(0) vec4<f32> {
-    return vec4<f32>(in.color, 1.0);
+fn fs_main(in: VertexOutput) -> @location(0) vec4f {
+    return in.color;
 }

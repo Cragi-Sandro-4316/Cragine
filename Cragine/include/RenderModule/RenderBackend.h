@@ -15,18 +15,30 @@ namespace crg::renderer {
 
         RenderBackend(Window* window);
 
-        void newMaterial();
+        void newMaterial(std::string shaderPath, std::vector<Handle<Buffer>>& buffers);
 
         template<typename T>
         Handle<Buffer> newBuffer(size_t size) {
             wgpu::Device& device = m_renderContext.device;
+            wgpu::Queue& queue = m_renderContext.queue;
 
-            return m_bufferManager.newBuffer<T>(size, device);
+            return m_bufferManager.newBuffer<T>(size, device, queue);
         }
+
+        template<typename T>
+        void writeBuffer(Handle<Buffer> buffer, std::vector<T>& data) {
+            m_bufferManager.writeBuffer(buffer, data, m_renderContext.queue);
+        }
+
 
         RenderContext& getRenderContext() { return m_renderContext; }
         MaterialCache& getMaterialCache() { return m_materialCache; }
         BufferManager& getBufferManager() { return m_bufferManager; }
+        MeshServer& getMeshServer() { return m_meshServer; }
+
+        Buffer& getBuffer(Handle<Buffer> bufferHandle) {
+            return *m_bufferManager.getBufferPtr(bufferHandle);
+        }
 
     private:
         RenderContext m_renderContext;

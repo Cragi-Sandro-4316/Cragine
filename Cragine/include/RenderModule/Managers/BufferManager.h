@@ -13,13 +13,14 @@ namespace crg::renderer {
     public:
 
         template <typename T>
-        Handle<Buffer> newBuffer(size_t size, wgpu::Device& device) {
+        Handle<Buffer> newBuffer(size_t size, wgpu::Device& device, wgpu::Queue& queue) {
 
-            m_buffers.emplace(m_currentID, Buffer(3, BUFFER_TYPE(T), device));
+            m_buffers.emplace(m_currentID, Buffer(3, BUFFER_TYPE(T), device, queue));
+
+            Handle<Buffer> handle{ m_currentID };
 
             m_currentID++;
 
-            Handle<Buffer> handle{ m_currentID };
 
             if (!m_typeMap.contains(typeid(T))) {
                 m_typeMap[typeid(T)] = {};
@@ -31,7 +32,7 @@ namespace crg::renderer {
         }
 
 
-        Buffer* getBuffer(Handle<Buffer> handle) {
+        Buffer* getBufferPtr(Handle<Buffer> handle) {
             auto it = m_buffers.find(handle.id);
 
             if (it == m_buffers.end()) {
@@ -53,6 +54,17 @@ namespace crg::renderer {
             }
 
             m_buffers.erase(handle.id);
+        }
+
+        template<typename T>
+        void writeBuffer(Handle<Buffer> buffer, std::vector<T>& data, wgpu::Queue& queue) {
+            auto it = m_buffers.find(buffer.id);
+            if (it == m_buffers.end()) {
+                LOG_CORE_WARNING("Buffer write: invalid handle");
+                return;
+            }
+
+            it->second.writeBuffer(data, queue);
         }
 
     private:

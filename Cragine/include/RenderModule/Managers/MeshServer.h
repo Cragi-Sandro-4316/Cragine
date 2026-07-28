@@ -17,15 +17,12 @@ namespace crg::renderer {
             std::vector<Vertex> vertices {
                 Vertex {
                     .position = vec3(-0.75, -0.75, 0.),
-                    .color =    vec3(1., 0., 0.)
                 },
                 Vertex {
                     .position = vec3(0.75, -0.75, 0.),
-                    .color =    vec3(0., 1., 0.)
                 },
                 Vertex {
                     .position = vec3(0., 0.75, 0.),
-                    .color =    vec3(0., 0., 1.)
                 },
             };
 
@@ -41,6 +38,7 @@ namespace crg::renderer {
             queue.writeBuffer(buffer, 0, vertices.data(), vertices.size() * sizeof(Vertex));
             return {buffer, buffDesc};
         }
+
 
 
     private:
