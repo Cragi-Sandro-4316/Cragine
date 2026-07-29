@@ -3,12 +3,19 @@
 #include "utils/Assert.h"
 #include "utils/Logger.h"
 #include <cstddef>
+#include <cstdint>
 #include <typeindex>
 #include <webgpu/webgpu.hpp>
 
 #define BUFFER_TYPE(type) (type*)nullptr
 
 namespace crg::renderer {
+
+
+    enum BufferType : uint32_t {
+        Storage,
+        Uniform
+    };
 
     class Buffer {
     public:
@@ -24,9 +31,9 @@ namespace crg::renderer {
             T* typePtr,
             wgpu::Device& device,
             wgpu::Queue& queue,
-            wgpu::BufferBindingType bindingType = wgpu::BufferBindingType::Storage,
-            wgpu::ShaderStage shaderStage = wgpu::ShaderStage::Vertex,
-            wgpu::BufferUsage bufferUsage = WGPUBufferUsage_Storage | WGPUBufferUsage_CopyDst
+            wgpu::BufferBindingType bindingType,
+            wgpu::BufferUsage bufferUsage,
+            wgpu::ShaderStage shaderStage = wgpu::ShaderStage::Vertex
         ):
         m_size(size),
         m_shaderStage(shaderStage),
@@ -40,7 +47,8 @@ namespace crg::renderer {
             LOG_CORE_INFO("size: {}", sizeof(T));
 
             ASSERT(
-                sizeof(T) % 16 == 0,
+                (sizeof(T) % 16 == 0) ||
+                (sizeof(T) % 4 == 0 && sizeof(T) < 12),
                 "Buffer struct '{}' does not follow wgpu alignment requirements. alignment: {}", typeid(T).name(), alignof(T)
             );
 
@@ -82,6 +90,11 @@ namespace crg::renderer {
                 LOG_CORE_ERROR("GPU BUFFER: write type mismatch");
                 return;
             }
+
+
+            void* daata = data.data();
+            size_t x = data.size();
+
 
             m_queue.writeBuffer(
                 m_buffer,

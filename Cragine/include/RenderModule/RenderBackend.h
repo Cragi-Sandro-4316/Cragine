@@ -3,6 +3,7 @@
 #include "RenderModule/Managers/MaterialCache.h"
 #include "RenderModule/Managers/MeshServer.h"
 #include "RenderModule/RenderContext.h"
+#include "RenderModule/Structs/Buffer.h"
 #include "Window.h"
 #include <webgpu.h>
 #include <webgpu/webgpu.hpp>
@@ -18,11 +19,11 @@ namespace crg::renderer {
         void newMaterial(std::string shaderPath, std::vector<Handle<Buffer>>& buffers);
 
         template<typename T>
-        Handle<Buffer> newBuffer(size_t size) {
+        Handle<Buffer> newBuffer(size_t size, BufferType bufferType) {
             wgpu::Device& device = m_renderContext.device;
             wgpu::Queue& queue = m_renderContext.queue;
 
-            return m_bufferManager.newBuffer<T>(size, device, queue);
+            return m_bufferManager.newBuffer<T>(size, device, queue, bufferType);
         }
 
         template<typename T>

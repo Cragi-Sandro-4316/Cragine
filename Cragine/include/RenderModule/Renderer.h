@@ -3,52 +3,52 @@
 #include "RenderModule/Components/Mesh.h"
 // #include "RenderModule/Material/Material.h"
 #include "RenderModule/RenderBackend.h"
+#include "RenderModule/Structs/Buffer.h"
 #include "glm/fwd.hpp"
 #include <GLFW/glfw3.h>
 
 namespace crg::renderer {
 
+    static std::vector<Vertex> verts = {
+        Vertex {
+            .position = vec4(0.75, 0.75, 0., 1.),
+            .color = vec4(1., 0., 0., 1.)
+        },
+        Vertex {
+            .position = vec4(-0.75, -0.75, 0., 1.),
+            .color = vec4(0., 1., 0., 1.)
+        },
+        Vertex {
+            .position = vec4(0.75, -0.75, 0., 1.),
+            .color = vec4(0., 0., 1., 1.)
+        },
+        Vertex {
+            .position = vec4(-0.75, 0.75, 0., 1.),
+            .color = vec4(1., 0., 0., 1.)
+        },
+    };
+
+    static std::vector<Index> idxs = {
+        {0}, {1}, {2}, {3}, {1}, {0}
+    };
 
     static void newMaterial(
         ResMut<RenderBackend> rGpuHandler
     ) {
         auto& renderBackend = rGpuHandler.get();
 
-        static std::vector<Vertex> verts = {
-            Vertex {
-                .position = vec4(0., 0.75, 0., 1.),
-                .color = vec4(1., 0., 0., 1.)       // This vertex is black
-            },
-            Vertex {
-                .position = vec4(-0.75, -0.75, 0., 1.),
-                .color = vec4(0., 1., 0., 1.)       // this vertex is red
-            },
-            Vertex {
-                .position = vec4(0.75, -0.75, 0., 1.),
-                .color = vec4(0., 0., 1., 1.)       // this vertex is green
-            },
+        std::vector<Handle<Buffer>> bufferHandles = {
+            renderBackend.newBuffer<Vertex>(4, BufferType::Storage),
+            renderBackend.newBuffer<Index>(6, BufferType::Storage)
         };
 
-        std::vector<Handle<Buffer>> bufferHandle = { renderBackend.newBuffer<Vertex>(3) };
+        Buffer& vertexBuffer = renderBackend.getBuffer(bufferHandles[0]);
+        Buffer& indexBuffer = renderBackend.getBuffer(bufferHandles[1]);
 
-        Buffer& buffer = renderBackend.getBuffer(bufferHandle[0]);
+        vertexBuffer.writeBuffer(verts);
+        indexBuffer.writeBuffer(idxs);
 
-        buffer.write(
-            verts[0],
-            0
-        );
-
-        buffer.write(
-            verts[1],
-            1
-        );
-
-        buffer.write(
-            verts[2],
-            2
-        );
-
-        renderBackend.newMaterial("../assets/fragVert.wgsl", bufferHandle);
+        renderBackend.newMaterial("../assets/fragVert.wgsl", bufferHandles);
 
         LOG_CORE_INFO("Material created");
     }
@@ -77,7 +77,6 @@ namespace crg::renderer {
         cmdEncoderDesc.nextInChain = nullptr;
         wgpu::CommandEncoder cmdEncoder = renderContext.device.createCommandEncoder(cmdEncoderDesc);
 
-
         std::vector<wgpu::RenderPassColorAttachment> colorAttachments;
         colorAttachments.emplace_back();
         colorAttachments[0].view = imgView;
@@ -99,7 +98,7 @@ namespace crg::renderer {
 
             renderPass.setBindGroup(0, material.m_binding, 0, nullptr);
 
-            renderPass.draw(material.m_vertexCount , 1, 0, 0);
+            renderPass.draw(material.m_indexCount, 1, 0, 0);
 
         }
 

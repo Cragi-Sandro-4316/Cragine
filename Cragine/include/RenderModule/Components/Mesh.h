@@ -11,6 +11,10 @@ namespace crg::renderer {
         vec4 color;
     };
 
+    struct Index {
+        uint32_t index;
+    };
+
     struct Mesh {
         std::vector<Vertex> vertices;
     };

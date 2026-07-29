@@ -177,7 +177,7 @@ namespace crg::renderer {
             material.m_shaderModules = {shader};
             material.m_binding = bindGroup;
             material.m_bindingLayout = bindGroupLayout;
-            material.m_vertexCount = 3;
+            material.m_indexCount = 6;
 
             m_materialCache.emplace_back(material);
 

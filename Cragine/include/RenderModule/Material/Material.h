@@ -11,7 +11,7 @@ namespace crg::renderer {
 
         // std::vector<Buffer*> m_buffers;
 
-        uint32_t m_vertexCount;
+        uint32_t m_indexCount;
 
         wgpu::BindGroup m_binding;
 

@@ -1,7 +1,9 @@
 #pragma once
+#include "AssetManager/AssetManager.h"
 #include "RenderModule/Structs/Buffer.h"
 #include <typeindex>
 #include <unordered_map>
+#include <webgpu/webgpu.hpp>
 #include "RenderModule/Handles.h"
 #include "utils/Logger.h"
 
@@ -13,14 +15,32 @@ namespace crg::renderer {
     public:
 
         template <typename T>
-        Handle<Buffer> newBuffer(size_t size, wgpu::Device& device, wgpu::Queue& queue) {
+        Handle<Buffer> newBuffer(size_t size, wgpu::Device& device, wgpu::Queue& queue, BufferType bufferType) {
 
-            m_buffers.emplace(m_currentID, Buffer(3, BUFFER_TYPE(T), device, queue));
+            wgpu::BufferBindingType bindingType{};
+            wgpu::BufferUsage bufferUsage{};
+
+            switch (bufferType) {
+                case BufferType::Storage:
+                    bindingType = wgpu::BufferBindingType::Storage;
+                    bufferUsage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Storage;
+                break;
+                case BufferType::Uniform:
+                    bindingType = wgpu::BufferBindingType::Uniform;
+                    bufferUsage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Uniform;
+                break;
+                default:
+                    LOG_CORE_WARNING("Gpu buffer creation: invalid buffer type, defaulting to storage.");
+                    bindingType = wgpu::BufferBindingType::Storage;
+                    bufferUsage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Storage;
+                break;
+            }
+
+            m_buffers.emplace(m_currentID, Buffer(size, BUFFER_TYPE(T), device, queue, bindingType, bufferUsage));
 
             Handle<Buffer> handle{ m_currentID };
 
             m_currentID++;
-
 
             if (!m_typeMap.contains(typeid(T))) {
                 m_typeMap[typeid(T)] = {};
