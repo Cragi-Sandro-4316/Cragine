@@ -1,6 +1,6 @@
 #pragma once
 #include "Ecs/Ecs.h"
-#include "RenderModule/Buffers/Buffer.h"
+#include "RenderModule/Structs/Buffer.h"
 
 
 namespace crg {

@@ -1,9 +1,13 @@
 #pragma once
 
-#include "RenderModule/Buffers/Buffer.h"
+#include "RenderModule/Structs/Buffer.h"
 #include "RenderModule/Managers/MeshServer.h"
 #include "RenderModule/Material/Material.h"
 #include "RenderModule/RenderContext.h"
+#include "RenderModule/Structs/Sampler.h"
+#include "RenderModule/Structs/StorageTexture.h"
+#include "RenderModule/Structs/Texture.h"
+
 #include "utils/Logger.h"
 #include <fstream>
 #include <vector>
@@ -23,81 +27,59 @@ namespace crg::renderer {
             std::string path,
             RenderContext renderContext,
             MeshServer& meshServer,
-            std::vector<Buffer*>* buffers = nullptr
+            std::vector<Buffer*>* buffers = nullptr,
+            std::vector<TextureSampler*>* samplers = nullptr,
+            std::vector<StorageTexture*>* storageTextures = nullptr,
+            std::vector<Texture*>* textures = nullptr
         ) {
 
             LOG_CORE_INFO("Creating material at path: {}", path);
-            // // Vertex attributes:
-
-            // std::vector<wgpu::VertexAttribute> vertAttributes;
-            // // Position
-            // vertAttributes.emplace_back(WGPUVertexAttribute {
-            //     .format = wgpu::VertexFormat::Float32x3,
-            //     .offset = offsetof(Vertex, position),
-            //     .shaderLocation = 0
-            // });
-
-            // // Color
-            // vertAttributes.emplace_back(WGPUVertexAttribute {
-            //     .format = wgpu::VertexFormat::Float32x3,
-            //     .offset = offsetof(Vertex, color),
-            //     .shaderLocation = 1
-            // });
-
-            // wgpu::VertexBufferLayout buffLayout{};
-            // buffLayout.arrayStride = sizeof(Vertex);
-            // buffLayout.stepMode = wgpu::VertexStepMode::Vertex;
-            // buffLayout.attributeCount = vertAttributes.size();
-            // buffLayout.attributes = vertAttributes.data();
 
             // BIND GROUP LAYOUT ENTRIES:
 
-            if (!buffers) {
-                LOG_CORE_ERROR("Material creation error: no buffers given");
-            }
-            std::vector<wgpu::BindGroupLayoutEntry> layoutEntries(buffers->size());
+            size_t bufferCount = (buffers) ? buffers->size() : 0;
 
-            for (size_t i = 0; i < buffers->size(); i++) {
-                Buffer& buffer = *buffers->at(i);
+            size_t samplerCount = (samplers) ? samplers->size() : 0;
 
-                layoutEntries[i].nextInChain = nullptr;
-                layoutEntries[i].binding = i;
-                layoutEntries[i].buffer = buffer.getBindingLayout();
-                layoutEntries[i].visibility = buffer.getStageVisibility();
-            }
+            size_t storageTextureCount = (storageTextures) ? storageTextures->size() : 0;
 
+            size_t textureCount = (textures) ? textures->size() : 0;
+
+            std::vector<wgpu::BindGroupLayoutEntry> layoutEntries(
+                bufferCount +
+                samplerCount +
+                storageTextureCount +
+                textureCount
+            );
+
+            getBufferBindings(buffers, layoutEntries, bufferCount, 0);
+
+            getSamplerBindings(samplers, layoutEntries, samplerCount, bufferCount);
+
+            getStorageTextureBindings(storageTextures, layoutEntries, storageTextureCount, bufferCount + samplerCount);
+
+            getTextureBindings(textures, layoutEntries, textureCount, bufferCount + samplerCount + storageTextureCount);
 
             // BIND GROUP LAYOUT:
 
-            wgpu::BindGroupLayoutDescriptor bindGroupLayoutDesc{};
-            bindGroupLayoutDesc.nextInChain = nullptr;
-            bindGroupLayoutDesc.entryCount = layoutEntries.size();
-            bindGroupLayoutDesc.entries = layoutEntries.data();
-
-            const wgpu::BindGroupLayout bindGroupLayout = renderContext.device.createBindGroupLayout(bindGroupLayoutDesc);
+            const wgpu::BindGroupLayout bindGroupLayout = getBindGroupLayout(renderContext.device, layoutEntries);
 
             // BIND GROUP ENTRIES:
 
-            std::vector<wgpu::BindGroupEntry> bindGroupEntries(layoutEntries.size());
-            for (size_t i = 0; i < bindGroupEntries.size(); i++) {
-                Buffer& buffer = *buffers->at(i);
-
-                bindGroupEntries[i].nextInChain = nullptr;
-                bindGroupEntries[i].binding = i;
-                bindGroupEntries[i].buffer = buffer.getRawHandle();
-                bindGroupEntries[i].size = buffer.getByteSize();
-                bindGroupEntries[i].offset = 0;
-            }
-
+            std::vector<wgpu::BindGroupEntry> bindGroupEntries = getBindGroupEntries(
+                layoutEntries,
+                buffers, bufferCount,
+                samplers, samplerCount,
+                storageTextures, storageTextureCount,
+                textures, textureCount
+            );
 
             // BIND GROUP:
-            wgpu::BindGroupDescriptor bindGroupDesc{};
-            bindGroupDesc.nextInChain = nullptr;
-            bindGroupDesc.layout = bindGroupLayout;
-            bindGroupDesc.entryCount = bindGroupEntries.size();
-            bindGroupDesc.entries = bindGroupEntries.data();
-
-            wgpu::BindGroup bindGroup = renderContext.device.createBindGroup(bindGroupDesc);
+            wgpu::BindGroup bindGroup = getBindGroup(
+                bindGroupLayout,
+                bindGroupEntries,
+                renderContext.device
+            );
 
             // // FILE READING:
             std::ifstream file(path);
@@ -212,8 +194,180 @@ namespace crg::renderer {
 
     private:
         std::vector<Material> m_materialCache;
-    };
 
+        inline void getBufferBindings(
+            std::vector<Buffer*>* buffers,
+            std::vector<wgpu::BindGroupLayoutEntry>& layoutEntries,
+            size_t bufferCount,
+            size_t startIdx
+        ) {
+
+            // Buffers
+            for (size_t i = startIdx; i < startIdx + bufferCount; i++) {
+                Buffer& buffer = *buffers->at(i);
+
+                layoutEntries[i].nextInChain = nullptr;
+                layoutEntries[i].binding = i;
+                layoutEntries[i].buffer = buffer.getBindingLayout();
+                layoutEntries[i].visibility = buffer.getStageVisibility();
+            }
+        }
+
+
+        inline void getSamplerBindings(
+            std::vector<TextureSampler*>* samplers,
+            std::vector<wgpu::BindGroupLayoutEntry>& layoutEntries,
+            size_t samplerCount,
+            size_t startIdx
+        ) {
+            // Samplers
+            for (size_t i = startIdx; i < startIdx + samplerCount; i++) {
+                TextureSampler& sampler = *samplers->at(i);
+
+                layoutEntries[i].nextInChain = nullptr;
+                layoutEntries[i].binding = i;
+                layoutEntries[i].visibility = sampler.getStageVisibility();
+                layoutEntries[i].sampler = sampler.getBindingLayout();
+            }
+        }
+
+
+        inline void getStorageTextureBindings(
+            std::vector<StorageTexture*>* storageTextures,
+            std::vector<wgpu::BindGroupLayoutEntry>& layoutEntries,
+            size_t storageTextureCount,
+            size_t startIdx
+        ) {
+            // Storage textures
+            for (size_t i = startIdx; i < startIdx + storageTextureCount; i++) {
+                StorageTexture& storageTexture = *storageTextures->at(i);
+
+                layoutEntries[i].nextInChain = nullptr;
+                layoutEntries[i].binding = i;
+                layoutEntries[i].visibility = storageTexture.getStageVisibility();
+                layoutEntries[i].storageTexture = storageTexture.getBindingLayout();
+            }
+
+        }
+
+
+
+        inline void getTextureBindings(
+            std::vector<Texture*>* textures,
+            std::vector<wgpu::BindGroupLayoutEntry>& layoutEntries,
+            size_t textureCount,
+            size_t startIdx
+        ) {
+            // Textures
+            for (size_t i = startIdx; i < startIdx + textureCount; i++) {
+                Texture& texture = *textures->at(i);
+
+                layoutEntries[i].nextInChain = nullptr;
+                layoutEntries[i].binding = i;
+                layoutEntries[i].visibility = texture.getStageVisibility();
+                layoutEntries[i].texture = texture.getBindingLayout();
+            }
+
+        }
+
+
+
+
+        inline const wgpu::BindGroupLayout getBindGroupLayout(
+            wgpu::Device& device,
+            std::vector<wgpu::BindGroupLayoutEntry>& layoutEntries
+        ) {
+
+            wgpu::BindGroupLayoutDescriptor bindGroupLayoutDesc{};
+            bindGroupLayoutDesc.nextInChain = nullptr;
+            bindGroupLayoutDesc.entryCount = layoutEntries.size();
+            bindGroupLayoutDesc.entries = layoutEntries.data();
+
+            return device.createBindGroupLayout(bindGroupLayoutDesc);
+        }
+
+        inline std::vector<wgpu::BindGroupEntry> getBindGroupEntries(
+            std::vector<wgpu::BindGroupLayoutEntry>& layoutEntries,
+            std::vector<Buffer*>* buffers,
+            size_t bufferCount,
+            std::vector<TextureSampler*>* samplers,
+            size_t samplerCount,
+            std::vector<StorageTexture*>* storageTextures,
+            size_t storageTextureCount,
+            std::vector<Texture*>* textures,
+            size_t textureCount
+        ) {
+            std::vector<wgpu::BindGroupEntry> bindGroupEntries(layoutEntries.size());
+
+            size_t startIdx = 0;
+
+            for (size_t i = startIdx; i < bufferCount; i++) {
+                Buffer& buffer = *buffers->at(i);
+
+                bindGroupEntries[i].nextInChain = nullptr;
+                bindGroupEntries[i].binding = i;
+                bindGroupEntries[i].buffer = buffer.getRawHandle();
+                bindGroupEntries[i].size = buffer.getByteSize();
+                bindGroupEntries[i].offset = 0;
+            }
+
+            startIdx += bufferCount;
+
+            for (size_t i = startIdx; i < startIdx + samplerCount; i++) {
+                TextureSampler& sampler = *samplers->at(i);
+
+                bindGroupEntries[i].nextInChain = nullptr;
+                bindGroupEntries[i].binding = i;
+                bindGroupEntries[i].sampler = sampler.getRawHandle();
+                // bindGroupEntries[i].size = samplerCount.getByteSize();
+                bindGroupEntries[i].offset = 0;
+            }
+
+            startIdx += samplerCount;
+
+            for (size_t i = startIdx; i < startIdx + storageTextureCount; i++) {
+                StorageTexture& storageTexture = *storageTextures->at(i);
+
+                bindGroupEntries[i].nextInChain = nullptr;
+                bindGroupEntries[i].binding = i;
+                // bindGroupEntries[i].textureView = storageTexture.getRawHandle();
+                // bindGroupEntries[i].size = samplerCount.getByteSize();
+                bindGroupEntries[i].offset = 0;
+            }
+
+            startIdx += storageTextureCount;
+
+            for (size_t i = startIdx; i < startIdx + textureCount; i++) {
+                Texture& texture = *textures->at(i);
+
+                bindGroupEntries[i].nextInChain = nullptr;
+                bindGroupEntries[i].binding = i;
+                // bindGroupEntries[i].textureView = storageTexture.getRawHandle();
+                // bindGroupEntries[i].size = samplerCount.getByteSize();
+                bindGroupEntries[i].offset = 0;
+            }
+
+            return bindGroupEntries;
+        }
+
+
+        inline wgpu::BindGroup getBindGroup(
+            const wgpu::BindGroupLayout& bindGroupLayout,
+            std::vector<wgpu::BindGroupEntry>& bindGroupEntries,
+            wgpu::Device& device
+        ) {
+            wgpu::BindGroupDescriptor bindGroupDesc{};
+            bindGroupDesc.nextInChain = nullptr;
+            bindGroupDesc.layout = bindGroupLayout;
+            bindGroupDesc.entryCount = bindGroupEntries.size();
+            bindGroupDesc.entries = bindGroupEntries.data();
+
+            return device.createBindGroup(bindGroupDesc);
+        }
+
+
+
+};
 
 
 }

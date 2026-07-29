@@ -1,7 +1,7 @@
 #pragma once
 #include "Ecs/Ecs.h"
 #include "RenderModule/Components/Mesh.h"
-#include "RenderModule/Material/Material.h"
+// #include "RenderModule/Material/Material.h"
 #include "RenderModule/RenderBackend.h"
 #include "glm/fwd.hpp"
 #include <GLFW/glfw3.h>

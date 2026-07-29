@@ -1,6 +1,5 @@
 #pragma once
 
-#include "RenderModule/Components/Mesh.h"
 #include "utils/Assert.h"
 #include "utils/Logger.h"
 #include <cstddef>
@@ -10,20 +9,6 @@
 #define BUFFER_TYPE(type) (type*)nullptr
 
 namespace crg::renderer {
-
-    // static const std::vector<Vertex> verts = {
-    //     Vertex {
-    //         .position = vec3(0., 0.5, 0.),
-    //     },
-    //     Vertex {
-    //         .position = vec3(-0.5, -0.5, 0.),
-    //     },
-    //     Vertex {
-    //         .position = vec3(0.5, -0.5, 0.),
-    //     },
-    // };
-
-
 
     class Buffer {
     public:

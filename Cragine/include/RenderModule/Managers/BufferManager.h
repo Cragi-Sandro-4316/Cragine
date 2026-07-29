@@ -1,5 +1,5 @@
 #pragma once
-#include "RenderModule/Buffers/Buffer.h"
+#include "RenderModule/Structs/Buffer.h"
 #include <typeindex>
 #include <unordered_map>
 #include "RenderModule/Handles.h"
