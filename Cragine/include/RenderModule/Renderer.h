@@ -4,27 +4,28 @@
 // #include "RenderModule/Material/Material.h"
 #include "RenderModule/RenderBackend.h"
 #include "RenderModule/Structs/Buffer.h"
+#include "RenderModule/Structs/Texture.h"
 #include "glm/fwd.hpp"
 #include <GLFW/glfw3.h>
 
 namespace crg::renderer {
 
     static std::vector<Vertex> verts = {
-        Vertex {
-            .position = vec4(0.75, 0.75, 0., 1.),
-            .color = vec4(1., 0., 0., 1.)
+        Vertex {    // TOP RIGHT
+            .position = vec4(0.75, 0.75, 0., 1),
+            .color = vec4(1., 0., 0., 1),
         },
-        Vertex {
-            .position = vec4(-0.75, -0.75, 0., 1.),
-            .color = vec4(0., 1., 0., 1.)
+        Vertex {    // BOTTOM LEFT
+            .position = vec4(-0.75, -0.75, 0., 1),
+            .color = vec4(0., 1., 0., 1),
         },
-        Vertex {
-            .position = vec4(0.75, -0.75, 0., 1.),
-            .color = vec4(0., 0., 1., 1.)
+        Vertex {    // BOTTOM RIGHT
+            .position = vec4(0.75, -0.75, 0., 1),
+            .color = vec4(0., 0., 1., 1),
         },
-        Vertex {
-            .position = vec4(-0.75, 0.75, 0., 1.),
-            .color = vec4(1., 0., 0., 1.)
+        Vertex {    // TOP LEFT
+            .position = vec4(-0.75, 0.75, 0., 1),
+            .color = vec4(1., 0., 0., 1),
         },
     };
 
@@ -42,13 +43,15 @@ namespace crg::renderer {
             renderBackend.newBuffer<Index>(6, BufferType::Storage)
         };
 
+        std::vector<Handle<Texture>> textureHandles = { renderBackend.newTexture() };
+
         Buffer& vertexBuffer = renderBackend.getBuffer(bufferHandles[0]);
         Buffer& indexBuffer = renderBackend.getBuffer(bufferHandles[1]);
 
         vertexBuffer.writeBuffer(verts);
         indexBuffer.writeBuffer(idxs);
 
-        renderBackend.newMaterial("../assets/fragVert.wgsl", bufferHandles);
+        renderBackend.newMaterial("../assets/fragVert.wgsl", &bufferHandles, &textureHandles);
 
         LOG_CORE_INFO("Material created");
     }

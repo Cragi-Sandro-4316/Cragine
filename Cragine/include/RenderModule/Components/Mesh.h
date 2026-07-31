@@ -7,8 +7,10 @@ using namespace glm;
 namespace crg::renderer {
 
     struct Vertex {
-        vec4 position;
-        vec4 color;
+        alignas(16) vec3 position;
+        alignas(16) vec3 color;
+        // alignas(16) vec3 normal;
+        vec2 uv;
     };
 
     struct Index {

@@ -204,7 +204,7 @@ namespace crg::renderer {
 
             // Buffers
             for (size_t i = startIdx; i < startIdx + bufferCount; i++) {
-                Buffer& buffer = *buffers->at(i);
+                Buffer& buffer = *buffers->at(i - startIdx);
 
                 layoutEntries[i].nextInChain = nullptr;
                 layoutEntries[i].binding = i;
@@ -222,7 +222,7 @@ namespace crg::renderer {
         ) {
             // Samplers
             for (size_t i = startIdx; i < startIdx + samplerCount; i++) {
-                TextureSampler& sampler = *samplers->at(i);
+                TextureSampler& sampler = *samplers->at(i - startIdx);
 
                 layoutEntries[i].nextInChain = nullptr;
                 layoutEntries[i].binding = i;
@@ -240,7 +240,7 @@ namespace crg::renderer {
         ) {
             // Storage textures
             for (size_t i = startIdx; i < startIdx + storageTextureCount; i++) {
-                StorageTexture& storageTexture = *storageTextures->at(i);
+                StorageTexture& storageTexture = *storageTextures->at(i - startIdx);
 
                 layoutEntries[i].nextInChain = nullptr;
                 layoutEntries[i].binding = i;
@@ -260,7 +260,7 @@ namespace crg::renderer {
         ) {
             // Textures
             for (size_t i = startIdx; i < startIdx + textureCount; i++) {
-                Texture& texture = *textures->at(i);
+                Texture& texture = *textures->at(i - startIdx);
 
                 layoutEntries[i].nextInChain = nullptr;
                 layoutEntries[i].binding = i;
@@ -269,9 +269,6 @@ namespace crg::renderer {
             }
 
         }
-
-
-
 
         inline const wgpu::BindGroupLayout getBindGroupLayout(
             wgpu::Device& device,
@@ -302,7 +299,7 @@ namespace crg::renderer {
             size_t startIdx = 0;
 
             for (size_t i = startIdx; i < bufferCount; i++) {
-                Buffer& buffer = *buffers->at(i);
+                Buffer& buffer = *buffers->at(i - startIdx);
 
                 bindGroupEntries[i].nextInChain = nullptr;
                 bindGroupEntries[i].binding = i;
@@ -314,7 +311,7 @@ namespace crg::renderer {
             startIdx += bufferCount;
 
             for (size_t i = startIdx; i < startIdx + samplerCount; i++) {
-                TextureSampler& sampler = *samplers->at(i);
+                TextureSampler& sampler = *samplers->at(i - startIdx);
 
                 bindGroupEntries[i].nextInChain = nullptr;
                 bindGroupEntries[i].binding = i;
@@ -326,24 +323,21 @@ namespace crg::renderer {
             startIdx += samplerCount;
 
             for (size_t i = startIdx; i < startIdx + storageTextureCount; i++) {
-                StorageTexture& storageTexture = *storageTextures->at(i);
+                StorageTexture& storageTexture = *storageTextures->at(i - startIdx);
 
                 bindGroupEntries[i].nextInChain = nullptr;
                 bindGroupEntries[i].binding = i;
-                // bindGroupEntries[i].textureView = storageTexture.getRawHandle();
-                // bindGroupEntries[i].size = samplerCount.getByteSize();
-                bindGroupEntries[i].offset = 0;
+                // bindGroupEntries[i].textureView = storageTexture.getTextureView();
             }
 
             startIdx += storageTextureCount;
 
             for (size_t i = startIdx; i < startIdx + textureCount; i++) {
-                Texture& texture = *textures->at(i);
+                Texture& texture = *textures->at(i - startIdx);
 
                 bindGroupEntries[i].nextInChain = nullptr;
                 bindGroupEntries[i].binding = i;
-                // bindGroupEntries[i].textureView = storageTexture.getRawHandle();
-                // bindGroupEntries[i].size = samplerCount.getByteSize();
+                bindGroupEntries[i].textureView = texture.getTextureView();
                 bindGroupEntries[i].offset = 0;
             }
 

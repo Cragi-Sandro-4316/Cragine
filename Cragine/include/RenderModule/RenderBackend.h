@@ -2,8 +2,10 @@
 #include "RenderModule/Managers/BufferManager.h"
 #include "RenderModule/Managers/MaterialCache.h"
 #include "RenderModule/Managers/MeshServer.h"
+#include "RenderModule/Managers/TextureManager.h"
 #include "RenderModule/RenderContext.h"
 #include "RenderModule/Structs/Buffer.h"
+#include "RenderModule/Structs/Texture.h"
 #include "Window.h"
 #include <webgpu.h>
 #include <webgpu/webgpu.hpp>
@@ -16,7 +18,12 @@ namespace crg::renderer {
 
         RenderBackend(Window* window);
 
-        void newMaterial(std::string shaderPath, std::vector<Handle<Buffer>>& buffers);
+        void newMaterial(
+            std::string shaderPath,
+            std::vector<Handle<Buffer>>* buffers,
+            std::vector<Handle<Texture>>* textures
+        );
+
 
         template<typename T>
         Handle<Buffer> newBuffer(size_t size, BufferType bufferType) {
@@ -24,6 +31,13 @@ namespace crg::renderer {
             wgpu::Queue& queue = m_renderContext.queue;
 
             return m_bufferManager.newBuffer<T>(size, device, queue, bufferType);
+        }
+
+        Handle<Texture> newTexture() {
+            wgpu::Device& device = m_renderContext.device;
+            wgpu::Queue& queue = m_renderContext.queue;
+
+            return m_textureManager.newTexture(device, queue);
         }
 
         template<typename T>
@@ -49,6 +63,8 @@ namespace crg::renderer {
         MeshServer m_meshServer{};
 
         BufferManager m_bufferManager{};
+
+        TextureManager m_textureManager{};
 
     };
 

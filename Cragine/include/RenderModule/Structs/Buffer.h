@@ -46,7 +46,7 @@ namespace crg::renderer {
 
             LOG_CORE_INFO("size: {}", sizeof(T));
 
-            ASSERT(
+            ASSERT(     // TODO: Check this assert and make it work
                 (sizeof(T) % 16 == 0) ||
                 (sizeof(T) % 4 == 0 && sizeof(T) < 12),
                 "Buffer struct '{}' does not follow wgpu alignment requirements. alignment: {}", typeid(T).name(), alignof(T)
