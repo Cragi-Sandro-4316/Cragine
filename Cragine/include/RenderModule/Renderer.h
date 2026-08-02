@@ -32,6 +32,16 @@ namespace crg::renderer {
             // .color = vec3(1., 0., 0.),
             .uv = vec2(0, 0)
         },
+        Vertex {    // BOTTOM LEFT
+            .position = vec3(-0.75, -0.75, 0.),
+            // .color = vec3(0., 1., 0.),
+            .uv = vec2(-55, 0)
+        },
+        Vertex {    // TOP RIGHT
+            .position = vec3(0.75, 0.75, 0.),
+            // .color = vec3(1., 0., 0.),
+            .uv = vec2(0, 256)
+        },
     };
 
     static std::vector<Index> idxs = {

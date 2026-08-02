@@ -11,7 +11,7 @@ namespace crg::renderer {
         alignas(16) vec3 position;
         alignas(16) vec3 color;
         alignas(16) vec3 normal;
-        vec2 uv;
+        alignas(8) vec2 uv;
     };
 
 
