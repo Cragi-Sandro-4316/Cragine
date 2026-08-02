@@ -21,11 +21,16 @@ namespace crg::renderer {
 
         void newMaterial(
             std::string shaderPath,
+            size_t indexCount,
             std::initializer_list<Handle<Buffer>> buffers,
             std::initializer_list<Handle<TextureSampler>> samplers,
             std::initializer_list<Handle<Texture>> textures
         );
 
+
+        Handle<Mesh> loadMesh(std::filesystem::path& path) {
+            return m_meshServer.loadMesh(path);
+        }
 
         template<typename T>
         Handle<Buffer> newBuffer(size_t size, BufferType bufferType) {

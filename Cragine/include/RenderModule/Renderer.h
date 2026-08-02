@@ -14,22 +14,22 @@ namespace crg::renderer {
     static std::vector<Vertex> verts = {
         Vertex {    // TOP RIGHT
             .position = vec3(0.75, 0.75, 0.),
-            .color = vec3(1., 0., 0.),
+            // .color = vec3(1., 0., 0.),
             .uv = vec2(0, 256)
         },
         Vertex {    // BOTTOM LEFT
             .position = vec3(-0.75, -0.75, 0.),
-            .color = vec3(0., 1., 0.),
+            // .color = vec3(0., 1., 0.),
             .uv = vec2(-55, 0)
         },
         Vertex {    // BOTTOM RIGHT
             .position = vec3(0.75, -0.75, 0.),
-            .color = vec3(0., 0., 1.),
+            // .color = vec3(0., 0., 1.),
             .uv = vec2(-55, 256)
         },
         Vertex {    // TOP LEFT
             .position = vec3(-0.75, 0.75, 0.),
-            .color = vec3(1., 0., 0.),
+            // .color = vec3(1., 0., 0.),
             .uv = vec2(0, 0)
         },
     };
@@ -43,20 +43,33 @@ namespace crg::renderer {
     ) {
         auto& renderBackend = rGpuHandler.get();
 
-        Handle<Buffer> vertexBuffer = renderBackend.newBuffer<Vertex>(4, BufferType::Storage);
+        std::filesystem::path meshPath = "../assets/Mesh.obj";
 
-        Handle<Buffer> indexBuffer = renderBackend.newBuffer<Index>(6, BufferType::Storage);
+        std::filesystem::path shaderPath = "../assets/fragVert.wgsl";
+
+        Handle<Mesh> meshHandle = renderBackend.loadMesh(meshPath);
+
+        Mesh* mesh = renderBackend.getMeshServer().getMeshPtr(meshHandle);
+
+        LOG_CORE_INFO("Mesh size: {}", mesh->vertices.size());
+        Handle<Buffer> vertexBuffer = renderBackend.newBuffer<Vertex>(mesh->vertices.size(), BufferType::Storage);
+
+        // Handle<Buffer> indexBuffer = renderBackend.newBuffer<Index>(6, BufferType::Storage);
 
         Handle<TextureSampler> sampler = renderBackend.newSampler();
 
         Handle<Texture> textureHandle = renderBackend.newTexture();
 
-        renderBackend.writeBuffer(vertexBuffer, verts);
-        renderBackend.writeBuffer(indexBuffer, idxs);
+        renderBackend.writeBuffer(vertexBuffer, mesh->vertices);
+        // renderBackend.writeBuffer(indexBuffer, idxs);
 
         renderBackend.newMaterial(
-            "../assets/fragVert.wgsl",
-            {vertexBuffer, indexBuffer},
+            shaderPath,
+            mesh->vertices.size(),
+            {
+                vertexBuffer,
+                // indexBuffer
+            },
             {sampler},
             {textureHandle}
         );

@@ -1,10 +1,10 @@
 #pragma once
 
 #include "RenderModule/Components/Mesh.h"
-#include "glm/fwd.hpp"
-#include <vector>
+#include <filesystem>
 #include <webgpu/webgpu.hpp>
-
+#include "RenderModule/Handles.h"
+#include "utils/Logger.h"
 
 namespace crg::renderer {
 
@@ -12,37 +12,58 @@ namespace crg::renderer {
     class MeshServer {
     public:
 
-        std::pair<wgpu::Buffer, wgpu::BufferDescriptor> newTri(wgpu::Device& device, wgpu::Queue& queue) {
+        Handle<Mesh> loadMesh(std::filesystem::path& path) {
 
-            std::vector<Vertex> vertices {
-                Vertex {
-                    .position = vec4(-0.75, -0.75, 0., 1.),
-                },
-                Vertex {
-                    .position = vec4(0.75, -0.75, 0., 1.),
-                },
-                Vertex {
-                    .position = vec4(0., 0.75, 0., 1.),
-                },
+            Handle<Mesh> handle {
+                .id = m_currentID
             };
 
-            wgpu::BufferDescriptor buffDesc{};
-            buffDesc.label = wgpu::StringView("Triangle akakakaka");
-            buffDesc.size = sizeof(Vertex) * vertices.size();
-            buffDesc.usage = wgpu::BufferUsage::Vertex | wgpu::BufferUsage::CopyDst;
-            buffDesc.mappedAtCreation = false;
+            Mesh mesh{};
 
+            if (path.extension() == ".obj") {
+                loadMeshFromObj(path, mesh);
+            }
 
-            wgpu::Buffer buffer = device.createBuffer(buffDesc);
+            m_meshes.insert({m_currentID, mesh});
 
-            queue.writeBuffer(buffer, 0, vertices.data(), vertices.size() * sizeof(Vertex));
-            return {buffer, buffDesc};
+            m_currentID++;
+
+            return handle;
         }
 
 
+        Mesh* getMeshPtr(Handle<Mesh> handle) {
+            auto it = m_meshes.find(handle.id);
+
+            if (it == m_meshes.end()) {
+                LOG_CORE_ERROR("Mesh error: given handle is invalid");
+                return nullptr;
+            }
+
+            return &it->second;
+        }
+
+        inline bool validateHandle(Handle<Mesh> handle) {
+            return m_meshes.contains(handle.id);
+        }
+
+        void deloadMesh(Handle<Mesh> handle) {
+            if (!validateHandle(handle)) {
+                LOG_CORE_WARNING("Sampler deletion error: given handle is invalid");
+                return;
+            }
+
+            m_meshes.erase(handle.id);
+        }
 
     private:
-        std::vector<Mesh> m_meshes;
+        size_t m_currentID = 0;
+
+        std::unordered_map<size_t, Mesh> m_meshes;
+
+
+        void loadMeshFromObj(std::filesystem::path& path, Mesh& mesh);
+
     };
 
 

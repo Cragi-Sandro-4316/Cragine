@@ -1,16 +1,17 @@
 struct Vertex {
     position: vec3f,
-    color: vec3f,
+    // color: vec3f,
+    normal: vec3f,
     uv: vec2f
 };
 
 @group(0) @binding(0) var<storage, read_write> vertex_buffer: array<Vertex>;
 
-@group(0) @binding(1) var<storage, read_write> index_buffer: array<u32>;
+// @group(0) @binding(1) var<storage, read_write> index_buffer: array<u32>;
 
-@group(0) @binding(2) var texture_sampler: sampler;
+@group(0) @binding(1) var texture_sampler: sampler;
 
-@group(0) @binding(3) var texture: texture_2d<f32>;
+@group(0) @binding(2) var texture: texture_2d<f32>;
 
 struct VertexOutput {
     @builtin(position) position: vec4f,
@@ -19,15 +20,15 @@ struct VertexOutput {
 };
 
 @vertex
-fn vs_main(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
+fn vs_main(@builtin(vertex_index) index: u32) -> VertexOutput {
 
-    var index = index_buffer[vertexIndex];
+    // var index = index_buffer[vertexIndex];
 
     var vertex = vertex_buffer[index];
 
     var out: VertexOutput;
     out.position = vec4f(vertex.position, 1);
-    out.color = vec4f(vertex.color, 1);
+    // out.color = vec4f(vertex.color, 1);
     out.uv = vertex.uv * 2;
 
     return out;

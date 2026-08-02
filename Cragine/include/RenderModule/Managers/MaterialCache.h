@@ -27,6 +27,7 @@ namespace crg::renderer {
             std::string path,
             RenderContext renderContext,
             MeshServer& meshServer,
+            size_t indexCount = 0,
             std::vector<Buffer*>* buffers = nullptr,
             std::vector<TextureSampler*>* samplers = nullptr,
             std::vector<StorageTexture*>* storageTextures = nullptr,
@@ -154,7 +155,7 @@ namespace crg::renderer {
             primitiveState.nextInChain = nullptr;
             primitiveState.topology = wgpu::PrimitiveTopology::TriangleList;
             primitiveState.frontFace = wgpu::FrontFace::CCW;
-            primitiveState.cullMode = wgpu::CullMode::Back;
+            primitiveState.cullMode = wgpu::CullMode::None;
             primitiveState.unclippedDepth = false;
             primitiveState.stripIndexFormat = wgpu::IndexFormat::Undefined;
 
@@ -177,7 +178,7 @@ namespace crg::renderer {
             material.m_shaderModules = {shader};
             material.m_binding = bindGroup;
             material.m_bindingLayout = bindGroupLayout;
-            material.m_indexCount = 6;
+            material.m_indexCount = indexCount;
 
             m_materialCache.emplace_back(material);
 

@@ -10,6 +10,7 @@ namespace crg::renderer {
 
     void RenderBackend::newMaterial(
         std::string shaderPath,
+        size_t indexCount = 0,
         std::initializer_list<Handle<Buffer>> buffers = {},
         std::initializer_list<Handle<TextureSampler>> samplers = {},
         std::initializer_list<Handle<Texture>> textures = {}
@@ -37,6 +38,7 @@ namespace crg::renderer {
             shaderPath,
             m_renderContext,
             m_meshServer,
+            indexCount,
             &buffs,
             &textureSamplers,   // Samplers
             nullptr,            // StorageTextures
