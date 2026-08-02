@@ -39,9 +39,9 @@ namespace crg::renderer {
             return m_textures.contains(handle.id);
         }
 
-        void deleteBuffer(Handle<Texture> handle) {
+        void deleteTexture(Handle<Texture> handle) {
             if (!validateHandle(handle)) {
-                LOG_CORE_WARNING("Buffer deletion error: given handle is invalid");
+                LOG_CORE_WARNING("Texture deletion error: given handle is invalid");
                 return;
             }
 

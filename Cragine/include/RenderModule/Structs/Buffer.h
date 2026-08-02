@@ -91,11 +91,6 @@ namespace crg::renderer {
                 return;
             }
 
-
-            void* daata = data.data();
-            size_t x = data.size();
-
-
             m_queue.writeBuffer(
                 m_buffer,
                 0,

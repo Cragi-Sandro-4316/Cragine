@@ -316,8 +316,6 @@ namespace crg::renderer {
                 bindGroupEntries[i].nextInChain = nullptr;
                 bindGroupEntries[i].binding = i;
                 bindGroupEntries[i].sampler = sampler.getRawHandle();
-                // bindGroupEntries[i].size = samplerCount.getByteSize();
-                bindGroupEntries[i].offset = 0;
             }
 
             startIdx += samplerCount;

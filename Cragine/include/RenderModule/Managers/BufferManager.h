@@ -77,14 +77,14 @@ namespace crg::renderer {
         }
 
         template<typename T>
-        void writeBuffer(Handle<Buffer> buffer, std::vector<T>& data, wgpu::Queue& queue) {
+        void writeBuffer(Handle<Buffer> buffer, std::vector<T>& data) {
             auto it = m_buffers.find(buffer.id);
             if (it == m_buffers.end()) {
                 LOG_CORE_WARNING("Buffer write: invalid handle");
                 return;
             }
 
-            it->second.writeBuffer(data, queue);
+            it->second.writeBuffer(data);
         }
 
     private:

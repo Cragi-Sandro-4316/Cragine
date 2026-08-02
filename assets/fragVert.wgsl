@@ -1,7 +1,6 @@
 struct Vertex {
     position: vec3f,
     color: vec3f,
-    // normal: vec3f,
     uv: vec2f
 };
 
@@ -9,7 +8,9 @@ struct Vertex {
 
 @group(0) @binding(1) var<storage, read_write> index_buffer: array<u32>;
 
-@group(0) @binding(2) var texture: texture_2d<f32>;
+@group(0) @binding(2) var texture_sampler: sampler;
+
+@group(0) @binding(3) var texture: texture_2d<f32>;
 
 struct VertexOutput {
     @builtin(position) position: vec4f,
@@ -27,7 +28,7 @@ fn vs_main(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
     var out: VertexOutput;
     out.position = vec4f(vertex.position, 1);
     out.color = vec4f(vertex.color, 1);
-    out.uv = vertex.uv;
+    out.uv = vertex.uv * 2;
 
     return out;
 }
@@ -35,7 +36,9 @@ fn vs_main(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4f {
 
-    let color = textureLoad(texture, vec2i(in.position.xy), 0).rgb;
+    let color = textureLoad(texture, vec2i(in.uv), 0).rgb;
+
+    // let color = textureSample(texture, texture_sampler, in.uv).rgb
 
     let corrected_color = pow(color, vec3f(2.2));
 

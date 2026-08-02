@@ -1,6 +1,7 @@
 #pragma once
 #include "Ecs/Ecs.h"
 #include "RenderModule/Structs/Buffer.h"
+#include "RenderModule/Structs/Sampler.h"
 #include "RenderModule/Structs/Texture.h"
 
 
@@ -11,6 +12,12 @@ namespace crg {
     struct Handle<renderer::Texture> {
         size_t id;
     };
+
+    template<>
+    struct Handle<renderer::TextureSampler> {
+        size_t id;
+    };
+
 
     template<>
     struct Handle<renderer::Buffer> {

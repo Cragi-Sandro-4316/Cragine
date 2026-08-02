@@ -22,6 +22,7 @@ namespace crg::renderer {
             textureDesc.viewFormatCount = 0;
             textureDesc.viewFormats = nullptr;
 
+            // Create image data
             std::vector<uint8_t> pixels(4 * textureDesc.size.width * textureDesc.size.height);
             for (uint32_t i = 0; i < textureDesc.size.width; ++i) {
                 for (uint32_t j = 0; j < textureDesc.size.height; ++j) {

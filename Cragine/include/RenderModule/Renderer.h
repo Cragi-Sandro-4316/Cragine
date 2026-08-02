@@ -4,6 +4,7 @@
 // #include "RenderModule/Material/Material.h"
 #include "RenderModule/RenderBackend.h"
 #include "RenderModule/Structs/Buffer.h"
+#include "RenderModule/Structs/Sampler.h"
 #include "RenderModule/Structs/Texture.h"
 #include "glm/fwd.hpp"
 #include <GLFW/glfw3.h>
@@ -12,20 +13,24 @@ namespace crg::renderer {
 
     static std::vector<Vertex> verts = {
         Vertex {    // TOP RIGHT
-            .position = vec4(0.75, 0.75, 0., 1),
-            .color = vec4(1., 0., 0., 1),
+            .position = vec3(0.75, 0.75, 0.),
+            .color = vec3(1., 0., 0.),
+            .uv = vec2(0, 256)
         },
         Vertex {    // BOTTOM LEFT
-            .position = vec4(-0.75, -0.75, 0., 1),
-            .color = vec4(0., 1., 0., 1),
+            .position = vec3(-0.75, -0.75, 0.),
+            .color = vec3(0., 1., 0.),
+            .uv = vec2(-55, 0)
         },
         Vertex {    // BOTTOM RIGHT
-            .position = vec4(0.75, -0.75, 0., 1),
-            .color = vec4(0., 0., 1., 1),
+            .position = vec3(0.75, -0.75, 0.),
+            .color = vec3(0., 0., 1.),
+            .uv = vec2(-55, 256)
         },
         Vertex {    // TOP LEFT
-            .position = vec4(-0.75, 0.75, 0., 1),
-            .color = vec4(1., 0., 0., 1),
+            .position = vec3(-0.75, 0.75, 0.),
+            .color = vec3(1., 0., 0.),
+            .uv = vec2(0, 0)
         },
     };
 
@@ -38,20 +43,23 @@ namespace crg::renderer {
     ) {
         auto& renderBackend = rGpuHandler.get();
 
-        std::vector<Handle<Buffer>> bufferHandles = {
-            renderBackend.newBuffer<Vertex>(4, BufferType::Storage),
-            renderBackend.newBuffer<Index>(6, BufferType::Storage)
-        };
+        Handle<Buffer> vertexBuffer = renderBackend.newBuffer<Vertex>(4, BufferType::Storage);
 
-        std::vector<Handle<Texture>> textureHandles = { renderBackend.newTexture() };
+        Handle<Buffer> indexBuffer = renderBackend.newBuffer<Index>(6, BufferType::Storage);
 
-        Buffer& vertexBuffer = renderBackend.getBuffer(bufferHandles[0]);
-        Buffer& indexBuffer = renderBackend.getBuffer(bufferHandles[1]);
+        Handle<TextureSampler> sampler = renderBackend.newSampler();
 
-        vertexBuffer.writeBuffer(verts);
-        indexBuffer.writeBuffer(idxs);
+        Handle<Texture> textureHandle = renderBackend.newTexture();
 
-        renderBackend.newMaterial("../assets/fragVert.wgsl", &bufferHandles, &textureHandles);
+        renderBackend.writeBuffer(vertexBuffer, verts);
+        renderBackend.writeBuffer(indexBuffer, idxs);
+
+        renderBackend.newMaterial(
+            "../assets/fragVert.wgsl",
+            {vertexBuffer, indexBuffer},
+            {sampler},
+            {textureHandle}
+        );
 
         LOG_CORE_INFO("Material created");
     }
