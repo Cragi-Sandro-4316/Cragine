@@ -57,6 +57,8 @@ namespace crg::renderer {
 
         std::filesystem::path shaderPath = "../assets/fragVert.wgsl";
 
+        std::string texturePath = "../assets/yukari.png";
+
         Handle<Mesh> meshHandle = renderBackend.loadMesh(meshPath);
 
         Mesh* mesh = renderBackend.getMeshServer().getMeshPtr(meshHandle);
@@ -68,7 +70,7 @@ namespace crg::renderer {
 
         Handle<TextureSampler> sampler = renderBackend.newSampler();
 
-        Handle<Texture> textureHandle = renderBackend.newTexture();
+        Handle<Texture> textureHandle = renderBackend.newTexture(texturePath);
 
         renderBackend.writeBuffer(vertexBuffer, mesh->vertices);
         // renderBackend.writeBuffer(indexBuffer, idxs);

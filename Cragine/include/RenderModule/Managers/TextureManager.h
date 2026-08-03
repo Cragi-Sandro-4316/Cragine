@@ -10,13 +10,13 @@ namespace crg::renderer {
     class TextureManager {
     public:
 
-        Handle<Texture> newTexture(wgpu::Device& device, wgpu::Queue& queue) {
+        Handle<Texture> newTexture(wgpu::Device& device, wgpu::Queue& queue, std::filesystem::path& path) {
 
             Handle<Texture> handle {
                 .id = m_currentID
             };
 
-            m_textures.insert({m_currentID, Texture(device, queue)});
+            m_textures.insert({m_currentID, Texture(device, queue, path)});
 
             m_currentID++;
 

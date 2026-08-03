@@ -47,11 +47,11 @@ namespace crg::renderer {
             return m_samplerManager.newSampler(device, queue);
         }
 
-        Handle<Texture> newTexture() {
+        Handle<Texture> newTexture(std::filesystem::path path) {
             wgpu::Device& device = m_renderContext.device;
             wgpu::Queue& queue = m_renderContext.queue;
 
-            return m_textureManager.newTexture(device, queue);
+            return m_textureManager.newTexture(device, queue, path);
         }
 
         template<typename T>
