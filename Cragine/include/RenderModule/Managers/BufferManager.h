@@ -21,6 +21,18 @@ namespace crg::renderer {
             wgpu::BufferUsage bufferUsage{};
 
             switch (bufferType) {
+                case BufferType::Vertex:
+                    bindingType = wgpu::BufferBindingType::Storage;
+                    bufferUsage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Storage;
+                break;
+                case BufferType::Index:
+                    bindingType = wgpu::BufferBindingType::Storage;
+                    bufferUsage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Storage;
+                break;
+                case BufferType::Instance:
+                    bindingType = wgpu::BufferBindingType::Storage;
+                    bufferUsage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Storage;
+                break;
                 case BufferType::Storage:
                     bindingType = wgpu::BufferBindingType::Storage;
                     bufferUsage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Storage;
@@ -36,7 +48,7 @@ namespace crg::renderer {
                 break;
             }
 
-            m_buffers.emplace(m_currentID, Buffer(size, BUFFER_TYPE(T), device, queue, bindingType, bufferUsage));
+            m_buffers.emplace(m_currentID, Buffer(size, BUFFER_TYPE(T), device, queue, bindingType, bufferUsage, bufferType));
 
             Handle<Buffer> handle{ m_currentID };
 

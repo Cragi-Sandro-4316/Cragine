@@ -5,6 +5,7 @@
 #include "RenderModule/Structs/Buffer.h"
 #include "RenderModule/Structs/Sampler.h"
 #include "RenderModule/Structs/Texture.h"
+#include "utils/Logger.h"
 #include <GLFW/glfw3.h>
 
 namespace crg::renderer {
@@ -24,7 +25,7 @@ namespace crg::renderer {
 
         Mesh* mesh = renderBackend.getMeshServer().getMeshPtr(meshHandle);
 
-        Handle<Buffer> vertexBuffer = renderBackend.newBuffer<Vertex>(mesh->vertices.size(), BufferType::Storage);
+        Handle<Buffer> vertexBuffer = renderBackend.newBuffer<VertexData>(mesh->vertices.size(), BufferType::Vertex);
 
         Handle<TextureSampler> sampler = renderBackend.newSampler();
 
@@ -86,8 +87,7 @@ namespace crg::renderer {
 
             renderPass.setBindGroup(0, material.m_binding, 0, nullptr);
 
-            renderPass.draw(material.m_indexCount, 1, 0, 0);
-
+            renderPass.draw(material.m_totalVertexCount, 1, 0, 0);
         }
 
         renderPass.end();

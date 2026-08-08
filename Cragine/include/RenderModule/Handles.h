@@ -8,7 +8,6 @@
 
 namespace crg {
 
-
     template<>
     struct Handle<renderer::Texture> {
         size_t id;

@@ -31,6 +31,8 @@ namespace crg::renderer {
             std::vector<Texture*>& textures,
             size_t indexCount = 0
         ) {
+            // TODO: limit to one vertex buffer, one index buffer and one instance buffer.
+
 
             LOG_CORE_INFO("Creating material at path: {}", path);
 
@@ -170,7 +172,9 @@ namespace crg::renderer {
             material.m_shaderModules = {shader};
             material.m_binding = bindGroup;
             material.m_bindingLayout = bindGroupLayout;
-            material.m_indexCount = indexCount;
+            material.m_buffers = buffers;
+
+            material.updateCounts();
 
             m_materialCache.emplace_back(material);
 

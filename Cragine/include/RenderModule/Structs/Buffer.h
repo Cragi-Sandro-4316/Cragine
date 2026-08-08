@@ -13,13 +13,16 @@ namespace crg::renderer {
 
 
     enum BufferType : uint32_t {
+        Vertex,
+        Index,
+        Instance,
         Storage,
         Uniform
     };
 
     class Buffer {
     public:
-        struct TypeDesc {
+        struct DataTypeDesc {
             std::type_index typeID = typeid(void);
             size_t size;
             size_t align;
@@ -33,11 +36,13 @@ namespace crg::renderer {
             wgpu::Queue& queue,
             wgpu::BufferBindingType bindingType,
             wgpu::BufferUsage bufferUsage,
+            BufferType bufferType = BufferType::Storage,
             wgpu::ShaderStage shaderStage = wgpu::ShaderStage::Vertex
         ):
-        m_size(size),
+        m_capacity(size),
         m_shaderStage(shaderStage),
-        m_queue(queue) {
+        m_queue(queue),
+        m_bufferType(bufferType) {
             m_typeDesc = {
                 .typeID = typeid(T),
                 .size = sizeof(T),
@@ -63,10 +68,9 @@ namespace crg::renderer {
             m_bindingLayout.nextInChain = nullptr;
             m_bindingLayout.type = bindingType;
             m_bindingLayout.hasDynamicOffset = false;
-            m_bindingLayout.minBindingSize = m_typeDesc.size * m_size;
+            m_bindingLayout.minBindingSize = m_typeDesc.size * m_capacity;
 
         }
-
 
         wgpu::Buffer getRawHandle() {
             return m_buffer;
@@ -81,11 +85,13 @@ namespace crg::renderer {
         }
 
         size_t getByteSize() {
-            return m_size * m_typeDesc.size;
+            return m_capacity * m_typeDesc.size;
         }
 
         template<typename T>
         void writeBuffer(std::vector<T>& data) {
+            // TODO: treat buffer more like vector
+            // adjust size
             if (typeid(T) != m_typeDesc.typeID) {
                 LOG_CORE_ERROR("GPU BUFFER: write type mismatch");
                 return;
@@ -102,11 +108,14 @@ namespace crg::renderer {
 
         template<typename T>
         void write(T& data, size_t index) {
+            // TODO: treat buffer more like vector
+            // adjust size
+
             if (typeid(T) != m_typeDesc.typeID) {
                 LOG_CORE_ERROR("GPU BUFFER WRITE: type mismatch");
                 return;
             }
-            if (index > m_size) {
+            if (index > m_capacity) {
                 LOG_CORE_ERROR("GPU BUFFER WRITE: index out of bounds");
                 return;
             }
@@ -119,11 +128,29 @@ namespace crg::renderer {
             );
         }
 
+        size_t size() {
+            return m_size;
+        }
+
+        size_t capacity() {
+            return m_capacity;
+        }
+
+        BufferType bufferType() {
+            return m_bufferType;
+        }
+
+        // TODO: vector-like interaction methods: push, pop, insert and remove
+
     private:
 
-        TypeDesc m_typeDesc;
+        DataTypeDesc m_typeDesc;
 
-        const size_t m_size;
+        BufferType m_bufferType;
+
+        const size_t m_capacity;
+
+        size_t m_size;
 
         wgpu::Buffer m_buffer;
 
