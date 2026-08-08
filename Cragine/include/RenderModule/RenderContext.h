@@ -4,7 +4,6 @@
 #include <webgpu/webgpu.hpp>
 namespace crg::renderer {
 
-
     struct RenderContext {
 
         RenderContext(Window* window);

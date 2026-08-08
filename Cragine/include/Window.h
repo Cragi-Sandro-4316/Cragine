@@ -3,11 +3,7 @@
 #include <cstdint>
 #include <string>
 
-
 namespace crg {
-
-
-
 
     class Window {
     public:

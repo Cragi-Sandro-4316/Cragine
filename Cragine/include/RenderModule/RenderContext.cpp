@@ -23,9 +23,7 @@ namespace crg::renderer {
 
         surface.getCapabilities(adapter, &capabilities);
 
-
         surfaceFormat = capabilities.formats[0];
-
 
         config = wgpu::SurfaceConfiguration{};
         config.format = capabilities.formats[0];
@@ -137,42 +135,5 @@ namespace crg::renderer {
 
         device = adapter.requestDevice(deviceDescriptor);
     }
-
-
-    // void GpuHandler::initDepthBuffer() {
-    //     // Create the depth texture
-    //    	wgpu::TextureDescriptor depthTextureDesc;
-    //    	depthTextureDesc.dimension = wgpu::TextureDimension::_2D;
-    //    	depthTextureDesc.format = depthTextureFormat;
-    //    	depthTextureDesc.mipLevelCount = 1;
-    //    	depthTextureDesc.sampleCount = 1;
-    //    	depthTextureDesc.size = {
-    //         window->getWidth(),
-    //         window->getHeight(),
-    //         1
-    //     };
-    //    	depthTextureDesc.usage = wgpu::TextureUsage::RenderAttachment;
-    //    	depthTextureDesc.viewFormatCount = 1;
-    //    	depthTextureDesc.viewFormats = (WGPUTextureFormat*)&depthTextureFormat;
-    //    	depthTexture = device.createTexture(depthTextureDesc);
-    //    	std::cout << "Depth texture: " << depthTexture << std::endl;
-
-    //    	// Create the view of the depth texture manipulated by the rasterizer
-    //    	wgpu::TextureViewDescriptor depthTextureViewDesc;
-    //    	depthTextureViewDesc.aspect = wgpu::TextureAspect::DepthOnly;
-    //    	depthTextureViewDesc.baseArrayLayer = 0;
-    //    	depthTextureViewDesc.arrayLayerCount = 1;
-    //    	depthTextureViewDesc.baseMipLevel = 0;
-    //    	depthTextureViewDesc.mipLevelCount = 1;
-    //    	depthTextureViewDesc.dimension = wgpu::TextureViewDimension::_2D;
-    //    	depthTextureViewDesc.format = depthTextureFormat;
-    //    	depthView = depthTexture.createView(depthTextureViewDesc);
-    //    	std::cout << "Depth texture view: " << depthView << std::endl;
-    // }
-
-
-
-
-
 
 }

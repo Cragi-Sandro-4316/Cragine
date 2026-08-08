@@ -119,8 +119,6 @@ namespace crg::renderer {
             );
         }
 
-
-
     private:
 
         TypeDesc m_typeDesc;

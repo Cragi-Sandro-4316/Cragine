@@ -9,7 +9,6 @@ namespace crg::renderer {
         wgpu::RenderPipeline m_pipeline;
         std::vector<wgpu::ShaderModule> m_shaderModules;
 
-        // std::vector<Buffer*> m_buffers;
 
         uint32_t m_indexCount;
 
@@ -17,10 +16,6 @@ namespace crg::renderer {
 
         wgpu::BindGroupLayout m_bindingLayout;
 
-        // std::array<wgpu::BindGroup, 4> m_bindings;
-
-        // std::vector<Handle<Buffer>> m_buffers;
-        // std::vector<Handle<TextureAtlas>> m_textures;
     };
 
 

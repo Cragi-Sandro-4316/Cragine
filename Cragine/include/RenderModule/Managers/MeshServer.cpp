@@ -78,39 +78,3 @@ namespace crg::renderer {
 
 
 }
-
-
-/*for (size_t i = 0; i < shape.mesh.indices.size(); ++i) {
-    const tinyobj::index_t& idx = shape.mesh.indices[i];
-
-    mesh.vertices[i].position = {
-        attrib.vertices[3 * idx.vertex_index + 0],
-        - attrib.vertices[3 * idx.vertex_index + 2],
-        0
-        // attrib.vertices[3 * idx.vertex_index + 1],
-    };
-
-    LOG_CORE_INFO("Index: {}, xyz: ({}, {}, {})",
-        idx.vertex_index,
-        mesh.vertices[i].position.x,
-        mesh.vertices[i].position.y,
-        mesh.vertices[i].position.z
-    );
-
-    mesh.vertices[i].normal = {
-        attrib.normals[3 * idx.normal_index + 0],
-        attrib.normals[3 * idx.normal_index + 1],
-        attrib.normals[3 * idx.normal_index + 2]
-    };
-
-    mesh.vertices[i].color = {
-        attrib.colors[3 * idx.vertex_index + 0],
-        attrib.colors[3 * idx.vertex_index + 1],
-        attrib.colors[3 * idx.vertex_index + 2]
-    };
-
-    mesh.vertices[i].uv = {
-        attrib.texcoords[2 * idx.texcoord_index + 0],
-        1 - attrib.texcoords[2 * idx.texcoord_index + 1]
-    };
-} */

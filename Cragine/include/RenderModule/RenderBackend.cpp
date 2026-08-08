@@ -38,11 +38,10 @@ namespace crg::renderer {
             shaderPath,
             m_renderContext,
             m_meshServer,
-            indexCount,
-            &buffs,
-            &textureSamplers,   // Samplers
-            nullptr,            // StorageTextures
-            &texs
+            buffs,
+            textureSamplers,
+            texs,
+            indexCount
         );
     }
 

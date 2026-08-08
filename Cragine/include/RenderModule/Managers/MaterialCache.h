@@ -5,7 +5,6 @@
 #include "RenderModule/Material/Material.h"
 #include "RenderModule/RenderContext.h"
 #include "RenderModule/Structs/Sampler.h"
-#include "RenderModule/Structs/StorageTexture.h"
 #include "RenderModule/Structs/Texture.h"
 
 #include "utils/Logger.h"
@@ -27,29 +26,25 @@ namespace crg::renderer {
             std::string path,
             RenderContext renderContext,
             MeshServer& meshServer,
-            size_t indexCount = 0,
-            std::vector<Buffer*>* buffers = nullptr,
-            std::vector<TextureSampler*>* samplers = nullptr,
-            std::vector<StorageTexture*>* storageTextures = nullptr,
-            std::vector<Texture*>* textures = nullptr
+            std::vector<Buffer*>& buffers,
+            std::vector<TextureSampler*>& samplers,
+            std::vector<Texture*>& textures,
+            size_t indexCount = 0
         ) {
 
             LOG_CORE_INFO("Creating material at path: {}", path);
 
             // BIND GROUP LAYOUT ENTRIES:
 
-            size_t bufferCount = (buffers) ? buffers->size() : 0;
+            size_t bufferCount = buffers.size();
 
-            size_t samplerCount = (samplers) ? samplers->size() : 0;
+            size_t samplerCount = samplers.size();
 
-            size_t storageTextureCount = (storageTextures) ? storageTextures->size() : 0;
-
-            size_t textureCount = (textures) ? textures->size() : 0;
+            size_t textureCount = textures.size();
 
             std::vector<wgpu::BindGroupLayoutEntry> layoutEntries(
                 bufferCount +
                 samplerCount +
-                storageTextureCount +
                 textureCount
             );
 
@@ -57,9 +52,7 @@ namespace crg::renderer {
 
             getSamplerBindings(samplers, layoutEntries, samplerCount, bufferCount);
 
-            getStorageTextureBindings(storageTextures, layoutEntries, storageTextureCount, bufferCount + samplerCount);
-
-            getTextureBindings(textures, layoutEntries, textureCount, bufferCount + samplerCount + storageTextureCount);
+            getTextureBindings(textures, layoutEntries, textureCount, bufferCount + samplerCount);
 
             // BIND GROUP LAYOUT:
 
@@ -71,7 +64,6 @@ namespace crg::renderer {
                 layoutEntries,
                 buffers, bufferCount,
                 samplers, samplerCount,
-                storageTextures, storageTextureCount,
                 textures, textureCount
             );
 
@@ -197,7 +189,7 @@ namespace crg::renderer {
         std::vector<Material> m_materialCache;
 
         inline void getBufferBindings(
-            std::vector<Buffer*>* buffers,
+            std::vector<Buffer*>& buffers,
             std::vector<wgpu::BindGroupLayoutEntry>& layoutEntries,
             size_t bufferCount,
             size_t startIdx
@@ -205,7 +197,7 @@ namespace crg::renderer {
 
             // Buffers
             for (size_t i = startIdx; i < startIdx + bufferCount; i++) {
-                Buffer& buffer = *buffers->at(i - startIdx);
+                Buffer& buffer = *buffers.at(i - startIdx);
 
                 layoutEntries[i].nextInChain = nullptr;
                 layoutEntries[i].binding = i;
@@ -216,14 +208,14 @@ namespace crg::renderer {
 
 
         inline void getSamplerBindings(
-            std::vector<TextureSampler*>* samplers,
+            std::vector<TextureSampler*>& samplers,
             std::vector<wgpu::BindGroupLayoutEntry>& layoutEntries,
             size_t samplerCount,
             size_t startIdx
         ) {
             // Samplers
             for (size_t i = startIdx; i < startIdx + samplerCount; i++) {
-                TextureSampler& sampler = *samplers->at(i - startIdx);
+                TextureSampler& sampler = *samplers.at(i - startIdx);
 
                 layoutEntries[i].nextInChain = nullptr;
                 layoutEntries[i].binding = i;
@@ -232,36 +224,15 @@ namespace crg::renderer {
             }
         }
 
-
-        inline void getStorageTextureBindings(
-            std::vector<StorageTexture*>* storageTextures,
-            std::vector<wgpu::BindGroupLayoutEntry>& layoutEntries,
-            size_t storageTextureCount,
-            size_t startIdx
-        ) {
-            // Storage textures
-            for (size_t i = startIdx; i < startIdx + storageTextureCount; i++) {
-                StorageTexture& storageTexture = *storageTextures->at(i - startIdx);
-
-                layoutEntries[i].nextInChain = nullptr;
-                layoutEntries[i].binding = i;
-                layoutEntries[i].visibility = storageTexture.getStageVisibility();
-                layoutEntries[i].storageTexture = storageTexture.getBindingLayout();
-            }
-
-        }
-
-
-
         inline void getTextureBindings(
-            std::vector<Texture*>* textures,
+            std::vector<Texture*>& textures,
             std::vector<wgpu::BindGroupLayoutEntry>& layoutEntries,
             size_t textureCount,
             size_t startIdx
         ) {
             // Textures
             for (size_t i = startIdx; i < startIdx + textureCount; i++) {
-                Texture& texture = *textures->at(i - startIdx);
+                Texture& texture = *textures.at(i - startIdx);
 
                 layoutEntries[i].nextInChain = nullptr;
                 layoutEntries[i].binding = i;
@@ -286,13 +257,11 @@ namespace crg::renderer {
 
         inline std::vector<wgpu::BindGroupEntry> getBindGroupEntries(
             std::vector<wgpu::BindGroupLayoutEntry>& layoutEntries,
-            std::vector<Buffer*>* buffers,
+            std::vector<Buffer*>& buffers,
             size_t bufferCount,
-            std::vector<TextureSampler*>* samplers,
+            std::vector<TextureSampler*>& samplers,
             size_t samplerCount,
-            std::vector<StorageTexture*>* storageTextures,
-            size_t storageTextureCount,
-            std::vector<Texture*>* textures,
+            std::vector<Texture*>& textures,
             size_t textureCount
         ) {
             std::vector<wgpu::BindGroupEntry> bindGroupEntries(layoutEntries.size());
@@ -300,7 +269,7 @@ namespace crg::renderer {
             size_t startIdx = 0;
 
             for (size_t i = startIdx; i < bufferCount; i++) {
-                Buffer& buffer = *buffers->at(i - startIdx);
+                Buffer& buffer = *buffers.at(i - startIdx);
 
                 bindGroupEntries[i].nextInChain = nullptr;
                 bindGroupEntries[i].binding = i;
@@ -312,7 +281,7 @@ namespace crg::renderer {
             startIdx += bufferCount;
 
             for (size_t i = startIdx; i < startIdx + samplerCount; i++) {
-                TextureSampler& sampler = *samplers->at(i - startIdx);
+                TextureSampler& sampler = *samplers.at(i - startIdx);
 
                 bindGroupEntries[i].nextInChain = nullptr;
                 bindGroupEntries[i].binding = i;
@@ -321,18 +290,8 @@ namespace crg::renderer {
 
             startIdx += samplerCount;
 
-            for (size_t i = startIdx; i < startIdx + storageTextureCount; i++) {
-                StorageTexture& storageTexture = *storageTextures->at(i - startIdx);
-
-                bindGroupEntries[i].nextInChain = nullptr;
-                bindGroupEntries[i].binding = i;
-                // bindGroupEntries[i].textureView = storageTexture.getTextureView();
-            }
-
-            startIdx += storageTextureCount;
-
             for (size_t i = startIdx; i < startIdx + textureCount; i++) {
-                Texture& texture = *textures->at(i - startIdx);
+                Texture& texture = *textures.at(i - startIdx);
 
                 bindGroupEntries[i].nextInChain = nullptr;
                 bindGroupEntries[i].binding = i;
