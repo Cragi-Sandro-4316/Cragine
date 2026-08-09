@@ -1,6 +1,6 @@
 #pragma once
 #include "Ecs/Ecs.h"
-#include "RenderModule/Components/Mesh.h"
+#include "RenderModule/Structs/MeshData.h"
 #include "RenderModule/RenderBackend.h"
 #include "RenderModule/Structs/Buffer.h"
 #include "RenderModule/Structs/Sampler.h"

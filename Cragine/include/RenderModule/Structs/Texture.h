@@ -21,6 +21,8 @@ namespace crg::renderer {
             int channels;
             unsigned char* pixelData = loadTextureData(width, height, channels, path);
 
+            LOG_CORE_INFO("texture: {} width and height: [{}, {}]", path.string(), width, height);
+
             m_textureDesc = wgpu::TextureDescriptor{};
             m_textureDesc.dimension = wgpu::TextureDimension::_2D;
             m_textureDesc.size = { (uint32_t)width, (uint32_t)height, 1 };

@@ -29,7 +29,7 @@ namespace crg::renderer {
 
 
         Handle<Mesh> loadMesh(std::filesystem::path& path) {
-            return m_meshServer.loadMesh(path);
+            return m_meshServer.spawnMesh(path);
         }
 
         template<typename T>

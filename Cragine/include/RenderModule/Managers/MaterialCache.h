@@ -2,7 +2,7 @@
 
 #include "RenderModule/Structs/Buffer.h"
 #include "RenderModule/Managers/MeshServer.h"
-#include "RenderModule/Material/Material.h"
+#include "RenderModule/Structs/Material.h"
 #include "RenderModule/RenderContext.h"
 #include "RenderModule/Structs/Sampler.h"
 #include "RenderModule/Structs/Texture.h"
@@ -22,7 +22,7 @@ namespace crg::renderer {
     public:
 
 
-        MaterialID newMaterial(
+        Handle<Material> newMaterial(
             std::string path,
             RenderContext renderContext,
             MeshServer& meshServer,
@@ -81,7 +81,7 @@ namespace crg::renderer {
 
             if (!file.is_open()) {
                 LOG_CORE_ERROR("Failed to open file");
-                return -1;
+                return {static_cast<size_t>(-1)};
             }
             file.seekg(0, std::ios::end);
             size_t size = file.tellg();
@@ -174,15 +174,15 @@ namespace crg::renderer {
             material.m_bindingLayout = bindGroupLayout;
             material.m_buffers = buffers;
 
-            material.updateCounts();
+            // material.updateCounts();
 
             m_materialCache.emplace_back(material);
 
-            return m_materialCache.size() - 1;
+            return {m_materialCache.size() - 1};
         }
 
-        const Material& getMaterial(MaterialID matID) const {
-            return m_materialCache[matID];
+        const Material& getMaterial(Handle<Material> handle) const {
+            return m_materialCache[handle.id];
         }
 
         const std::vector<Material>& getMaterials() {

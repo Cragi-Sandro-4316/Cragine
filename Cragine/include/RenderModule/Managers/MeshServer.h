@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RenderModule/Components/Mesh.h"
+#include "RenderModule/Structs/MeshData.h"
 #include <filesystem>
 #include <webgpu/webgpu.hpp>
 #include "RenderModule/Handles.h"
@@ -12,21 +12,26 @@ namespace crg::renderer {
     class MeshServer {
     public:
 
-        Handle<Mesh> loadMesh(std::filesystem::path& path) {
+        Handle<Mesh> spawnMesh(std::filesystem::path& path) {
+
+            size_t id = std::hash<std::string>{}(path.string());
 
             Handle<Mesh> handle {
-                .id = m_currentID
+                .id = id
             };
 
-            Mesh mesh{};
+            if (!m_meshes.contains(id)) {
+                Mesh mesh{};
 
-            if (path.extension() == ".obj") {
-                loadMeshFromObj(path, mesh);
+                if (path.extension() == ".obj") {
+                    loadMeshFromObj(path, mesh);
+                }
+
+                m_meshes[id] = mesh;
+                m_instanceCounts[id] = 0;
             }
 
-            m_meshes.insert({m_currentID, mesh});
-
-            m_currentID++;
+            m_instanceCounts[id]++;
 
             return handle;
         }
@@ -57,9 +62,9 @@ namespace crg::renderer {
         }
 
     private:
-        size_t m_currentID = 0;
 
         std::unordered_map<size_t, Mesh> m_meshes;
+        std::unordered_map<size_t, uint32_t> m_instanceCounts;
 
 
         void loadMeshFromObj(std::filesystem::path& path, Mesh& mesh);
