@@ -8,9 +8,8 @@ namespace crg::renderer {
     RenderBackend::RenderBackend(Window* window) :
     m_renderContext(RenderContext(window)) {}
 
-    void RenderBackend::newMaterial(
+    Handle<Material> RenderBackend::newMaterial(
         std::string shaderPath,
-        size_t indexCount = 0,
         std::initializer_list<Handle<Buffer>> buffers = {},
         std::initializer_list<Handle<TextureSampler>> samplers = {},
         std::initializer_list<Handle<Texture>> textures = {}
@@ -34,14 +33,12 @@ namespace crg::renderer {
             texs.push_back(m_textureManager.getTexturePtr(handle));
         }
 
-        m_materialCache.newMaterial(
+        return m_materialCache.newMaterial(
             shaderPath,
             m_renderContext,
-            m_meshServer,
             buffs,
             textureSamplers,
-            texs,
-            indexCount
+            texs
         );
     }
 

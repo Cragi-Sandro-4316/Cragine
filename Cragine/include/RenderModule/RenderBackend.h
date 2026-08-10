@@ -19,17 +19,16 @@ namespace crg::renderer {
 
         RenderBackend(Window* window);
 
-        void newMaterial(
+        Handle<Material> newMaterial(
             std::string shaderPath,
-            size_t indexCount,
             std::initializer_list<Handle<Buffer>> buffers,
             std::initializer_list<Handle<TextureSampler>> samplers,
             std::initializer_list<Handle<Texture>> textures
         );
 
 
-        Handle<Mesh> loadMesh(std::filesystem::path& path) {
-            return m_meshServer.spawnMesh(path);
+        Handle<Mesh> spawnMesh(std::filesystem::path& path, Handle<Material> material) {
+            return m_meshServer.spawnMesh(path, material, m_materialCache);
         }
 
         template<typename T>

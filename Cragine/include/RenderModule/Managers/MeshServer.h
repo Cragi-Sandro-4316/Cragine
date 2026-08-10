@@ -1,5 +1,7 @@
 #pragma once
 
+#include "RenderModule/Managers/MaterialCache.h"
+#include "RenderModule/Structs/Buffer.h"
 #include "RenderModule/Structs/MeshData.h"
 #include <filesystem>
 #include <webgpu/webgpu.hpp>
@@ -12,7 +14,7 @@ namespace crg::renderer {
     class MeshServer {
     public:
 
-        Handle<Mesh> spawnMesh(std::filesystem::path& path) {
+        Handle<Mesh> spawnMesh(std::filesystem::path& path, Handle<Material> materialHandle, MaterialCache& materialCache) {
 
             size_t id = std::hash<std::string>{}(path.string());
 
@@ -22,13 +24,30 @@ namespace crg::renderer {
 
             if (!m_meshes.contains(id)) {
                 Mesh mesh{};
-
+                mesh.material = materialHandle;
                 if (path.extension() == ".obj") {
                     loadMeshFromObj(path, mesh);
                 }
 
                 m_meshes[id] = mesh;
                 m_instanceCounts[id] = 0;
+
+
+                Material& material = materialCache.getMaterial(materialHandle);
+                Buffer* vertexBuffer = nullptr;
+                for (Buffer* buffer : material.m_buffers) {
+                    if (buffer->bufferType() == BufferType::Vertex) {
+                        vertexBuffer = buffer;
+                        break;
+                    }
+                }
+                if (!vertexBuffer) {
+                    LOG_CORE_ERROR("Mesh spawn: could not write mesh data onto material buffer");
+                    return handle;
+                }
+
+                vertexBuffer->writeBuffer(mesh.vertices, 0);
+                material.m_totalVertexCount += mesh.vertices.size();
             }
 
             m_instanceCounts[id]++;

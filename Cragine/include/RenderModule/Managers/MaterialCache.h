@@ -1,11 +1,11 @@
 #pragma once
 
 #include "RenderModule/Structs/Buffer.h"
-#include "RenderModule/Managers/MeshServer.h"
 #include "RenderModule/Structs/Material.h"
 #include "RenderModule/RenderContext.h"
 #include "RenderModule/Structs/Sampler.h"
 #include "RenderModule/Structs/Texture.h"
+#include "RenderModule/Handles.h"
 
 #include "utils/Logger.h"
 #include <fstream>
@@ -25,11 +25,9 @@ namespace crg::renderer {
         Handle<Material> newMaterial(
             std::string path,
             RenderContext renderContext,
-            MeshServer& meshServer,
             std::vector<Buffer*>& buffers,
             std::vector<TextureSampler*>& samplers,
-            std::vector<Texture*>& textures,
-            size_t indexCount = 0
+            std::vector<Texture*>& textures
         ) {
             // TODO: limit to one vertex buffer, one index buffer and one instance buffer.
 
@@ -178,14 +176,15 @@ namespace crg::renderer {
 
             m_materialCache.emplace_back(material);
 
-            return {m_materialCache.size() - 1};
+            return Handle<Material>{ m_materialCache.size() - 1 };
         }
 
-        const Material& getMaterial(Handle<Material> handle) const {
+        Material& getMaterial(Handle<Material> handle) {
+            LOG_CORE_INFO("mat: {}", (size_t)&m_materialCache[handle.id]);
             return m_materialCache[handle.id];
         }
 
-        const std::vector<Material>& getMaterials() {
+        std::vector<Material>& getMaterials() {
             return m_materialCache;
         }
 

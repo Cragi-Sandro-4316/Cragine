@@ -5,43 +5,38 @@
 #include "RenderModule/Structs/Buffer.h"
 #include "RenderModule/Structs/Sampler.h"
 #include "RenderModule/Structs/Texture.h"
-#include "utils/Logger.h"
 #include <GLFW/glfw3.h>
 
 namespace crg::renderer {
+
+    size_t constexpr MESH_BUFFER_SIZE = 100000;
 
     static void newMaterial(
         ResMut<RenderBackend> rGpuHandler
     ) {
         auto& renderBackend = rGpuHandler.get();
 
-        std::filesystem::path meshPath = "../assets/Mesh.obj";
+        std::filesystem::path meshPath = "assets/Mesh.obj";
 
-        std::filesystem::path shaderPath = "../assets/fragVert.wgsl";
+        std::filesystem::path shaderPath = "assets/fragVert.wgsl";
 
-        std::string texturePath = "../assets/reina.gif";
+        std::string texturePath = "assets/reina.gif";
 
-        Handle<Mesh> meshHandle = renderBackend.loadMesh(meshPath);
-
-        Mesh* mesh = renderBackend.getMeshServer().getMeshPtr(meshHandle);
-
-        Handle<Buffer> vertexBuffer = renderBackend.newBuffer<VertexData>(mesh->vertices.size(), BufferType::Vertex);
+        Handle<Buffer> vertexBuffer = renderBackend.newBuffer<VertexData>(MESH_BUFFER_SIZE, BufferType::Vertex);
 
         Handle<TextureSampler> sampler = renderBackend.newSampler();
 
         Handle<Texture> textureHandle = renderBackend.newTexture(texturePath);
 
-        renderBackend.writeBuffer(vertexBuffer, mesh->vertices);
-
-        renderBackend.newMaterial(
-            shaderPath,
-            mesh->vertices.size(),
-            { vertexBuffer },
-            { sampler },
-            { textureHandle }
+        Handle<Mesh> meshHandle = renderBackend.spawnMesh(
+            meshPath,
+            renderBackend.newMaterial(
+                shaderPath,
+                { vertexBuffer },
+                { sampler },
+                { textureHandle }
+            )
         );
-
-        LOG_CORE_INFO("Material created");
     }
 
     static void render(

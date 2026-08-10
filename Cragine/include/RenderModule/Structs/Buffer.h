@@ -22,6 +22,7 @@ namespace crg::renderer {
 
     class Buffer {
     public:
+
         struct DataTypeDesc {
             std::type_index typeID = typeid(void);
             size_t size;
@@ -39,7 +40,7 @@ namespace crg::renderer {
             BufferType bufferType = BufferType::Storage,
             wgpu::ShaderStage shaderStage = wgpu::ShaderStage::Vertex
         ):
-        m_capacity(size),
+        m_size(size),
         m_shaderStage(shaderStage),
         m_queue(queue),
         m_bufferType(bufferType) {
@@ -68,7 +69,7 @@ namespace crg::renderer {
             m_bindingLayout.nextInChain = nullptr;
             m_bindingLayout.type = bindingType;
             m_bindingLayout.hasDynamicOffset = false;
-            m_bindingLayout.minBindingSize = m_typeDesc.size * m_capacity;
+            m_bindingLayout.minBindingSize = m_typeDesc.size * m_size;
 
         }
 
@@ -85,37 +86,41 @@ namespace crg::renderer {
         }
 
         size_t getByteSize() {
-            return m_capacity * m_typeDesc.size;
+            return m_size * m_typeDesc.size;
         }
 
         template<typename T>
-        void writeBuffer(std::vector<T>& data) {
-            // TODO: treat buffer more like vector
-            // adjust size
+        void writeBuffer(std::vector<T>& data, size_t index) {
             if (typeid(T) != m_typeDesc.typeID) {
-                LOG_CORE_ERROR("GPU BUFFER: write type mismatch");
+                LOG_CORE_ERROR("GPU Buffer write: type mismatch");
+                return;
+            }
+
+            size_t offset = index * m_typeDesc.size;
+            size_t dataSize = data.size() * m_typeDesc.size;
+
+            if (offset + dataSize > getByteSize()) {
+                LOG_CORE_INFO("GPU Buffer write: given vector and index fall out of bounds");
                 return;
             }
 
             m_queue.writeBuffer(
                 m_buffer,
-                0,
+                offset,
                 data.data(),
-                data.size() * m_typeDesc.size
+                dataSize
             );
         }
 
 
         template<typename T>
         void write(T& data, size_t index) {
-            // TODO: treat buffer more like vector
-            // adjust size
 
             if (typeid(T) != m_typeDesc.typeID) {
                 LOG_CORE_ERROR("GPU BUFFER WRITE: type mismatch");
                 return;
             }
-            if (index > m_capacity) {
+            if (index > m_size) {
                 LOG_CORE_ERROR("GPU BUFFER WRITE: index out of bounds");
                 return;
             }
@@ -132,15 +137,10 @@ namespace crg::renderer {
             return m_size;
         }
 
-        size_t capacity() {
-            return m_capacity;
-        }
-
         BufferType bufferType() {
             return m_bufferType;
         }
 
-        // TODO: vector-like interaction methods: push, pop, insert and remove
 
     private:
 
@@ -148,9 +148,7 @@ namespace crg::renderer {
 
         BufferType m_bufferType;
 
-        const size_t m_capacity;
-
-        size_t m_size;
+        const size_t m_size;
 
         wgpu::Buffer m_buffer;
 
