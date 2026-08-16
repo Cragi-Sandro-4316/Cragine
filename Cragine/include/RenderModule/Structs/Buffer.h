@@ -90,16 +90,16 @@ namespace crg::renderer {
         }
 
         template<typename T>
-        void writeBuffer(std::vector<T>& data, size_t index) {
+        void writeBuffer(std::vector<T>& data, size_t index = 0) {
             if (typeid(T) != m_typeDesc.typeID) {
                 LOG_CORE_ERROR("GPU Buffer write: type mismatch");
                 return;
             }
 
-            size_t offset = index * m_typeDesc.size;
             size_t dataSize = data.size() * m_typeDesc.size;
+            size_t offset = index * m_typeDesc.size;
 
-            if (offset + dataSize > getByteSize()) {
+            if (dataSize > getByteSize()) {
                 LOG_CORE_INFO("GPU Buffer write: given vector and index fall out of bounds");
                 return;
             }

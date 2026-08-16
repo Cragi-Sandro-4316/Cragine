@@ -1,12 +1,11 @@
-#include "MeshServer.h"
-#include "utils/Logger.h"
-
+#include "MeshBuffer.h"
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tiny_obj_loader.h"
 
 namespace crg::renderer {
 
-    void MeshServer::loadMeshFromObj(std::filesystem::path& path, Mesh& mesh) {
+
+    void MeshBuffer::loadFromObj(const std::filesystem::path& path, MeshData& mesh) {
 
         tinyobj::attrib_t attrib;
         std::vector<tinyobj::shape_t> shapes;
@@ -72,9 +71,6 @@ namespace crg::renderer {
     	}
 
         LOG_CORE_INFO("Mesh {} loaded.", path.c_str());
-
-        return;
     }
-
 
 }

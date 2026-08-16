@@ -1,7 +1,6 @@
 #pragma once
 #include "RenderModule/Managers/BufferManager.h"
 #include "RenderModule/Managers/MaterialCache.h"
-#include "RenderModule/Managers/MeshServer.h"
 #include "RenderModule/Managers/SamplerManager.h"
 #include "RenderModule/Managers/TextureManager.h"
 #include "RenderModule/RenderContext.h"
@@ -26,10 +25,6 @@ namespace crg::renderer {
             std::initializer_list<Handle<Texture>> textures
         );
 
-
-        Handle<Mesh> spawnMesh(std::filesystem::path& path, Handle<Material> material) {
-            return m_meshServer.spawnMesh(path, material, m_materialCache);
-        }
 
         template<typename T>
         Handle<Buffer> newBuffer(size_t size, BufferType bufferType) {
@@ -62,7 +57,6 @@ namespace crg::renderer {
         RenderContext& getRenderContext() { return m_renderContext; }
         MaterialCache& getMaterialCache() { return m_materialCache; }
         BufferManager& getBufferManager() { return m_bufferManager; }
-        MeshServer& getMeshServer() { return m_meshServer; }
 
         Buffer& getBuffer(Handle<Buffer> bufferHandle) {
             return *m_bufferManager.getBufferPtr(bufferHandle);
@@ -73,7 +67,6 @@ namespace crg::renderer {
 
         MaterialCache m_materialCache{};
 
-        MeshServer m_meshServer{};
 
         BufferManager m_bufferManager{};
 

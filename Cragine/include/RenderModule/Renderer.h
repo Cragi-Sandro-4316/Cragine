@@ -28,15 +28,15 @@ namespace crg::renderer {
 
         Handle<Texture> textureHandle = renderBackend.newTexture(texturePath);
 
-        Handle<Mesh> meshHandle = renderBackend.spawnMesh(
-            meshPath,
-            renderBackend.newMaterial(
-                shaderPath,
-                { vertexBuffer },
-                { sampler },
-                { textureHandle }
-            )
-        );
+        // Handle<MeshData> meshHandle = renderBackend.spawnMesh(
+        //     meshPath,
+        //     renderBackend.newMaterial(
+        //         shaderPath,
+        //         { vertexBuffer },
+        //         { sampler },
+        //         { textureHandle }
+        //     )
+        // );
     }
 
     static void render(
