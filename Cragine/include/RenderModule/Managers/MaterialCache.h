@@ -3,6 +3,7 @@
 #include "RenderModule/Structs/Buffer.h"
 #include "RenderModule/Structs/Material.h"
 #include "RenderModule/RenderContext.h"
+#include "RenderModule/Structs/MeshBuffer.h"
 #include "RenderModule/Structs/Sampler.h"
 #include "RenderModule/Structs/Texture.h"
 #include "RenderModule/Handles.h"
@@ -21,20 +22,55 @@ namespace crg::renderer {
     class MaterialCache {
     public:
 
-
         Handle<Material> newMaterial(
             std::string path,
             RenderContext renderContext,
-            std::vector<Buffer*>& buffers,
-            std::vector<TextureSampler*>& samplers,
-            std::vector<Texture*>& textures
+            MeshBufferSize meshBufferSize,
+            std::vector<Buffer>& buffers,
+            std::vector<TextureSampler>& samplers,
+            std::vector<Texture>& textures
         ) {
             // TODO: limit to one vertex buffer, one index buffer and one instance buffer.
-
 
             LOG_CORE_INFO("Creating material at path: {}", path);
 
             // BIND GROUP LAYOUT ENTRIES:
+
+            size_t chunkCount, instanceCount, mapCount;
+
+            switch (meshBufferSize) {
+                case MeshBufferSize::Null:
+                   chunkCount = 0;
+                   instanceCount = 0;
+                   mapCount = 0;
+                break;
+                case MeshBufferSize::Small:
+                   chunkCount = 1024;
+                   instanceCount = 32767;
+                   mapCount = 256000;
+                break;
+                case MeshBufferSize::Large:
+                    chunkCount = 2048;
+                    instanceCount = 65535;
+                    mapCount = 512000;
+                break;
+                default:
+                   LOG_CORE_WARNING("Material creation: No mesh buffer size given. Defaulting to Large...");
+                   chunkCount = 2048;
+                   instanceCount = 65535;
+                   mapCount = 512000;
+                break;
+            }
+
+            MeshBuffer meshBuffer = MeshBuffer(
+                renderContext.device,
+                renderContext.queue,
+                chunkCount,
+                instanceCount,
+                mapCount
+            );
+
+            size_t meshBufferCount = 3;
 
             size_t bufferCount = buffers.size();
 
@@ -43,16 +79,19 @@ namespace crg::renderer {
             size_t textureCount = textures.size();
 
             std::vector<wgpu::BindGroupLayoutEntry> layoutEntries(
+                meshBufferCount +
                 bufferCount +
                 samplerCount +
                 textureCount
             );
 
-            getBufferBindings(buffers, layoutEntries, bufferCount, 0);
+            getMeshBindings(meshBuffer, layoutEntries);
 
-            getSamplerBindings(samplers, layoutEntries, samplerCount, bufferCount);
+            getBufferBindings(buffers, layoutEntries, bufferCount, meshBufferCount);
 
-            getTextureBindings(textures, layoutEntries, textureCount, bufferCount + samplerCount);
+            getSamplerBindings(samplers, layoutEntries, samplerCount, meshBufferCount + bufferCount);
+
+            getTextureBindings(textures, layoutEntries, textureCount, meshBufferCount + bufferCount + samplerCount);
 
             // BIND GROUP LAYOUT:
 
@@ -62,6 +101,7 @@ namespace crg::renderer {
 
             std::vector<wgpu::BindGroupEntry> bindGroupEntries = getBindGroupEntries(
                 layoutEntries,
+                meshBuffer, meshBufferCount,
                 buffers, bufferCount,
                 samplers, samplerCount,
                 textures, textureCount
@@ -156,7 +196,6 @@ namespace crg::renderer {
             multiSampleState.mask = !0;
             multiSampleState.alphaToCoverageEnabled = false;
 
-
             pipelineDesc.vertex = vertState;
             pipelineDesc.fragment = &fragState;
 
@@ -165,14 +204,17 @@ namespace crg::renderer {
 
             wgpu::RenderPipeline pipeline = renderContext.device.createRenderPipeline(pipelineDesc);
 
-            Material material{};
-            material.m_pipeline = pipeline;
-            material.m_shaderModules = {shader};
-            material.m_binding = bindGroup;
-            material.m_bindingLayout = bindGroupLayout;
-            material.m_buffers = buffers;
 
-            // material.updateCounts();
+            Material material (
+                renderContext.device,
+                renderContext.queue,
+                pipeline,
+                shader,
+                bindGroup,
+                bindGroupLayout,
+                buffers,
+                meshBuffer
+            );
 
             m_materialCache.emplace_back(material);
 
@@ -191,8 +233,31 @@ namespace crg::renderer {
     private:
         std::vector<Material> m_materialCache;
 
+        inline void getMeshBindings(
+            MeshBuffer& meshBuffer,
+            std::vector<wgpu::BindGroupLayoutEntry>& layoutEntries
+        ) {
+            LOG_CORE_WARNING("Chunk Buffer {}", 0);
+            layoutEntries[0].nextInChain = nullptr;
+            layoutEntries[0].binding = 0;
+            layoutEntries[0].buffer = meshBuffer.chunkBuffer().getBindingLayout();
+            layoutEntries[0].visibility = meshBuffer.chunkBuffer().getStageVisibility();
+
+            LOG_CORE_WARNING("Instance Buffer {}", 1);
+            layoutEntries[1].nextInChain = nullptr;
+            layoutEntries[1].binding = 1;
+            layoutEntries[1].buffer = meshBuffer.instanceBuffer().getBindingLayout();
+            layoutEntries[1].visibility = meshBuffer.instanceBuffer().getStageVisibility();
+
+            LOG_CORE_WARNING("Map Buffer {}", 2);
+            layoutEntries[2].nextInChain = nullptr;
+            layoutEntries[2].binding = 2;
+            layoutEntries[2].buffer = meshBuffer.mapBuffer().getBindingLayout();
+            layoutEntries[2].visibility = meshBuffer.mapBuffer().getStageVisibility();
+        }
+
         inline void getBufferBindings(
-            std::vector<Buffer*>& buffers,
+            std::vector<Buffer>& buffers,
             std::vector<wgpu::BindGroupLayoutEntry>& layoutEntries,
             size_t bufferCount,
             size_t startIdx
@@ -200,7 +265,8 @@ namespace crg::renderer {
 
             // Buffers
             for (size_t i = startIdx; i < startIdx + bufferCount; i++) {
-                Buffer& buffer = *buffers.at(i - startIdx);
+                LOG_CORE_WARNING("Buffer {}", i);
+                Buffer& buffer = buffers.at(i - startIdx);
 
                 layoutEntries[i].nextInChain = nullptr;
                 layoutEntries[i].binding = i;
@@ -211,14 +277,15 @@ namespace crg::renderer {
 
 
         inline void getSamplerBindings(
-            std::vector<TextureSampler*>& samplers,
+            std::vector<TextureSampler>& samplers,
             std::vector<wgpu::BindGroupLayoutEntry>& layoutEntries,
             size_t samplerCount,
             size_t startIdx
         ) {
             // Samplers
             for (size_t i = startIdx; i < startIdx + samplerCount; i++) {
-                TextureSampler& sampler = *samplers.at(i - startIdx);
+                LOG_CORE_WARNING("Sampler {}", i);
+                TextureSampler& sampler = samplers.at(i - startIdx);
 
                 layoutEntries[i].nextInChain = nullptr;
                 layoutEntries[i].binding = i;
@@ -228,14 +295,15 @@ namespace crg::renderer {
         }
 
         inline void getTextureBindings(
-            std::vector<Texture*>& textures,
+            std::vector<Texture>& textures,
             std::vector<wgpu::BindGroupLayoutEntry>& layoutEntries,
             size_t textureCount,
             size_t startIdx
         ) {
             // Textures
             for (size_t i = startIdx; i < startIdx + textureCount; i++) {
-                Texture& texture = *textures.at(i - startIdx);
+                LOG_CORE_WARNING("Texture {}", i);
+                Texture& texture = textures.at(i - startIdx);
 
                 layoutEntries[i].nextInChain = nullptr;
                 layoutEntries[i].binding = i;
@@ -252,6 +320,7 @@ namespace crg::renderer {
 
             wgpu::BindGroupLayoutDescriptor bindGroupLayoutDesc{};
             bindGroupLayoutDesc.nextInChain = nullptr;
+            bindGroupLayoutDesc.label = wgpu::StringView("pipa");
             bindGroupLayoutDesc.entryCount = layoutEntries.size();
             bindGroupLayoutDesc.entries = layoutEntries.data();
 
@@ -260,19 +329,42 @@ namespace crg::renderer {
 
         inline std::vector<wgpu::BindGroupEntry> getBindGroupEntries(
             std::vector<wgpu::BindGroupLayoutEntry>& layoutEntries,
-            std::vector<Buffer*>& buffers,
+            MeshBuffer& meshBuffer,
+            size_t meshBufferCount,
+            std::vector<Buffer>& buffers,
             size_t bufferCount,
-            std::vector<TextureSampler*>& samplers,
+            std::vector<TextureSampler>& samplers,
             size_t samplerCount,
-            std::vector<Texture*>& textures,
+            std::vector<Texture>& textures,
             size_t textureCount
         ) {
             std::vector<wgpu::BindGroupEntry> bindGroupEntries(layoutEntries.size());
 
-            size_t startIdx = 0;
 
-            for (size_t i = startIdx; i < bufferCount; i++) {
-                Buffer& buffer = *buffers.at(i - startIdx);
+            bindGroupEntries[0].nextInChain = nullptr;
+            bindGroupEntries[0].binding = 0;
+            bindGroupEntries[0].buffer = meshBuffer.chunkBuffer().getRawHandle();
+            bindGroupEntries[0].size = meshBuffer.chunkBuffer().getByteSize();
+            bindGroupEntries[0].offset = 0;
+
+            bindGroupEntries[1].nextInChain = nullptr;
+            bindGroupEntries[1].binding = 1;
+            bindGroupEntries[1].buffer = meshBuffer.instanceBuffer().getRawHandle();
+            bindGroupEntries[1].size = meshBuffer.instanceBuffer().getByteSize();
+            bindGroupEntries[1].offset = 0;
+
+            bindGroupEntries[2].nextInChain = nullptr;
+            bindGroupEntries[2].binding = 2;
+            bindGroupEntries[2].buffer = meshBuffer.mapBuffer().getRawHandle();
+            bindGroupEntries[2].size = meshBuffer.mapBuffer().getByteSize();
+            bindGroupEntries[2].offset = 0;
+
+
+            size_t startIdx = meshBufferCount;
+
+            for (size_t i = startIdx; i < startIdx + bufferCount; i++) {
+                LOG_CORE_ERROR("Buffer {}", i);
+                Buffer& buffer = buffers.at(i - startIdx);
 
                 bindGroupEntries[i].nextInChain = nullptr;
                 bindGroupEntries[i].binding = i;
@@ -284,7 +376,9 @@ namespace crg::renderer {
             startIdx += bufferCount;
 
             for (size_t i = startIdx; i < startIdx + samplerCount; i++) {
-                TextureSampler& sampler = *samplers.at(i - startIdx);
+                LOG_CORE_ERROR("Sampler {}", i);
+
+                TextureSampler& sampler = samplers.at(i - startIdx);
 
                 bindGroupEntries[i].nextInChain = nullptr;
                 bindGroupEntries[i].binding = i;
@@ -294,7 +388,9 @@ namespace crg::renderer {
             startIdx += samplerCount;
 
             for (size_t i = startIdx; i < startIdx + textureCount; i++) {
-                Texture& texture = *textures.at(i - startIdx);
+                LOG_CORE_ERROR("Texture {}", i);
+
+                Texture& texture = textures.at(i - startIdx);
 
                 bindGroupEntries[i].nextInChain = nullptr;
                 bindGroupEntries[i].binding = i;
@@ -320,9 +416,7 @@ namespace crg::renderer {
             return device.createBindGroup(bindGroupDesc);
         }
 
-
-
-};
+    };
 
 
 }

@@ -1,6 +1,6 @@
 #pragma once
+#include "AssetManager/AssetManager.h"
 #include "Ecs/Ecs.h"
-#include "RenderModule/Structs/MeshBuffer.h"
 
 namespace crg {
 
@@ -11,6 +11,7 @@ namespace crg {
         struct Buffer;
         struct Material;
         struct MeshData;
+        struct Mesh;
     }
 
 
@@ -19,10 +20,18 @@ namespace crg {
         size_t id;
     };
 
+    template<typename T> struct is_texture : std::false_type {};
+    template<> struct is_texture<Handle<renderer::Texture>> : std::true_type {};
+
+
     template<>
     struct Handle<renderer::TextureSampler> {
         size_t id;
     };
+
+    template<typename T> struct is_sampler : std::false_type {};
+    template<> struct is_sampler<Handle<renderer::TextureSampler>> : std::true_type {};
+
 
     template<>
     struct Handle<renderer::MeshData> {
@@ -38,6 +47,10 @@ namespace crg {
     struct Handle<renderer::Buffer> {
         size_t id;
     };
+
+    template<typename T> struct is_buffer : std::false_type {};
+    template<> struct is_buffer<Handle<renderer::Buffer>> : std::true_type {};
+
 
     template<>
     struct Handle<renderer::Material> {

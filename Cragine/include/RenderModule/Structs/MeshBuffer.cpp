@@ -33,7 +33,6 @@ namespace crg::renderer {
 
         mesh.vertices.resize(shape.mesh.indices.size());
 
-
         // Filling in vertexData:
     	mesh.vertices.clear();
     	for (const auto& shape : shapes) {

@@ -1,10 +1,11 @@
 #pragma once
 #include "Ecs/Ecs.h"
-#include "RenderModule/Structs/MeshData.h"
+#include "RenderModule/Handles.h"
+#include "RenderModule/Structs/MeshBuffer.h"
 #include "RenderModule/RenderBackend.h"
-#include "RenderModule/Structs/Buffer.h"
 #include "RenderModule/Structs/Sampler.h"
 #include "RenderModule/Structs/Texture.h"
+#include "utils/Logger.h"
 #include <GLFW/glfw3.h>
 
 namespace crg::renderer {
@@ -22,22 +23,22 @@ namespace crg::renderer {
 
         std::string texturePath = "assets/reina.gif";
 
-        Handle<Buffer> vertexBuffer = renderBackend.newBuffer<VertexData>(MESH_BUFFER_SIZE, BufferType::Vertex);
-
         Handle<TextureSampler> sampler = renderBackend.newSampler();
 
         Handle<Texture> textureHandle = renderBackend.newTexture(texturePath);
 
-        // Handle<MeshData> meshHandle = renderBackend.spawnMesh(
-        //     meshPath,
-        //     renderBackend.newMaterial(
-        //         shaderPath,
-        //         { vertexBuffer },
-        //         { sampler },
-        //         { textureHandle }
-        //     )
-        // );
+        Handle<Mesh> meshHandle = renderBackend.spawnMesh(
+            meshPath,
+            renderBackend.newMaterial(
+                shaderPath,
+                MeshBufferSize::Large,
+                sampler,
+                textureHandle
+            )
+        );
     }
+
+
 
     static void render(
         ResMut<RenderBackend> rRenderBackend
@@ -82,7 +83,8 @@ namespace crg::renderer {
 
             renderPass.setBindGroup(0, material.m_binding, 0, nullptr);
 
-            renderPass.draw(material.m_totalVertexCount, 1, 0, 0);
+            LOG_CORE_INFO("vert count: {}", material.m_meshBuffer.vertexCount());
+            renderPass.draw(material.m_meshBuffer.vertexCount(), 1, 0, 0);
         }
 
         renderPass.end();

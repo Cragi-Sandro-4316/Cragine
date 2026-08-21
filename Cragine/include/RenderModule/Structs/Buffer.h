@@ -11,11 +11,7 @@
 
 namespace crg::renderer {
 
-
     enum BufferType : uint32_t {
-        Vertex,
-        Index,
-        Instance,
         Storage,
         Uniform
     };
@@ -33,22 +29,22 @@ namespace crg::renderer {
         Buffer(
             size_t size,
             T* typePtr,
-            wgpu::Device& device,
-            wgpu::Queue& queue,
-            wgpu::BufferBindingType bindingType,
-            wgpu::BufferUsage bufferUsage,
+            wgpu::Device device,
+            wgpu::Queue queue,
+            wgpu::BufferBindingType bindingType = wgpu::BufferBindingType::Storage,
+            wgpu::BufferUsage bufferUsage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Storage,
             BufferType bufferType = BufferType::Storage,
             wgpu::ShaderStage shaderStage = wgpu::ShaderStage::Vertex
         ):
         m_size(size),
         m_shaderStage(shaderStage),
         m_queue(queue),
-        m_bufferType(bufferType) {
-            m_typeDesc = {
-                .typeID = typeid(T),
-                .size = sizeof(T),
-                .align = alignof(T)
-            };
+        m_bufferType(bufferType),
+        m_typeDesc(DataTypeDesc {
+            .typeID = typeid(T),
+            .size = sizeof(T),
+            .align = alignof(T)
+        }) {
 
             LOG_CORE_INFO("size: {}", sizeof(T));
 
@@ -73,30 +69,30 @@ namespace crg::renderer {
 
         }
 
-        wgpu::Buffer getRawHandle() {
+        wgpu::Buffer getRawHandle() const {
             return m_buffer;
         }
 
-        wgpu::BufferBindingLayout getBindingLayout() {
+        wgpu::BufferBindingLayout getBindingLayout() const {
             return m_bindingLayout;
         }
 
-        wgpu::ShaderStage getStageVisibility() {
+        wgpu::ShaderStage getStageVisibility() const {
             return m_shaderStage;
         }
 
-        size_t getByteSize() {
+        size_t getByteSize() const {
             return m_size * m_typeDesc.size;
         }
 
         template<typename T>
-        void writeBuffer(std::vector<T>& data, size_t index = 0) {
+        void writeBuffer(T* data, size_t count, size_t index = 0) {
             if (typeid(T) != m_typeDesc.typeID) {
                 LOG_CORE_ERROR("GPU Buffer write: type mismatch");
                 return;
             }
 
-            size_t dataSize = data.size() * m_typeDesc.size;
+            size_t dataSize = count * m_typeDesc.size;
             size_t offset = index * m_typeDesc.size;
 
             if (dataSize > getByteSize()) {
@@ -107,11 +103,10 @@ namespace crg::renderer {
             m_queue.writeBuffer(
                 m_buffer,
                 offset,
-                data.data(),
+                data,
                 dataSize
             );
         }
-
 
         template<typename T>
         void write(T& data, size_t index) {
@@ -133,20 +128,19 @@ namespace crg::renderer {
             );
         }
 
-        size_t size() {
+        size_t size() const {
             return m_size;
         }
 
-        BufferType bufferType() {
+        BufferType bufferType() const {
             return m_bufferType;
         }
 
-
     private:
 
-        DataTypeDesc m_typeDesc;
+        const DataTypeDesc m_typeDesc;
 
-        BufferType m_bufferType;
+        const BufferType m_bufferType;
 
         const size_t m_size;
 
@@ -154,12 +148,9 @@ namespace crg::renderer {
 
         wgpu::BufferBindingLayout m_bindingLayout;
 
-        wgpu::ShaderStage m_shaderStage;
+        const wgpu::ShaderStage m_shaderStage;
 
-        wgpu::Queue& m_queue;
+        wgpu::Queue m_queue;
     };
-
-
-
 
 }

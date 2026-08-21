@@ -20,19 +20,7 @@ namespace crg::renderer {
             wgpu::BufferBindingType bindingType{};
             wgpu::BufferUsage bufferUsage{};
 
-            switch (bufferType) {
-                case BufferType::Vertex:
-                    bindingType = wgpu::BufferBindingType::Storage;
-                    bufferUsage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Storage;
-                break;
-                case BufferType::Index:
-                    bindingType = wgpu::BufferBindingType::Storage;
-                    bufferUsage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Storage;
-                break;
-                case BufferType::Instance:
-                    bindingType = wgpu::BufferBindingType::Storage;
-                    bufferUsage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Storage;
-                break;
+            switch (bufferType){
                 case BufferType::Storage:
                     bindingType = wgpu::BufferBindingType::Storage;
                     bufferUsage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Storage;
@@ -96,7 +84,7 @@ namespace crg::renderer {
                 return;
             }
 
-            it->second.writeBuffer(data);
+            it->second.writeBuffer(data.data(), data.size());
         }
 
     private:

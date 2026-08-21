@@ -5,13 +5,23 @@ struct Vertex {
     uv: vec2f
 };
 
-@group(0) @binding(0) var<storage, read_write> vertex_buffer: array<Vertex>;
+const CHUNK_VERTEX_COUNT: u32 = 501;
 
-// @group(0) @binding(1) var<storage, read_write> index_buffer: array<u32>;
+struct MeshChunk {
+    vertexData: array<Vertex, CHUNK_VERTEX_COUNT>
+};
 
-@group(0) @binding(1) var texture_sampler: sampler;
+struct InstanceData {
+    modelMatrix: mat4x4f
+};
 
-@group(0) @binding(2) var texture: texture_2d<f32>;
+@group(0) @binding(0) var<storage, read_write> chunk_buffer: array<MeshChunk>;
+@group(0) @binding(1) var<storage, read_write> instance_buffer: array<InstanceData>;
+@group(0) @binding(2) var<storage, read_write> map_bufferr: array<i32>;
+
+@group(0) @binding(3) var texture_sampler: sampler;
+
+@group(0) @binding(4) var texture: texture_2d<f32>;
 
 struct VertexOutput {
     @builtin(position) position: vec4f,
@@ -22,7 +32,11 @@ struct VertexOutput {
 @vertex
 fn vs_main(@builtin(vertex_index) index: u32) -> VertexOutput {
 
-    var vertex = vertex_buffer[index];
+    var chunkIndex = u32(index / CHUNK_VERTEX_COUNT);
+
+    var vertIdx = index - (CHUNK_VERTEX_COUNT * chunkIndex);
+
+    var vertex = chunk_buffer[chunkIndex].vertexData[vertIdx];
 
     var out: VertexOutput;
     out.position = vec4f(vertex.position, 1);
