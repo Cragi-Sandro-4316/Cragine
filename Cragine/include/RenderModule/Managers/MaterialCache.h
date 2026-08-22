@@ -8,7 +8,6 @@
 #include "RenderModule/Structs/Texture.h"
 #include "RenderModule/Handles.h"
 
-#include "utils/Logger.h"
 #include <fstream>
 #include <vector>
 #include <webgpu/webgpu.hpp>
@@ -30,9 +29,6 @@ namespace crg::renderer {
             std::vector<TextureSampler>& samplers,
             std::vector<Texture>& textures
         ) {
-            // TODO: limit to one vertex buffer, one index buffer and one instance buffer.
-
-            LOG_CORE_INFO("Creating material at path: {}", path);
 
             // BIND GROUP LAYOUT ENTRIES:
 
@@ -222,7 +218,6 @@ namespace crg::renderer {
         }
 
         Material& getMaterial(Handle<Material> handle) {
-            LOG_CORE_INFO("mat: {}", (size_t)&m_materialCache[handle.id]);
             return m_materialCache[handle.id];
         }
 
@@ -237,23 +232,20 @@ namespace crg::renderer {
             MeshBuffer& meshBuffer,
             std::vector<wgpu::BindGroupLayoutEntry>& layoutEntries
         ) {
-            LOG_CORE_WARNING("Chunk Buffer {}", 0);
             layoutEntries[0].nextInChain = nullptr;
             layoutEntries[0].binding = 0;
             layoutEntries[0].buffer = meshBuffer.chunkBuffer().getBindingLayout();
             layoutEntries[0].visibility = meshBuffer.chunkBuffer().getStageVisibility();
 
-            LOG_CORE_WARNING("Instance Buffer {}", 1);
             layoutEntries[1].nextInChain = nullptr;
             layoutEntries[1].binding = 1;
             layoutEntries[1].buffer = meshBuffer.instanceBuffer().getBindingLayout();
             layoutEntries[1].visibility = meshBuffer.instanceBuffer().getStageVisibility();
 
-            LOG_CORE_WARNING("Map Buffer {}", 2);
             layoutEntries[2].nextInChain = nullptr;
             layoutEntries[2].binding = 2;
-            layoutEntries[2].buffer = meshBuffer.mapBuffer().getBindingLayout();
-            layoutEntries[2].visibility = meshBuffer.mapBuffer().getStageVisibility();
+            layoutEntries[2].buffer = meshBuffer.meshMapBuffer().getBindingLayout();
+            layoutEntries[2].visibility = meshBuffer.meshMapBuffer().getStageVisibility();
         }
 
         inline void getBufferBindings(
@@ -265,7 +257,6 @@ namespace crg::renderer {
 
             // Buffers
             for (size_t i = startIdx; i < startIdx + bufferCount; i++) {
-                LOG_CORE_WARNING("Buffer {}", i);
                 Buffer& buffer = buffers.at(i - startIdx);
 
                 layoutEntries[i].nextInChain = nullptr;
@@ -284,7 +275,6 @@ namespace crg::renderer {
         ) {
             // Samplers
             for (size_t i = startIdx; i < startIdx + samplerCount; i++) {
-                LOG_CORE_WARNING("Sampler {}", i);
                 TextureSampler& sampler = samplers.at(i - startIdx);
 
                 layoutEntries[i].nextInChain = nullptr;
@@ -302,7 +292,6 @@ namespace crg::renderer {
         ) {
             // Textures
             for (size_t i = startIdx; i < startIdx + textureCount; i++) {
-                LOG_CORE_WARNING("Texture {}", i);
                 Texture& texture = textures.at(i - startIdx);
 
                 layoutEntries[i].nextInChain = nullptr;
@@ -355,15 +344,14 @@ namespace crg::renderer {
 
             bindGroupEntries[2].nextInChain = nullptr;
             bindGroupEntries[2].binding = 2;
-            bindGroupEntries[2].buffer = meshBuffer.mapBuffer().getRawHandle();
-            bindGroupEntries[2].size = meshBuffer.mapBuffer().getByteSize();
+            bindGroupEntries[2].buffer = meshBuffer.meshMapBuffer().getRawHandle();
+            bindGroupEntries[2].size = meshBuffer.meshMapBuffer().getByteSize();
             bindGroupEntries[2].offset = 0;
 
 
             size_t startIdx = meshBufferCount;
 
             for (size_t i = startIdx; i < startIdx + bufferCount; i++) {
-                LOG_CORE_ERROR("Buffer {}", i);
                 Buffer& buffer = buffers.at(i - startIdx);
 
                 bindGroupEntries[i].nextInChain = nullptr;
@@ -376,7 +364,6 @@ namespace crg::renderer {
             startIdx += bufferCount;
 
             for (size_t i = startIdx; i < startIdx + samplerCount; i++) {
-                LOG_CORE_ERROR("Sampler {}", i);
 
                 TextureSampler& sampler = samplers.at(i - startIdx);
 
@@ -388,7 +375,6 @@ namespace crg::renderer {
             startIdx += samplerCount;
 
             for (size_t i = startIdx; i < startIdx + textureCount; i++) {
-                LOG_CORE_ERROR("Texture {}", i);
 
                 Texture& texture = textures.at(i - startIdx);
 

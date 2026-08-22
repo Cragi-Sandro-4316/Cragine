@@ -8,6 +8,9 @@
 #include "RenderModule/Structs/MeshBuffer.h"
 #include "RenderModule/Structs/Texture.h"
 #include "Window.h"
+#include "utils/Logger.h"
+#include "Transform.h"
+
 #include <webgpu.h>
 #include <webgpu/webgpu.hpp>
 
@@ -42,6 +45,7 @@ namespace crg::renderer {
             );
         }
 
+
         template<typename T>
         Handle<Buffer> newBuffer(size_t size, BufferType bufferType) {
             wgpu::Device& device = m_renderContext.device;
@@ -69,12 +73,26 @@ namespace crg::renderer {
             m_bufferManager.writeBuffer(buffer, data);
         }
 
-        Handle<Mesh> spawnMesh(const std::filesystem::path& path, Handle<Material> handle) {
-            auto& material = m_materialCache.getMaterial(handle);
+        Handle<Mesh> spawnMesh(const std::filesystem::path& path, Handle<Material> materialHandle, Transform transform) {
+            auto& material = m_materialCache.getMaterial(materialHandle);
 
-            return material.m_meshBuffer.loadMesh(path);
+            Handle<Mesh> meshHandle = material.m_meshBuffer.loadMesh(path, transform);
+
+            m_meshMap[meshHandle.id] = materialHandle;
+
+            return meshHandle;
         }
 
+        void unloadMesh(Handle<Mesh> mesh) {
+            auto it = m_meshMap.find(mesh.id);
+            if (it == m_meshMap.end()) {
+                LOG_CORE_WARNING("Mesh unloading: mesh handle not found. Skipping...");
+                return;
+            }
+
+            auto& material = m_materialCache.getMaterial(it->second);
+            material.m_meshBuffer.unloadMesh(mesh);
+        }
 
         RenderContext& getRenderContext() { return m_renderContext; }
         MaterialCache& getMaterialCache() { return m_materialCache; }
@@ -97,7 +115,7 @@ namespace crg::renderer {
         SamplerManager m_samplerManager{};
 
 
-
+        std::unordered_map<size_t, Handle<Material>> m_meshMap;
 
         template<typename T>
         inline void appendResource(

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core/App.h"
+#include "Ecs/Schedule.h"
 #include "Renderer.h"
 
 namespace crg {
@@ -11,6 +12,7 @@ namespace crg {
 
             app.addSystem(Schedule::Startup, renderer::newMaterial);
             app.addSystem(Schedule::Update, renderer::render);
+            app.addSystem(Update, renderer::logBufferContents);
         }
     };
 

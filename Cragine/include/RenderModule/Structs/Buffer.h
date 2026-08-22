@@ -2,9 +2,13 @@
 
 #include "utils/Assert.h"
 #include "utils/Logger.h"
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
+#include <thread>
 #include <typeindex>
+#include <webgpu.h>
 #include <webgpu/webgpu.hpp>
 
 #define BUFFER_TYPE(type) (type*)nullptr
@@ -13,6 +17,7 @@ namespace crg::renderer {
 
     enum BufferType : uint32_t {
         Storage,
+        StorageReadable,
         Uniform
     };
 
@@ -38,15 +43,17 @@ namespace crg::renderer {
         ):
         m_size(size),
         m_shaderStage(shaderStage),
+        m_device(device),
         m_queue(queue),
         m_bufferType(bufferType),
+        m_bufferUsage(bufferUsage),
         m_typeDesc(DataTypeDesc {
             .typeID = typeid(T),
             .size = sizeof(T),
             .align = alignof(T)
         }) {
 
-            LOG_CORE_INFO("size: {}", sizeof(T));
+            // LOG_CORE_INFO("size: {}", sizeof(T));
 
             ASSERT(     // TODO: Check this assert and make it work
                 (sizeof(T) % 16 == 0) ||
@@ -96,7 +103,7 @@ namespace crg::renderer {
             size_t offset = index * m_typeDesc.size;
 
             if (dataSize > getByteSize()) {
-                LOG_CORE_INFO("GPU Buffer write: given vector and index fall out of bounds");
+                LOG_CORE_ERROR("GPU Buffer write: given vector and index fall out of bounds");
                 return;
             }
 
@@ -136,7 +143,49 @@ namespace crg::renderer {
             return m_bufferType;
         }
 
+        template<typename T>
+        void read(std::vector<T>& buff) {
+
+            bool mappingDone = false;
+
+            wgpu::BufferMapCallbackInfo callbackInfo{};
+            callbackInfo.nextInChain = nullptr;
+            callbackInfo.mode = wgpu::CallbackMode::WaitAnyOnly;
+            callbackInfo.userdata1 = &mappingDone;
+            callbackInfo.callback = [](WGPUMapAsyncStatus status, WGPUStringView, void* userData, void*) {
+                bool* done = static_cast<bool*>(userData);
+                *done = (status == wgpu::MapAsyncStatus::Success);
+            };
+
+            auto status = m_buffer.mapAsync(
+                wgpu::MapMode::Read,
+                0,
+                getByteSize(),
+                callbackInfo
+            );
+
+            while (!mappingDone) {
+                wgpu::SubmissionIndex sub{};
+
+                m_device.poll(false, &sub);
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+
+
+            T* mappedData = (T*)m_buffer.getMappedRange(
+                0,
+                getByteSize()
+            );
+
+            buff.resize(m_size);
+            std::memcpy(buff.data(), mappedData, getByteSize());
+
+            m_buffer.unmap();
+        }
+
     private:
+
+        const wgpu::BufferUsage m_bufferUsage;
 
         const DataTypeDesc m_typeDesc;
 
@@ -151,6 +200,9 @@ namespace crg::renderer {
         const wgpu::ShaderStage m_shaderStage;
 
         wgpu::Queue m_queue;
+
+        wgpu::Device m_device;
+
     };
 
 }

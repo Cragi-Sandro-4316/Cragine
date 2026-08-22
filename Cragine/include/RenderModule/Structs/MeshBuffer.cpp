@@ -17,7 +17,7 @@ namespace crg::renderer {
         bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, path.string().c_str());
 
         if (!warn.empty()) {
-            LOG_CORE_WARNING("Mesh loading warning: {}", warn);
+            // LOG_CORE_WARNING("Mesh loading warning: {}", warn);
         }
 
         if (!err.empty()) {
@@ -69,7 +69,7 @@ namespace crg::renderer {
     		}
     	}
 
-        LOG_CORE_INFO("Mesh {} loaded.", path.c_str());
+        // LOG_CORE_INFO("Mesh {} loaded.", path.c_str());
     }
 
 }

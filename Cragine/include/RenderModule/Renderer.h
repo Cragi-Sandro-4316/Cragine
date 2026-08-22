@@ -1,12 +1,15 @@
 #pragma once
 #include "Ecs/Ecs.h"
 #include "RenderModule/Handles.h"
+#include "RenderModule/Structs/Buffer.h"
 #include "RenderModule/Structs/MeshBuffer.h"
 #include "RenderModule/RenderBackend.h"
 #include "RenderModule/Structs/Sampler.h"
 #include "RenderModule/Structs/Texture.h"
+#include "RenderModule/Transform.h"
 #include "utils/Logger.h"
 #include <GLFW/glfw3.h>
+#include <cstdint>
 
 namespace crg::renderer {
 
@@ -18,6 +21,8 @@ namespace crg::renderer {
         auto& renderBackend = rGpuHandler.get();
 
         std::filesystem::path meshPath = "assets/Mesh.obj";
+        std::filesystem::path meshPath2 = "assets/Mesh2.obj";
+        std::filesystem::path meshPath3 = "assets/Mesh3.obj";
 
         std::filesystem::path shaderPath = "assets/fragVert.wgsl";
 
@@ -27,17 +32,37 @@ namespace crg::renderer {
 
         Handle<Texture> textureHandle = renderBackend.newTexture(texturePath);
 
-        Handle<Mesh> meshHandle = renderBackend.spawnMesh(
-            meshPath,
-            renderBackend.newMaterial(
-                shaderPath,
-                MeshBufferSize::Large,
-                sampler,
-                textureHandle
-            )
-        );
-    }
+        Handle<Buffer> debugBuffer = renderBackend.newBuffer<uint32_t>(10, StorageReadable);
 
+        std::vector<uint32_t>vec(10);
+        renderBackend.writeBuffer(debugBuffer, vec);
+
+        Handle<Material> material = renderBackend.newMaterial(
+            shaderPath,
+            MeshBufferSize::Large,
+            debugBuffer,
+            sampler,
+            textureHandle
+        );
+
+        Transform transform{};
+        transform.translation.x = -0.5;
+        transform.scale = vec3(.5);
+
+        Handle<Mesh> meshHandle = renderBackend.spawnMesh(meshPath, material, transform);
+
+        Transform transform2{};
+        transform2.translation.x = .5;
+        transform2.scale = vec3(1);
+        // renderBackend.spawnMesh(meshPath, material, transform2);
+
+        renderBackend.spawnMesh(meshPath2, material, transform2);
+
+        // renderBackend.spawnMesh(meshPath3, material, Transform{});
+
+        // renderBackend.unloadMesh(meshHandle);
+
+    }
 
 
     static void render(
@@ -83,8 +108,9 @@ namespace crg::renderer {
 
             renderPass.setBindGroup(0, material.m_binding, 0, nullptr);
 
-            LOG_CORE_INFO("vert count: {}", material.m_meshBuffer.vertexCount());
             renderPass.draw(material.m_meshBuffer.vertexCount(), 1, 0, 0);
+
+            LOG_CORE_TRACE("Material rendered");
         }
 
         renderPass.end();
@@ -93,5 +119,28 @@ namespace crg::renderer {
         renderContext.queue.submit(cmdEncoder.finish());
 
         renderContext.surface.present();
+    }
+
+    static void logBufferContents(
+        ResMut<RenderBackend> rRenderBackend
+    ) {
+        auto& materialCache = rRenderBackend.get().getMaterialCache();
+
+        for (auto& material : materialCache.getMaterials()) {
+            std::vector<uint32_t> buff{};
+
+            material.m_buffers[0].read(buff);
+
+            LOG_CORE_INFO("Object 1 Map index {}", buff[0]);
+            LOG_CORE_INFO("Object 1 Chunk index {}", buff[1]);
+            LOG_CORE_INFO("Object 1 Instance index {}", buff[2]);
+
+
+            LOG_CORE_INFO("Object 2 Map index {}", buff[4]);
+            LOG_CORE_INFO("Object 2 Chunk index {}", buff[5]);
+            LOG_CORE_INFO("Object 2 Instance index {}", buff[6]);
+
+
+        }
     }
 }

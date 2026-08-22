@@ -21,6 +21,10 @@ namespace crg::renderer {
             wgpu::BufferUsage bufferUsage{};
 
             switch (bufferType){
+                case BufferType::StorageReadable:
+                    bindingType = wgpu::BufferBindingType::Storage;
+                    bufferUsage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Storage | wgpu::BufferUsage::MapRead;
+                break;
                 case BufferType::Storage:
                     bindingType = wgpu::BufferBindingType::Storage;
                     bufferUsage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Storage;
