@@ -8,7 +8,6 @@
 #include "RenderModule/Structs/Texture.h"
 #include "RenderModule/Transform.h"
 #include "glm/fwd.hpp"
-#include "utils/Logger.h"
 #include <GLFW/glfw3.h>
 
 namespace crg::renderer {
@@ -23,6 +22,8 @@ namespace crg::renderer {
         std::filesystem::path triangle = "assets/triangle.obj";
         std::filesystem::path circle = "assets/circle.obj";
         std::filesystem::path square = "assets/Mesh.obj";
+
+        std::filesystem::path bigMesh = "assets/BigMesh.obj";
 
         std::filesystem::path shaderPath = "assets/fragVert.wgsl";
 
@@ -49,13 +50,14 @@ namespace crg::renderer {
         transform.translation.x = -0.5;
         transform.scale = vec3(.5);
 
-        renderBackend.spawnMesh(triangle, material, transform);
+        renderBackend.spawnMesh(bigMesh, material, transform);
 
         Transform transform2{};
         transform2.translation.x = .5;
         transform2.scale = vec3(1);
+        renderBackend.spawnMesh(bigMesh, material, transform2);
 
-        renderBackend.spawnMesh(circle, material, transform2);
+        // renderBackend.spawnMesh(circle, material, transform2);
 
         Transform transform3{};
         transform3.translation.y = -.5;
@@ -63,8 +65,6 @@ namespace crg::renderer {
         transform3.scale = vec3(0.3);
 
         renderBackend.spawnMesh(triangle, material, transform3);
-
-
     }
 
 

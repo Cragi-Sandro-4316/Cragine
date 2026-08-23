@@ -97,7 +97,6 @@ namespace crg::renderer {
             auto it = m_meshChunkIdxs.find(handle.id);
 
             if (it != m_meshChunkIdxs.end()) {
-                LOG_CORE_WARNING("Mesh already loaded");
                 auto& meshChunks = it->second;
 
                 for (auto& chunkIdx : meshChunks.chunkIdxs) {
@@ -116,7 +115,6 @@ namespace crg::renderer {
                         map
                     );
 
-                    LOG_CORE_TRACE("Mesh Map buffer write on offset: {}, count: {}", offset, m_meshMap.size() - offset);
                     m_meshMapBuffer.writeBuffer(
                         m_meshMap.data() + offset,
                         m_meshMap.size() - offset,
@@ -163,13 +161,14 @@ namespace crg::renderer {
 
                 auto& meshChunk = m_meshChunks[chunkIndex];
 
-                for (size_t vertexIndex = 0; vertexIndex < CHUNK_VERTEX_COUNT; vertexIndex++) {
+                for (size_t j = 0; j < CHUNK_VERTEX_COUNT; j++) {
+                    size_t vertexIndex = j + (i* CHUNK_VERTEX_COUNT);
 
                     if (vertexIndex < meshData.vertices.size()) {
-                        meshChunk.vertexData[vertexIndex] = meshData.vertices[vertexIndex];
+                        meshChunk.vertexData[j] = meshData.vertices[vertexIndex];
                     }
                     else {
-                        meshChunk.vertexData[vertexIndex] = meshData.vertices.back();
+                        meshChunk.vertexData[j] = meshData.vertices.back();
                     }
                 }
 
