@@ -12,7 +12,6 @@ namespace crg {
 
             app.addSystem(Schedule::Startup, renderer::newMaterial);
             app.addSystem(Schedule::Update, renderer::render);
-            app.addSystem(Update, renderer::logBufferContents);
         }
     };
 

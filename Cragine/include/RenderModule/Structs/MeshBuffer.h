@@ -18,7 +18,7 @@ namespace crg::renderer {
     constexpr size_t CHUNK_VERTEX_COUNT = 501;
 
     struct MeshChunk {
-        VertexData vertexData[501];
+        alignas(16) VertexData vertexData[CHUNK_VERTEX_COUNT];
     };
 
     struct InstanceData {
@@ -92,7 +92,6 @@ namespace crg::renderer {
             InstanceData instance { modelMatrix };
             m_instanceData.push_back(instance);
 
-            LOG_CORE_TRACE("Instance buffer write on index: {}", m_instanceCount);
             m_instanceBuffer.write(instance, m_instanceCount++);
 
             auto it = m_meshChunkIdxs.find(handle.id);
@@ -127,9 +126,6 @@ namespace crg::renderer {
 
             }
 
-            // NEW LOAD; NEW CHUNKS; NEW EVERYTHING
-
-
             MeshData meshData{};
             loadFromObj(path, meshData);
 
@@ -146,7 +142,6 @@ namespace crg::renderer {
             auto& meshChunkIdxs = m_meshChunkIdxs[handle.id];
 
             size_t start = m_size;
-
             for (size_t i = 0; i < chunkCount; i++) {
                 uint32_t chunkIndex = start + i;
 
@@ -159,40 +154,27 @@ namespace crg::renderer {
 
                 m_meshMap.push_back(map);
 
-                // 1 instance, starting from the chunk index.
                 m_chunkInstanceIdxs.emplace_back(InstanceIndex {
                     .first = static_cast<uint32_t>(m_meshMap.size() - 1),
                     .count = 1
                 });
 
-                LOG_CORE_TRACE("Mesh Map buffer write on index: {}", m_meshMap.size() - 1);
                 m_meshMapBuffer.write(map, m_meshMap.size() - 1);
-            }
-
-            // Load vertices to chunk buffer
-            for (size_t i = 0; i < chunkCount * CHUNK_VERTEX_COUNT; i++) {
-
-                size_t vertexIndex = i % CHUNK_VERTEX_COUNT;
-                size_t chunkIndex = start + static_cast<size_t>(i / CHUNK_VERTEX_COUNT);
 
                 auto& meshChunk = m_meshChunks[chunkIndex];
 
-                if (i < meshData.vertices.size()) {
-                    meshChunk.vertexData[vertexIndex] = meshData.vertices[i];
+                for (size_t vertexIndex = 0; vertexIndex < CHUNK_VERTEX_COUNT; vertexIndex++) {
+
+                    if (vertexIndex < meshData.vertices.size()) {
+                        meshChunk.vertexData[vertexIndex] = meshData.vertices[vertexIndex];
+                    }
+                    else {
+                        meshChunk.vertexData[vertexIndex] = meshData.vertices.back();
+                    }
                 }
-                else {
-                    meshChunk.vertexData[vertexIndex] = meshData.vertices.back();
-                }
+
+                m_chunkBuffer.write(meshChunk, chunkIndex);
             }
-
-            LOG_CORE_TRACE("Chunk Buffer write on offset: {}, count {}", start + 1, chunkCount);
-            m_chunkBuffer.writeBuffer(
-                &m_meshChunks[start],
-                chunkCount
-            );
-
-            LOG_CORE_WARNING("Vertex position: ({}, {}, {})", meshData.vertices[0].position.x, meshData.vertices[0].position.y, meshData.vertices[0].position.z);
-
 
             m_size += chunkCount;
 

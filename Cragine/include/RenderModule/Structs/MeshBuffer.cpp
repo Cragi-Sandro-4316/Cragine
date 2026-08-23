@@ -70,7 +70,15 @@ namespace crg::renderer {
     		}
     	}
 
-        // LOG_CORE_INFO("Mesh {} loaded.", path.c_str());
+        // for (auto vert : mesh.vertices) {
+        //     LOG_CORE_INFO(
+        //         "vertex: ({}, {}, {})",
+        //         vert.position.x,
+        //         vert.position.y,
+        //         vert.position.z
+        //     );
+        // }
+
     }
 
 
