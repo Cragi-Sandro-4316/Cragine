@@ -7,9 +7,9 @@
 #include "RenderModule/Structs/Sampler.h"
 #include "RenderModule/Structs/Texture.h"
 #include "RenderModule/Transform.h"
+#include "glm/fwd.hpp"
 #include "utils/Logger.h"
 #include <GLFW/glfw3.h>
-#include <cstdint>
 
 namespace crg::renderer {
 
@@ -20,9 +20,8 @@ namespace crg::renderer {
     ) {
         auto& renderBackend = rGpuHandler.get();
 
-        std::filesystem::path meshPath = "assets/Mesh.obj";
-        std::filesystem::path meshPath2 = "assets/Mesh2.obj";
-        std::filesystem::path meshPath3 = "assets/Mesh3.obj";
+        std::filesystem::path triangle = "assets/triangle.obj";
+        std::filesystem::path circle = "assets/circle.obj";
 
         std::filesystem::path shaderPath = "assets/fragVert.wgsl";
 
@@ -32,9 +31,9 @@ namespace crg::renderer {
 
         Handle<Texture> textureHandle = renderBackend.newTexture(texturePath);
 
-        Handle<Buffer> debugBuffer = renderBackend.newBuffer<uint32_t>(10, StorageReadable);
+        Handle<Buffer> debugBuffer = renderBackend.newBuffer<float32_t>(30, StorageReadable);
 
-        std::vector<uint32_t>vec(10);
+        std::vector<float32_t>vec(30);
         renderBackend.writeBuffer(debugBuffer, vec);
 
         Handle<Material> material = renderBackend.newMaterial(
@@ -49,14 +48,13 @@ namespace crg::renderer {
         transform.translation.x = -0.5;
         transform.scale = vec3(.5);
 
-        Handle<Mesh> meshHandle = renderBackend.spawnMesh(meshPath, material, transform);
 
         Transform transform2{};
         transform2.translation.x = .5;
         transform2.scale = vec3(1);
-        // renderBackend.spawnMesh(meshPath, material, transform2);
 
-        renderBackend.spawnMesh(meshPath2, material, transform2);
+        renderBackend.spawnMesh(triangle, material, transform);
+        renderBackend.spawnMesh(circle, material, transform2);
 
         // renderBackend.spawnMesh(meshPath3, material, Transform{});
 
@@ -127,18 +125,31 @@ namespace crg::renderer {
         auto& materialCache = rRenderBackend.get().getMaterialCache();
 
         for (auto& material : materialCache.getMaterials()) {
-            std::vector<uint32_t> buff{};
+            std::vector<MeshChunk> buff{};
 
-            material.m_buffers[0].read(buff);
+            material.m_meshBuffer.chunkBuffer().read(buff);
 
-            LOG_CORE_INFO("Object 1 Map index {}", buff[0]);
-            LOG_CORE_INFO("Object 1 Chunk index {}", buff[1]);
-            LOG_CORE_INFO("Object 1 Instance index {}", buff[2]);
+            MeshChunk& chunk1 = buff[0];
+            MeshChunk& chunk2 = buff[1];
+
+            LOG_CORE_INFO("Object 1 vertex pos: ({}, {}, {})", chunk1.vertexData[0].position.x, chunk1.vertexData[0].position.y, chunk1.vertexData[0].position.z);
+            LOG_CORE_INFO("Object 2 vertex pos: ({}, {}, {})", chunk2.vertexData[0].position.x, chunk2.vertexData[0].position.y, chunk2.vertexData[0].position.z);
+
+            // LOG_CORE_INFO("Object 1 Map index {}", buff[0]);
+            // LOG_CORE_INFO("Object 1 translation: ({}, {}, {})", buff[1], buff[2], buff[3]);
+            // LOG_CORE_INFO("Object 1 scale: ({}, {}, {})", buff[8], buff[9], buff[10]);
 
 
-            LOG_CORE_INFO("Object 2 Map index {}", buff[4]);
-            LOG_CORE_INFO("Object 2 Chunk index {}", buff[5]);
-            LOG_CORE_INFO("Object 2 Instance index {}", buff[6]);
+
+            // LOG_CORE_INFO("Object 2 Map index {}", buff[4]);
+            // LOG_CORE_INFO("Object 2 transform: ({}, {}, {})", buff[5], buff[6], buff[7]);
+            // LOG_CORE_INFO("Object 2 scale: ({}, {}, {})", buff[11], buff[12], buff[13]);
+            // LOG_CORE_INFO("Object 2 vertex pos: ({}, {}, {})", buff[17], buff[18], buff[19]);
+
+
+            // for (int i = 0; i < 30; i++) {
+            //     LOG_CORE_INFO("debug buffer {}: {}", i, buff[i]);
+            // }
 
 
         }

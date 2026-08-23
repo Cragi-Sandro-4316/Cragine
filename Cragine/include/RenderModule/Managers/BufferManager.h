@@ -40,7 +40,7 @@ namespace crg::renderer {
                 break;
             }
 
-            m_buffers.emplace(m_currentID, Buffer(size, BUFFER_TYPE(T), device, queue, bindingType, bufferUsage, bufferType));
+            m_buffers.emplace(m_currentID, Buffer(size, BUFFER_TYPE(T), device, queue, bufferUsage, bindingType, bufferType));
 
             Handle<Buffer> handle{ m_currentID };
 

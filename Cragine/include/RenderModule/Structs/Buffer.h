@@ -36,8 +36,8 @@ namespace crg::renderer {
             T* typePtr,
             wgpu::Device device,
             wgpu::Queue queue,
-            wgpu::BufferBindingType bindingType = wgpu::BufferBindingType::Storage,
             wgpu::BufferUsage bufferUsage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Storage,
+            wgpu::BufferBindingType bindingType = wgpu::BufferBindingType::Storage,
             BufferType bufferType = BufferType::Storage,
             wgpu::ShaderStage shaderStage = wgpu::ShaderStage::Vertex
         ):
@@ -144,7 +144,7 @@ namespace crg::renderer {
         }
 
         template<typename T>
-        void read(std::vector<T>& buff) {
+        void read(std::vector<T>& buff) const {
 
             bool mappingDone = false;
 

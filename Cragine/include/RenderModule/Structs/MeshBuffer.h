@@ -4,11 +4,14 @@
 #include "RenderModule/Structs/Buffer.h"
 #include "RenderModule/Structs/MeshData.h"
 #include "RenderModule/Transform.h"
+#include "glm/fwd.hpp"
 #include "utils/Logger.h"
+#include <cstdint>
 #include <filesystem>
 #include <functional>
 #include <unordered_map>
 #include <vector>
+#include <webgpu/webgpu.hpp>
 
 namespace crg::renderer {
 
@@ -27,9 +30,9 @@ namespace crg::renderer {
         std::vector<size_t> chunkIdxs;
     };
 
-    struct MeshMap {
-        size_t chunk;
-        size_t instance;
+    struct ChunkMap {
+        uint32_t chunk;
+        uint32_t instance;
     };
 
     enum MeshBufferSize {
@@ -37,6 +40,13 @@ namespace crg::renderer {
         Small,
         Large
     };
+
+
+    struct InstanceIndex {
+        uint32_t first;
+        uint32_t count;
+    };
+
 
     class MeshBuffer {
     public:
@@ -54,7 +64,8 @@ namespace crg::renderer {
             chunkCount,
             BUFFER_TYPE(MeshChunk),
             device,
-            queue
+            queue,
+            wgpu::BufferUsage::Storage | wgpu::BufferUsage::MapRead | wgpu::BufferUsage::CopyDst
         ),
         m_instanceBuffer(
             instanceCount,
@@ -64,11 +75,11 @@ namespace crg::renderer {
         ),
         m_meshMapBuffer(
             mapCount,
-            BUFFER_TYPE(MeshMap),
+            BUFFER_TYPE(ChunkMap),
             device,
             queue
         ) {
-            m_meshChunks = std::vector<std::pair<MeshChunk, size_t>>(chunkCount);
+            m_meshChunks = std::vector<MeshChunk>(chunkCount);
             m_instanceData = std::vector<InstanceData>(instanceCount);
             m_meshMap.reserve(mapCount);
         }
@@ -76,88 +87,112 @@ namespace crg::renderer {
         Handle<Mesh> loadMesh(const std::filesystem::path& path, Transform transform) {
 
             Handle<Mesh> handle = {std::hash<std::filesystem::path>{}(path)};
-
-            LOG_CORE_INFO(
-                "Transform Position [{}, {}, {}]",
-                transform.translation.x,
-                transform.translation.y,
-                transform.translation.z
-            );
             auto modelMatrix = transform.toMatrix();
 
-            InstanceData instance {
-                modelMatrix
-            };
+            InstanceData instance { modelMatrix };
+            m_instanceData.push_back(instance);
 
-            LOG_CORE_INFO("Instance buffer index: {}", m_instanceCount);
+            LOG_CORE_TRACE("Instance buffer write on index: {}", m_instanceCount);
+            m_instanceBuffer.write(instance, m_instanceCount++);
 
-            m_instanceData[m_instanceCount].modelMatrix = modelMatrix;
-            m_instanceBuffer.write(instance, m_instanceCount);
-            m_instanceCount++;
+            auto it = m_meshChunkIdxs.find(handle.id);
 
-            if (m_meshIds.contains(handle.id)) {
-                // LOG_CORE_INFO("Mesh {} already loaded", path.string());
-                // Increase instances map
+            if (it != m_meshChunkIdxs.end()) {
+                LOG_CORE_WARNING("Mesh already loaded");
+                auto& meshChunks = it->second;
 
-                auto& mesh = m_meshIds[handle.id];
+                for (auto& chunkIdx : meshChunks.chunkIdxs) {
 
-                for (auto& chunkIdx : mesh.chunkIdxs) {
-                    addInstance(chunkIdx);
+                    InstanceIndex& instanceIdx = m_chunkInstanceIdxs[chunkIdx];
+
+                    ChunkMap map = ChunkMap {
+                        .chunk = (uint32_t)chunkIdx,
+                        .instance = (uint32_t) m_instanceCount - 1
+                    };
+
+                    size_t offset = instanceIdx.first + instanceIdx.count;
+
+                    m_meshMap.insert(
+                        m_meshMap.begin() + offset,
+                        map
+                    );
+
+                    LOG_CORE_TRACE("Mesh Map buffer write on offset: {}, count: {}", offset, m_meshMap.size() - offset);
+                    m_meshMapBuffer.writeBuffer(
+                        m_meshMap.data() + offset,
+                        m_meshMap.size() - offset,
+                        offset
+                    );
                 }
 
-                return handle;
             }
+
+            // NEW LOAD; NEW CHUNKS; NEW EVERYTHING
+
 
             MeshData meshData{};
-
-            if (path.extension() == ".obj") {
-                loadFromObj(path, meshData);
-            }
+            loadFromObj(path, meshData);
 
             size_t chunkCount = std::ceil(
                 (double)meshData.vertices.size() /
                 (double)CHUNK_VERTEX_COUNT
             );
 
-
-            if (m_size + chunkCount > m_chunkBuffer.size()) {
-                LOG_CORE_ERROR("Mesh {} does not fit in mesh buffer", path.string());
-                return handle;
-            }
-
-            m_meshIds.insert({
+            m_meshChunkIdxs.insert({
                 handle.id,
-                Mesh{
-                    .chunkIdxs = std::vector<size_t>(chunkCount)
-                }
+                Mesh{ .chunkIdxs = std::vector<size_t>(chunkCount) }
             });
 
-            std::vector<MeshChunk> chunks(chunkCount);
+            auto& meshChunkIdxs = m_meshChunkIdxs[handle.id];
 
-            for (size_t i = 0; i < chunks.size(); i++) {
-                size_t chunkIdx = m_size + i;
-                m_meshIds[handle.id].chunkIdxs[i] = chunkIdx;
-                auto& gpuChunk = chunks[i];
-                auto& cpuChunk = m_meshChunks[chunkIdx].first;
+            size_t start = m_size;
 
-                addInstance(chunkIdx);
+            for (size_t i = 0; i < chunkCount; i++) {
+                uint32_t chunkIndex = start + i;
 
-                for (size_t vertID = 0; vertID < CHUNK_VERTEX_COUNT; vertID++) {
-                    size_t meshVertID = vertID + i * CHUNK_VERTEX_COUNT;
+                meshChunkIdxs.chunkIdxs[i] = chunkIndex;
 
-                    if (meshVertID < meshData.vertices.size()) {
-                        gpuChunk.vertexData[vertID] = meshData.vertices[meshVertID];
-                        cpuChunk.vertexData[vertID] = meshData.vertices[meshVertID];
-                    }
-                    else {
-                        gpuChunk.vertexData[vertID] = meshData.vertices.back();
-                        cpuChunk.vertexData[vertID] = meshData.vertices.back();
-                    }
+                ChunkMap map = ChunkMap {
+                    .chunk = chunkIndex,
+                    .instance = static_cast<uint32_t>(m_instanceCount - 1)
+                };
+
+                m_meshMap.push_back(map);
+
+                // 1 instance, starting from the chunk index.
+                m_chunkInstanceIdxs.emplace_back(InstanceIndex {
+                    .first = static_cast<uint32_t>(m_meshMap.size() - 1),
+                    .count = 1
+                });
+
+                LOG_CORE_TRACE("Mesh Map buffer write on index: {}", m_meshMap.size() - 1);
+                m_meshMapBuffer.write(map, m_meshMap.size() - 1);
+            }
+
+            // Load vertices to chunk buffer
+            for (size_t i = 0; i < chunkCount * CHUNK_VERTEX_COUNT; i++) {
+
+                size_t vertexIndex = i % CHUNK_VERTEX_COUNT;
+                size_t chunkIndex = start + static_cast<size_t>(i / CHUNK_VERTEX_COUNT);
+
+                auto& meshChunk = m_meshChunks[chunkIndex];
+
+                if (i < meshData.vertices.size()) {
+                    meshChunk.vertexData[vertexIndex] = meshData.vertices[i];
+                }
+                else {
+                    meshChunk.vertexData[vertexIndex] = meshData.vertices.back();
                 }
             }
-            LOG_CORE_INFO("msize: {}", m_size);
 
-            m_chunkBuffer.writeBuffer(chunks.data(), chunkCount, m_size);
+            LOG_CORE_TRACE("Chunk Buffer write on offset: {}, count {}", start + 1, chunkCount);
+            m_chunkBuffer.writeBuffer(
+                &m_meshChunks[start],
+                chunkCount
+            );
+
+            LOG_CORE_WARNING("Vertex position: ({}, {}, {})", meshData.vertices[0].position.x, meshData.vertices[0].position.y, meshData.vertices[0].position.z);
+
 
             m_size += chunkCount;
 
@@ -165,10 +200,12 @@ namespace crg::renderer {
         }
 
 
-        void unloadMesh(Handle<Mesh> handle) {
-            auto it = m_meshIds.find(handle.id);
 
-            if (it == m_meshIds.end()) {
+
+        void unloadMesh(Handle<Mesh> handle) {
+            auto it = m_meshChunkIdxs.find(handle.id);
+
+            if (it == m_meshChunkIdxs.end()) {
                 LOG_CORE_WARNING("Mesh unloading: given handle not found. Skipping...");
                 return;
             }
@@ -206,42 +243,23 @@ namespace crg::renderer {
 
         size_t m_size = 0;
 
-        std::unordered_map<MeshID, Mesh> m_meshIds{};
+        std::unordered_map<MeshID, Mesh> m_meshChunkIdxs{};
 
         Buffer m_chunkBuffer;
-        std::vector<
-            std::pair<MeshChunk, size_t>
-        > m_meshChunks;
+        std::vector<MeshChunk> m_meshChunks;
 
         Buffer m_meshMapBuffer;
-        std::vector<MeshMap> m_meshMap{};
+        std::vector<ChunkMap> m_meshMap{};
 
         Buffer m_instanceBuffer;
         std::vector<InstanceData> m_instanceData{};
         size_t m_instanceCount = 0;
 
+        std::vector<InstanceIndex> m_chunkInstanceIdxs;
+
+
+
         void loadFromObj(const std::filesystem::path& path, MeshData& mesh);
-
-
-        void addInstance(size_t chunkIdx) {
-            auto chunkMapBack = chunkIdx + m_meshChunks[chunkIdx].second++;
-
-            MeshMap map {
-                .chunk = chunkIdx,
-                .instance = m_instanceCount - 1
-            };
-
-            LOG_CORE_INFO("Map chunk: {}", map.chunk);
-            LOG_CORE_INFO("Map instance: {}", map.instance);
-
-            LOG_CORE_INFO("ChunkMap back: {}", chunkMapBack);
-            m_meshMap.insert(
-                m_meshMap.begin() + chunkMapBack,
-                map
-            );
-
-            m_meshMapBuffer.write(map, chunkMapBack);
-        }
 
     };
 
