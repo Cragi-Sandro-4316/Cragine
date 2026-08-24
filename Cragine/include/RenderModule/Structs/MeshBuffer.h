@@ -181,8 +181,6 @@ namespace crg::renderer {
         }
 
 
-
-
         void unloadMesh(Handle<Mesh> handle) {
             auto it = m_meshChunkIdxs.find(handle.id);
 
