@@ -7,6 +7,7 @@
 #include "glm/fwd.hpp"
 #include "utils/Logger.h"
 #include <cstdint>
+#include <cstring>
 #include <filesystem>
 #include <functional>
 #include <unordered_map>
@@ -65,34 +66,51 @@ namespace crg::renderer {
             BUFFER_TYPE(MeshChunk),
             device,
             queue,
-            wgpu::BufferUsage::Storage | wgpu::BufferUsage::MapRead | wgpu::BufferUsage::CopyDst
+            wgpu::BufferUsage::Storage  |
+            wgpu::BufferUsage::MapRead  |
+            wgpu::BufferUsage::MapWrite |
+            wgpu::BufferUsage::CopyDst
         ),
         m_instanceBuffer(
             instanceCount,
             BUFFER_TYPE(InstanceData),
             device,
-            queue
+            queue,
+            wgpu::BufferUsage::Storage  |
+            wgpu::BufferUsage::MapRead  |
+            wgpu::BufferUsage::MapWrite |
+            wgpu::BufferUsage::CopyDst
         ),
         m_meshMapBuffer(
             mapCount,
             BUFFER_TYPE(ChunkMap),
             device,
-            queue
+            queue,
+            wgpu::BufferUsage::Storage  |
+            wgpu::BufferUsage::MapRead  |
+            wgpu::BufferUsage::MapWrite |
+            wgpu::BufferUsage::CopyDst
         ) {
-            m_meshChunks = std::vector<MeshChunk>(chunkCount);
-            m_instanceData = std::vector<InstanceData>(instanceCount);
-            m_meshMap.reserve(mapCount);
+            // m_meshChunks = std::vector<MeshChunk>(chunkCount);
+            // m_instanceData = std::vector<InstanceData>(instanceCount);
+            // m_meshMap.reserve(mapCount);
         }
 
         Handle<Mesh> loadMesh(const std::filesystem::path& path, Transform transform) {
+
+            BufferView<MeshChunk> chunkBuffer = m_chunkBuffer.getBufferView<MeshChunk>();
+            BufferView<InstanceData> instanceBuffer = m_instanceBuffer.getBufferView<InstanceData>();
+            BufferView<ChunkMap> mapBuffer = m_meshMapBuffer.getBufferView<ChunkMap>();
+
 
             Handle<Mesh> handle = {std::hash<std::filesystem::path>{}(path)};
             auto modelMatrix = transform.toMatrix();
 
             InstanceData instance { modelMatrix };
-            m_instanceData.push_back(instance);
+            instanceBuffer[m_instanceCount++] = instance;
+            // m_instanceData.push_back(instance);
 
-            m_instanceBuffer.write(instance, m_instanceCount++);
+            // m_instanceBuffer.write(instance, m_instanceCount++);
 
             auto it = m_meshChunkIdxs.find(handle.id);
 
@@ -108,18 +126,20 @@ namespace crg::renderer {
                         .instance = (uint32_t) m_instanceCount - 1
                     };
 
-                    size_t offset = instanceIdx.first + instanceIdx.count;
+                    size_t offset = instanceIdx.first + instanceIdx.count++;
 
-                    m_meshMap.insert(
-                        m_meshMap.begin() + offset,
-                        map
-                    );
+                    mapBuffer.insert(&map, offset);
 
-                    m_meshMapBuffer.writeBuffer(
-                        m_meshMap.data() + offset,
-                        m_meshMap.size() - offset,
-                        offset
-                    );
+                    // m_meshMap.insert(
+                    //     m_meshMap.begin() + offset,
+                    //     map
+                    // );
+
+                    // m_meshMapBuffer.writeBuffer(
+                    //     m_meshMap.data() + offset,
+                    //     m_meshMap.size() - offset,
+                    //     offset
+                    // );
                 }
 
             }
@@ -139,7 +159,7 @@ namespace crg::renderer {
 
             auto& meshChunkIdxs = m_meshChunkIdxs[handle.id];
 
-            size_t start = m_size;
+            size_t start = m_chunkCount;
             for (size_t i = 0; i < chunkCount; i++) {
                 uint32_t chunkIndex = start + i;
 
@@ -150,16 +170,18 @@ namespace crg::renderer {
                     .instance = static_cast<uint32_t>(m_instanceCount - 1)
                 };
 
-                m_meshMap.push_back(map);
+                mapBuffer[m_mapCount++] = map;
+                // m_meshMap.push_back(map);
+                // m_meshMapBuffer.write(map, m_meshMap.size() - 1);
 
                 m_chunkInstanceIdxs.emplace_back(InstanceIndex {
-                    .first = static_cast<uint32_t>(m_meshMap.size() - 1),
+                    .first = static_cast<uint32_t>(m_mapCount - 1),
                     .count = 1
                 });
 
-                m_meshMapBuffer.write(map, m_meshMap.size() - 1);
 
-                auto& meshChunk = m_meshChunks[chunkIndex];
+                auto& meshChunk = chunkBuffer[chunkIndex];
+                // auto& meshChunk = m_meshChunks[chunkIndex];
 
                 for (size_t j = 0; j < CHUNK_VERTEX_COUNT; j++) {
                     size_t vertexIndex = j + (i* CHUNK_VERTEX_COUNT);
@@ -172,10 +194,17 @@ namespace crg::renderer {
                     }
                 }
 
-                m_chunkBuffer.write(meshChunk, chunkIndex);
+                // LOG_CORE_INFO("({}, {}, {})",
+                //     meshChunk.vertexData[0].position.x,
+                //     meshChunk.vertexData[0].position.y,
+                //     meshChunk.vertexData[0].position.z
+                // );
+
+                // chunkBuffer[chunkIndex] = meshChunk;
+                // m_chunkBuffer.write(meshChunk, chunkIndex);
             }
 
-            m_size += chunkCount;
+            m_chunkCount += chunkCount;
 
             return handle;
         }
@@ -191,19 +220,23 @@ namespace crg::renderer {
 
             auto& mesh = it->second;
             for (auto& chunkIdx : mesh.chunkIdxs) {
-                auto& back = m_meshChunks[--m_size];
+                // auto& back = m_meshChunks[--m_size];
 
-                m_chunkBuffer.write(back, chunkIdx);
-                m_meshChunks[chunkIdx] = back;
+                // m_chunkBuffer.write(back, chunkIdx);
+                // m_meshChunks[chunkIdx] = back;
+
+                // auto& instanceIdx = m_chunkInstanceIdxs[chunkIdx];
+                // auto& backInstanceIdx = m_chunkInstanceIdxs.back();
+
             }
         }
 
         inline size_t size() {
-            return m_size;
+            return m_chunkCount;
         }
 
         inline size_t vertexCount() {
-            return m_meshMap.size() * CHUNK_VERTEX_COUNT;
+            return m_mapCount * CHUNK_VERTEX_COUNT;
         }
 
         const Buffer& chunkBuffer() {
@@ -220,22 +253,25 @@ namespace crg::renderer {
 
     private:
 
-        size_t m_size = 0;
 
         std::unordered_map<MeshID, Mesh> m_meshChunkIdxs{};
 
         Buffer m_chunkBuffer;
-        std::vector<MeshChunk> m_meshChunks;
+        size_t m_chunkCount = 0;
+        // std::vector<MeshChunk> m_meshChunks;
 
         Buffer m_meshMapBuffer;
-        std::vector<ChunkMap> m_meshMap{};
+        size_t m_mapCount = 0;
+        // std::vector<ChunkMap> m_meshMap{};
 
         Buffer m_instanceBuffer;
-        std::vector<InstanceData> m_instanceData{};
+        // std::vector<InstanceData> m_instanceData{};
         size_t m_instanceCount = 0;
 
+        // Maps a Chunk index to its first instance index and instance count
         std::vector<InstanceIndex> m_chunkInstanceIdxs;
 
+        std::vector<size_t> m_freeInstanceIdxs;
 
 
         void loadFromObj(const std::filesystem::path& path, MeshData& mesh);

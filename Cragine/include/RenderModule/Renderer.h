@@ -52,12 +52,14 @@ namespace crg::renderer {
 
         transform.rotate(-45, vec3(0, 0, 1));
 
-        renderBackend.spawnMesh(bigMesh, material, transform);
+        auto handle = renderBackend.spawnMesh(bigMesh, material, transform);
 
         Transform transform2{};
         transform2.translation.x = .5;
         transform2.scale = vec3(1);
-        renderBackend.spawnMesh(bigMesh, material, transform2);
+        // renderBackend.spawnMesh(bigMesh, material, transform2);
+
+        // renderBackend.unloadMesh(handle);
 
         Transform transform3{};
         transform3.translation.x = -.7;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "RenderModule/Structs/BufferView.h"
 #include "utils/Assert.h"
 #include "utils/Logger.h"
 #include <chrono>
@@ -146,6 +147,11 @@ namespace crg::renderer {
         template<typename T>
         void read(std::vector<T>& buff) const {
 
+            if (!(m_bufferUsage & wgpu::BufferUsage::MapRead)) {
+                LOG_CORE_ERROR("Buffer not set for map reads");
+                return;
+            }
+
             bool mappingDone = false;
 
             wgpu::BufferMapCallbackInfo callbackInfo{};
@@ -181,6 +187,49 @@ namespace crg::renderer {
             std::memcpy(buff.data(), mappedData, getByteSize());
 
             m_buffer.unmap();
+        }
+
+        template<typename T>
+        BufferView<T> getBufferView() {
+            if (
+                !(m_bufferUsage & wgpu::BufferUsage::MapRead) &&
+                !(m_bufferUsage & wgpu::BufferUsage::MapWrite)
+            ) {
+                LOG_CORE_ERROR("Buffer not set for buffer read and buffer write");
+                return BufferView<T>(nullptr, {}, 0);
+            }
+
+            bool mappingDone = false;
+
+            wgpu::BufferMapCallbackInfo callbackInfo{};
+            callbackInfo.nextInChain = nullptr;
+            callbackInfo.mode = wgpu::CallbackMode::WaitAnyOnly;
+            callbackInfo.userdata1 = &mappingDone;
+            callbackInfo.callback = [](WGPUMapAsyncStatus status, WGPUStringView, void* userData, void*) {
+                bool* done = static_cast<bool*>(userData);
+                *done = (status == wgpu::MapAsyncStatus::Success);
+            };
+
+            auto status = m_buffer.mapAsync(
+                wgpu::MapMode::Write,
+                0,
+                getByteSize(),
+                callbackInfo
+            );
+
+            while (!mappingDone) {
+                wgpu::SubmissionIndex sub{};
+
+                m_device.poll(false, &sub);
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+
+            T* data = (T*)m_buffer.getMappedRange(
+                0,
+                getByteSize()
+            );
+
+            return BufferView<T>(data, m_buffer, m_size);
         }
 
     private:
