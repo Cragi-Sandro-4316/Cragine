@@ -57,42 +57,6 @@ fn vs_main(@builtin(vertex_index) index: u32) -> VertexOutput {
     out.uv = vertex.uv;
 
 
-    if (index < 501) {
-        // Translation
-        debug_buffer[4] = f32(instanceIndex);
-        debug_buffer[1] = instance.modelMatrix[3][0];
-        debug_buffer[2] = instance.modelMatrix[3][1];
-        debug_buffer[3] = instance.modelMatrix[3][2];
-
-        // Scale
-        debug_buffer[8] = instance.modelMatrix[0][0];
-        debug_buffer[9] = instance.modelMatrix[1][1];
-        debug_buffer[10] = instance.modelMatrix[2][2];
-
-
-        debug_buffer[14] = chunk_buffer[chunkIndex].vertexData[0].position.x;
-        debug_buffer[15] = chunk_buffer[chunkIndex].vertexData[0].position.y;
-        debug_buffer[16] = chunk_buffer[chunkIndex].vertexData[0].position.z;
-
-    }
-    else {
-        // Translation
-        debug_buffer[4] = f32(instanceIndex);
-        debug_buffer[5] = instance.modelMatrix[3][0];
-        debug_buffer[6] = instance.modelMatrix[3][1];
-        debug_buffer[7] = instance.modelMatrix[3][2];
-
-        // Scale
-        debug_buffer[11] = instance.modelMatrix[0][0];
-        debug_buffer[12] = instance.modelMatrix[1][1];
-        debug_buffer[13] = instance.modelMatrix[2][2];
-
-
-        debug_buffer[17] = chunk_buffer[chunkIndex].vertexData[0].position.x;
-        debug_buffer[18] = chunk_buffer[chunkIndex].vertexData[0].position.y;
-        debug_buffer[19] = chunk_buffer[chunkIndex].vertexData[0].position.z;
-
-    }
 
     return out;
 }

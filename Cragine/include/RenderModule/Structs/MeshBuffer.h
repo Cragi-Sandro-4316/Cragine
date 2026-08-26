@@ -16,10 +16,11 @@
 
 namespace crg::renderer {
 
-    constexpr size_t CHUNK_VERTEX_COUNT = 501;
+    constexpr uint32_t CHUNK_VERTEX_COUNT = 501;
 
     struct MeshChunk {
-        alignas(16) VertexData vertexData[CHUNK_VERTEX_COUNT];
+        alignas(16)
+        VertexData vertexData[CHUNK_VERTEX_COUNT];
     };
 
     struct InstanceData {
@@ -102,19 +103,16 @@ namespace crg::renderer {
             BufferView<InstanceData> instanceBuffer = m_instanceBuffer.getBufferView<InstanceData>();
             BufferView<ChunkMap> mapBuffer = m_meshMapBuffer.getBufferView<ChunkMap>();
 
-
             Handle<Mesh> handle = {std::hash<std::filesystem::path>{}(path)};
             auto modelMatrix = transform.toMatrix();
 
             InstanceData instance { modelMatrix };
             instanceBuffer[m_instanceCount++] = instance;
-            // m_instanceData.push_back(instance);
-
-            // m_instanceBuffer.write(instance, m_instanceCount++);
 
             auto it = m_meshChunkIdxs.find(handle.id);
 
             if (it != m_meshChunkIdxs.end()) {
+                LOG_CORE_INFO("Mesh already loaded. Adding instance");
                 auto& meshChunks = it->second;
 
                 for (auto& chunkIdx : meshChunks.chunkIdxs) {
@@ -129,21 +127,13 @@ namespace crg::renderer {
                     size_t offset = instanceIdx.first + instanceIdx.count++;
 
                     mapBuffer.insert(&map, offset);
-
-                    // m_meshMap.insert(
-                    //     m_meshMap.begin() + offset,
-                    //     map
-                    // );
-
-                    // m_meshMapBuffer.writeBuffer(
-                    //     m_meshMap.data() + offset,
-                    //     m_meshMap.size() - offset,
-                    //     offset
-                    // );
+                    m_mapCount++;
                 }
 
+                return handle;
             }
 
+            LOG_CORE_INFO("Spawning new mesh");
             MeshData meshData{};
             loadFromObj(path, meshData);
 
@@ -171,20 +161,16 @@ namespace crg::renderer {
                 };
 
                 mapBuffer[m_mapCount++] = map;
-                // m_meshMap.push_back(map);
-                // m_meshMapBuffer.write(map, m_meshMap.size() - 1);
 
                 m_chunkInstanceIdxs.emplace_back(InstanceIndex {
                     .first = static_cast<uint32_t>(m_mapCount - 1),
                     .count = 1
                 });
 
-
                 auto& meshChunk = chunkBuffer[chunkIndex];
-                // auto& meshChunk = m_meshChunks[chunkIndex];
 
                 for (size_t j = 0; j < CHUNK_VERTEX_COUNT; j++) {
-                    size_t vertexIndex = j + (i* CHUNK_VERTEX_COUNT);
+                    size_t vertexIndex = j + (i * CHUNK_VERTEX_COUNT);
 
                     if (vertexIndex < meshData.vertices.size()) {
                         meshChunk.vertexData[j] = meshData.vertices[vertexIndex];
@@ -194,14 +180,6 @@ namespace crg::renderer {
                     }
                 }
 
-                // LOG_CORE_INFO("({}, {}, {})",
-                //     meshChunk.vertexData[0].position.x,
-                //     meshChunk.vertexData[0].position.y,
-                //     meshChunk.vertexData[0].position.z
-                // );
-
-                // chunkBuffer[chunkIndex] = meshChunk;
-                // m_chunkBuffer.write(meshChunk, chunkIndex);
             }
 
             m_chunkCount += chunkCount;
