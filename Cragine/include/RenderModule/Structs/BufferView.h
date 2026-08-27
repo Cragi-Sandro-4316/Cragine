@@ -3,7 +3,6 @@
 #include <cstring>
 #include <webgpu/webgpu.hpp>
 
-
 namespace crg::renderer {
 
     template<typename T>
@@ -48,6 +47,14 @@ namespace crg::renderer {
             );
 
             std::memcpy(m_data + index, values, count * sizeof(T));
+        }
+
+        void erase(size_t index, size_t count = 1) {
+            std::memmove(
+                m_data + index,
+                m_data + index + count,
+                (m_size - index - count) * sizeof(T)
+            );
         }
 
     private:

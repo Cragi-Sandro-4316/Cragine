@@ -47,46 +47,31 @@ namespace crg::renderer {
         );
 
         Transform transform{};
-        transform.translation.x = -0.5;
+        transform.translation.x = 0.5;
         transform.scale = vec3(.2);
-
         transform.rotate(-45, vec3(0, 0, 1));
 
-        auto handle = renderBackend.spawnMesh(bigMesh, material, transform);
-
-        // Transform transform2{};
-        // transform2.translation.x = .5;
-        // transform2.scale = vec3(1);
-        // renderBackend.spawnMesh(bigMesh, material, transform2);
-
-        // renderBackend.unloadMesh(handle);
+        Transform transform2{};
+        transform2.translation.x = -.5;
+        transform2.scale = vec3(.5);
 
         Transform transform3{};
-        transform3.translation.x = .7;
-        transform3.scale = vec3(0.3);
-        // transform3.lookAt(vec3(0), vec3(0, 0, 1));
-        transform3.rotate(-45, vec3(0, 0, 1));
-
-        renderBackend.spawnMesh(bigMesh, material, transform3);
-
-
+        transform3.translation.y = .5;
+        transform3.scale = vec3(.3);
 
         Transform transform4{};
         transform4.translation.y = .5;
+        transform4.translation.x = -.5;
         transform4.scale = vec3(.5);
-        transform4.rotate(-45, vec3(0, 0, 1));
 
-        renderBackend.spawnMesh(bigMesh, material, transform4);
+        auto handle = renderBackend.spawnMesh(bigMesh, material, transform);
+        renderBackend.spawnMesh(triangle, material, transform2);
 
+        renderBackend.spawnMesh(bigMesh, material, transform3);
 
+        renderBackend.spawnMesh(triangle, material, transform4);
 
-        Transform transform5{};
-        transform5.translation.y = -.5;
-        transform5.scale = vec3(.5);
-        transform5.rotate(-45, vec3(0, 0, 1));
-        renderBackend.spawnMesh(bigMesh, material, transform5);
-
-
+        renderBackend.deleteInstance(handle);
     }
 
 

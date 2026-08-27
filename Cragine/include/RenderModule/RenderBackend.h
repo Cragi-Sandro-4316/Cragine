@@ -91,8 +91,20 @@ namespace crg::renderer {
             }
 
             auto& material = m_materialCache.getMaterial(it->second);
-            material.m_meshBuffer.unloadMesh(mesh);
+            // material.m_meshBuffer.unloadMesh(mesh);
         }
+
+        void deleteInstance(Handle<Mesh> mesh) {
+            auto it = m_meshMap.find(mesh.id);
+            if (it == m_meshMap.end()) {
+                LOG_CORE_WARNING("Mesh unloading: mesh handle not found. Skipping...");
+                return;
+            }
+
+            auto& material = m_materialCache.getMaterial(it->second);
+            material.m_meshBuffer.deleteInstance(mesh);
+        }
+
 
         RenderContext& getRenderContext() { return m_renderContext; }
         MaterialCache& getMaterialCache() { return m_materialCache; }

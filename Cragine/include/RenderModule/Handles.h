@@ -41,6 +41,7 @@ namespace crg {
     template<>
     struct Handle<renderer::Mesh> {
         size_t id;
+        size_t instanceId;
     };
 
     template<>
