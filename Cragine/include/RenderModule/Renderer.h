@@ -49,7 +49,7 @@ namespace crg::renderer {
         Transform transform{};
         transform.translation.x = 0.5;
         transform.scale = vec3(.2);
-        transform.rotate(-45, vec3(0, 0, 1));
+        transform.rotate(-10, vec3(0, 0, 1));
 
         Transform transform2{};
         transform2.translation.x = -.5;
@@ -65,13 +65,15 @@ namespace crg::renderer {
         transform4.scale = vec3(.5);
 
         auto handle = renderBackend.spawnMesh(bigMesh, material, transform);
-        renderBackend.spawnMesh(triangle, material, transform2);
+
+        renderBackend.spawnMesh(bigMesh, material, transform2);
+
+        renderBackend.deleteInstance(handle);
 
         renderBackend.spawnMesh(bigMesh, material, transform3);
 
         renderBackend.spawnMesh(triangle, material, transform4);
 
-        renderBackend.deleteInstance(handle);
     }
 
 

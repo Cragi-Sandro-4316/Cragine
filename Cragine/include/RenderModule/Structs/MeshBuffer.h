@@ -45,8 +45,8 @@ namespace crg::renderer {
         Large
     };
 
-
-    struct InstanceIndex {
+    // A Chunk's instance block
+    struct InstanceBlock {
         uint32_t first;
         uint32_t count;
     };
@@ -107,9 +107,9 @@ namespace crg::renderer {
 
             size_t handleId = std::hash<std::filesystem::path>{}(path);
 
-            auto it = m_meshChunkIdxs.find(handleId);
+            auto it = m_meshToChunkIdxs.find(handleId);
 
-            if (it != m_meshChunkIdxs.end()) {
+            if (it != m_meshToChunkIdxs.end()) {
                 LOG_CORE_INFO("Mesh already loaded. Adding instance");
                 auto& chunkIndices = it->second;
 
@@ -128,7 +128,6 @@ namespace crg::renderer {
                 return handle;
             }
 
-            LOG_CORE_INFO("Spawning new mesh");
             MeshData meshData{};
             loadFromObj(path, meshData);
 
@@ -137,16 +136,14 @@ namespace crg::renderer {
                 (double)CHUNK_VERTEX_COUNT
             );
 
-            LOG_CORE_TRACE("loading Chunk count: {}, size: {}", chunkCount, meshData.vertices.size());
-
-            m_meshChunkIdxs.insert({
+            m_meshToChunkIdxs.insert({
                 handleId,
                 Mesh{ .chunkIdxs = std::vector<size_t>(chunkCount) }
             });
 
-            auto& chunkIndices = m_meshChunkIdxs[handleId];
+            auto& chunkIndices = m_meshToChunkIdxs[handleId];
 
-            fillChunks(chunkCount, chunkIndices.chunkIdxs, chunkBuffer, meshData);
+            fillChunks(handleId, chunkCount, chunkIndices.chunkIdxs, chunkBuffer, meshData);
             m_chunkCount += chunkCount;
 
             size_t instanceIndex = addInstance(
@@ -165,12 +162,14 @@ namespace crg::renderer {
         }
 
 
-        void fillChunks(size_t chunkCount, std::vector<size_t>& chunkIndices, BufferView<MeshChunk>& chunkBuffer, MeshData& meshData) {
+        void fillChunks(MeshID meshId, size_t chunkCount, std::vector<size_t>& chunkIndices, BufferView<MeshChunk>& chunkBuffer, MeshData& meshData) {
             size_t start = m_chunkCount;
             for (size_t i = 0; i < chunkCount; i++) {
                 uint32_t chunkIndex = start + i;
 
                 chunkIndices[i] = chunkIndex;
+
+                m_chunkToMeshID[chunkIndex] = meshId;
 
                 // Fill chunks
                 auto& meshChunk = chunkBuffer[chunkIndex];
@@ -211,27 +210,27 @@ namespace crg::renderer {
             instanceBuffer[instanceIndex] = instance;
 
             for (auto& chunkIdx : chunkIndices) {
-                if (m_chunkInstanceIdxs.size() <= chunkIdx) {
-                    m_chunkInstanceIdxs.emplace_back(
-                        InstanceIndex {
+                if (m_instanceBlocks.size() <= chunkIdx) {
+                    m_instanceBlocks.emplace_back(
+                        InstanceBlock {
                             .first = (uint32_t) m_mapCount,
                             .count = 0
                         }
                     );
                 }
 
-                auto& instanceLocation = m_chunkInstanceIdxs[chunkIdx];
+                auto& instanceBlock = m_instanceBlocks[chunkIdx];
 
                 ChunkMap map {
                     .chunk = (uint32_t) chunkIdx,
                     .instance = (uint32_t) instanceIndex
                 };
 
-                mapBuffer.insert(&map, instanceLocation.first + instanceLocation.count++);
+                mapBuffer.insert(&map, instanceBlock.first + instanceBlock.count++);
                 m_mapCount++;
 
-                for (size_t i = chunkIdx + 1; i < m_chunkInstanceIdxs.size(); i++) {
-                    m_chunkInstanceIdxs[i].first++;
+                for (size_t i = chunkIdx + 1; i < m_instanceBlocks.size(); i++) {
+                    m_instanceBlocks[i].first++;
                 }
 
             }
@@ -240,9 +239,9 @@ namespace crg::renderer {
         }
 
         void deleteInstance(Handle<Mesh> handle) {
-            auto it = m_meshChunkIdxs.find(handle.id);
+            auto it = m_meshToChunkIdxs.find(handle.id);
 
-            if (it == m_meshChunkIdxs.end()) {
+            if (it == m_meshToChunkIdxs.end()) {
                 LOG_CORE_WARNING("Instance deletion: given handle not found. Skipping...");
                 return;
             }
@@ -251,36 +250,52 @@ namespace crg::renderer {
             BufferView<InstanceData> instanceBuffer = m_instanceBuffer.getBufferView<InstanceData>();
             BufferView<ChunkMap> mapBuffer = m_meshMapBuffer.getBufferView<ChunkMap>();
 
+            printMap(mapBuffer);
+
+
             // Find instance index
             size_t offset = -1;
 
-            auto& firstLocation = m_chunkInstanceIdxs[it->second.chunkIdxs[0]];
-            for (size_t i = 0; i < firstLocation.count; i++) {
-                if (mapBuffer[i + firstLocation.first].instance == handle.instanceId) {
+            auto& firstBlock = m_instanceBlocks[it->second.chunkIdxs[0]];
+            for (size_t i = 0; i < firstBlock.count; i++) {
+                if (mapBuffer[i + firstBlock.first].instance == handle.instanceId) {
                     offset = i;
                     break;
                 }
             }
 
-            for (auto& chunkIdx : it->second.chunkIdxs) {
-                auto& instanceLocation = m_chunkInstanceIdxs[chunkIdx];
+            auto freeInstance = mapBuffer[firstBlock.first + offset].instance;
+            m_freeInstanceIdxs.emplace_back(freeInstance);
 
-                mapBuffer.erase(instanceLocation.first + offset);
-                instanceLocation.count--;
-                m_mapCount--;
+            bool last = false;
 
-                for (size_t i = chunkIdx + 1; i < m_chunkInstanceIdxs.size(); i++) {
-                    m_chunkInstanceIdxs[i].first--;
+            auto& chunkIdxs = it->second.chunkIdxs;
+            for (auto& chunkIdx : chunkIdxs) {
+                auto& instanceBlock = m_instanceBlocks[chunkIdx];
+
+                mapBuffer.erase(instanceBlock.first + offset);
+
+                instanceBlock.count--;
+
+                for (size_t i = chunkIdx + 1; i < m_instanceBlocks.size(); i++) {
+                    m_instanceBlocks[i].first--;
+                }
+
+                if (instanceBlock.count == 0) {
+                    last = true;
                 }
             }
 
+            if (last) {
+                unloadMesh(handle, chunkBuffer, mapBuffer);
+            }
+
+            m_mapCount -= chunkIdxs.size();
+            printMap(mapBuffer);
+
         }
 
-        void printMap(BufferView<ChunkMap>& mapBuffer) {
-            for (int i = 0; i < m_mapCount; i++) {
-                LOG_CORE_INFO("Map[{}]: (chunk {}, instance: {})", i, mapBuffer[i].chunk, mapBuffer[i].instance);
-            }
-        }
+
 
 
         inline size_t size() {
@@ -305,8 +320,11 @@ namespace crg::renderer {
 
     private:
 
+        // Maps a Mesh ID to its chunk index list
+        std::unordered_map<MeshID, Mesh> m_meshToChunkIdxs{};
 
-        std::unordered_map<MeshID, Mesh> m_meshChunkIdxs{};
+        // Maps a Chunk index to the MeshID it belongs to
+        std::unordered_map<size_t, MeshID> m_chunkToMeshID{};
 
         Buffer m_chunkBuffer;
         size_t m_chunkCount = 0;
@@ -317,13 +335,73 @@ namespace crg::renderer {
         Buffer m_instanceBuffer;
         size_t m_instanceCount = 0;
 
-        // Maps a Chunk index to its first instance index and instance count
-        std::vector<InstanceIndex> m_chunkInstanceIdxs;
+        // Maps a Chunk index to its Instance block
+        std::vector<InstanceBlock> m_instanceBlocks;
 
         std::vector<size_t> m_freeInstanceIdxs;
 
 
         void loadFromObj(const std::filesystem::path& path, MeshData& mesh);
+
+
+        void unloadMesh(
+            Handle<Mesh> handle,
+            BufferView<MeshChunk>& chunkBuffer,
+            BufferView<ChunkMap>& mapBuffer
+        ) {
+            // Chunk index list of the deleted mesh
+            Mesh& mesh = m_meshToChunkIdxs[handle.id];
+
+            for (auto& chunkIdx : mesh.chunkIdxs) {
+                // Swap and pop
+                auto& backChunk = chunkBuffer[--m_chunkCount];
+                chunkBuffer[chunkIdx] = backChunk;
+
+                // Update maps...
+
+                // find the back chunk's mesh id
+                auto& backMeshID = m_chunkToMeshID[m_chunkCount];
+
+                // Update the moved chunk index in the mesh chunk list
+                for (auto& chunk : m_meshToChunkIdxs[backMeshID].chunkIdxs) {
+                    if (chunk == m_chunkCount) {
+                        chunk = chunkIdx;
+                        break;
+                    }
+                }
+
+                m_chunkToMeshID[chunkIdx] = backMeshID;
+                m_chunkToMeshID.erase(m_chunkCount);
+
+                // Move the instances
+                auto& backInstanceBlock = m_instanceBlocks.back();
+
+                auto& instanceBlock = m_instanceBlocks[chunkIdx];
+
+                mapBuffer.insert(
+                    mapBuffer.get() + backInstanceBlock.first,
+                    instanceBlock.first,
+                    backInstanceBlock.count
+                );
+
+                for (size_t i = instanceBlock.first; i < instanceBlock.first + backInstanceBlock.count; i++) {
+                    mapBuffer[i].chunk = chunkIdx;
+                }
+
+                instanceBlock = backInstanceBlock;
+                m_instanceBlocks.pop_back();
+            }
+
+            m_meshToChunkIdxs.erase(handle.id);
+        }
+
+
+        void printMap(BufferView<ChunkMap>& mapBuffer) {
+            LOG_CORE_INFO("MapCount: {}", m_mapCount);
+            for (int i = 0; i < m_mapCount; i++) {
+                LOG_CORE_INFO("Map[{}]: (chunk {}, instance: {})", i, mapBuffer[i].chunk, mapBuffer[i].instance);
+            }
+        }
 
     };
 
