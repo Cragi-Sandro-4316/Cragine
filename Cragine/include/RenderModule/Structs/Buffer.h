@@ -117,7 +117,7 @@ namespace crg::renderer {
         }
 
         template<typename T>
-        void write(T& data, size_t index) {
+        void write(T& data, size_t index = 0) {
 
             if (typeid(T) != m_typeDesc.typeID) {
                 LOG_CORE_ERROR("GPU BUFFER WRITE: type mismatch");

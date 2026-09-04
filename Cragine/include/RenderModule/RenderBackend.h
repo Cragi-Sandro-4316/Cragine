@@ -1,4 +1,5 @@
 #pragma once
+#include "RenderModule/Components/Camera.h"
 #include "RenderModule/Managers/BufferManager.h"
 #include "RenderModule/Managers/MaterialCache.h"
 #include "RenderModule/Managers/SamplerManager.h"
@@ -9,7 +10,7 @@
 #include "RenderModule/Structs/Texture.h"
 #include "Window.h"
 #include "utils/Logger.h"
-#include "Transform.h"
+#include "Components/Transform.h"
 
 #include <webgpu.h>
 #include <webgpu/webgpu.hpp>
@@ -26,6 +27,7 @@ namespace crg::renderer {
         template<typename... GpuResources>
         Handle<Material> newMaterial(
             std::string shaderPath,
+            Camera camera,
             MeshBufferSize meshBufferSize,
             GpuResources... resources
         ){
@@ -35,8 +37,24 @@ namespace crg::renderer {
 
             (appendResource(buffers, samplers, textures, resources), ...);
 
+            auto cameraHandle = m_bufferManager.newBuffer<CameraUniform>(
+                1,
+                m_renderContext.device,
+                m_renderContext.queue,
+                BufferType::Uniform
+            );
+
+            auto cameraUniform = m_bufferManager.getBufferPtr(cameraHandle);
+
+            auto cameraData = CameraUniform {
+                camera.getProjection()
+            };
+
+            cameraUniform->write(cameraData);
+
             return m_materialCache.newMaterial(
                 shaderPath,
+                *cameraUniform,
                 m_renderContext,
                 meshBufferSize,
                 buffers,

@@ -5,7 +5,7 @@
 #include "RenderModule/Structs/Buffer.h"
 #include "RenderModule/Structs/BufferView.h"
 #include "RenderModule/Structs/MeshData.h"
-#include "RenderModule/Transform.h"
+#include "RenderModule/Components/Transform.h"
 #include "glm/fwd.hpp"
 #include "utils/Logger.h"
 #include <cstdint>
@@ -250,9 +250,6 @@ namespace crg::renderer {
             BufferView<InstanceData> instanceBuffer = m_instanceBuffer.getBufferView<InstanceData>();
             BufferView<ChunkMap> mapBuffer = m_meshMapBuffer.getBufferView<ChunkMap>();
 
-            printMap(mapBuffer);
-
-
             // Find instance index
             size_t offset = -1;
 
@@ -291,8 +288,6 @@ namespace crg::renderer {
             }
 
             m_mapCount -= chunkIdxs.size();
-            printMap(mapBuffer);
-
         }
 
 
@@ -404,7 +399,5 @@ namespace crg::renderer {
         }
 
     };
-
-
 
 }

@@ -20,15 +20,21 @@ struct ChunkMap {
     instance: u32
 };
 
+struct Camera {
+    projectionMatrix: mat4x4f
+};
+
 @group(0) @binding(0) var<storage, read_write> chunk_buffer: array<MeshChunk>;
 @group(0) @binding(1) var<storage, read_write> instance_buffer: array<InstanceData>;
 @group(0) @binding(2) var<storage, read_write> map_buffer: array<ChunkMap>;
 
-@group(0) @binding(3) var<storage, read_write> debug_buffer: array<f32>;
+@group(0) @binding(3) var<uniform> camera: Camera;
 
-@group(0) @binding(4) var texture_sampler: sampler;
+@group(0) @binding(4) var<storage, read_write> debug_buffer: array<f32>;
 
-@group(0) @binding(5) var texture: texture_2d<f32>;
+@group(0) @binding(5) var texture_sampler: sampler;
+
+@group(0) @binding(6) var texture: texture_2d<f32>;
 
 struct VertexOutput {
     @builtin(position) position: vec4f,
@@ -52,11 +58,9 @@ fn vs_main(@builtin(vertex_index) index: u32) -> VertexOutput {
     var instance = instance_buffer[instanceIndex];
 
     var out: VertexOutput;
-    out.position = instance.modelMatrix * vec4f(vertex.position, 1);
+    out.position = camera.projectionMatrix * instance.modelMatrix * vec4f(vertex.position, 1);
     out.color = vec4f(vertex.color, 1);
     out.uv = vertex.uv;
-
-
 
     return out;
 }

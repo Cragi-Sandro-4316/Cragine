@@ -23,6 +23,7 @@ namespace crg::renderer {
 
         Handle<Material> newMaterial(
             std::string path,
+            Buffer cameraUniform,
             RenderContext renderContext,
             MeshBufferSize meshBufferSize,
             std::vector<Buffer>& buffers,
@@ -76,18 +77,23 @@ namespace crg::renderer {
 
             std::vector<wgpu::BindGroupLayoutEntry> layoutEntries(
                 meshBufferCount +
+                1 +
                 bufferCount +
                 samplerCount +
                 textureCount
             );
 
+            // getCameraBindings(camera);
+
             getMeshBindings(meshBuffer, layoutEntries);
 
-            getBufferBindings(buffers, layoutEntries, bufferCount, meshBufferCount);
+            getCameraBindings(cameraUniform, layoutEntries);
 
-            getSamplerBindings(samplers, layoutEntries, samplerCount, meshBufferCount + bufferCount);
+            getBufferBindings(buffers, layoutEntries, bufferCount, meshBufferCount + 1);
 
-            getTextureBindings(textures, layoutEntries, textureCount, meshBufferCount + bufferCount + samplerCount);
+            getSamplerBindings(samplers, layoutEntries, samplerCount, meshBufferCount + 1 + bufferCount);
+
+            getTextureBindings(textures, layoutEntries, textureCount, meshBufferCount + 1 + bufferCount + samplerCount);
 
             // BIND GROUP LAYOUT:
 
@@ -98,6 +104,7 @@ namespace crg::renderer {
             std::vector<wgpu::BindGroupEntry> bindGroupEntries = getBindGroupEntries(
                 layoutEntries,
                 meshBuffer, meshBufferCount,
+                cameraUniform,
                 buffers, bufferCount,
                 samplers, samplerCount,
                 textures, textureCount
@@ -248,6 +255,17 @@ namespace crg::renderer {
             layoutEntries[2].visibility = meshBuffer.meshMapBuffer().getStageVisibility();
         }
 
+        inline void getCameraBindings(
+            Buffer& cameraUniform,
+            std::vector<wgpu::BindGroupLayoutEntry>& layoutEntries
+        ) {
+            layoutEntries[3].nextInChain = nullptr;
+            layoutEntries[3].binding = 3;
+            layoutEntries[3].buffer = cameraUniform.getBindingLayout();
+            layoutEntries[3].visibility = cameraUniform.getStageVisibility();
+        }
+
+
         inline void getBufferBindings(
             std::vector<Buffer>& buffers,
             std::vector<wgpu::BindGroupLayoutEntry>& layoutEntries,
@@ -320,6 +338,7 @@ namespace crg::renderer {
             std::vector<wgpu::BindGroupLayoutEntry>& layoutEntries,
             MeshBuffer& meshBuffer,
             size_t meshBufferCount,
+            Buffer& cameraUniform,
             std::vector<Buffer>& buffers,
             size_t bufferCount,
             std::vector<TextureSampler>& samplers,
@@ -348,8 +367,13 @@ namespace crg::renderer {
             bindGroupEntries[2].size = meshBuffer.meshMapBuffer().getByteSize();
             bindGroupEntries[2].offset = 0;
 
+            bindGroupEntries[3].nextInChain = nullptr;
+            bindGroupEntries[3].binding = 3;
+            bindGroupEntries[3].buffer = cameraUniform.getRawHandle();
+            bindGroupEntries[3].size = cameraUniform.getByteSize();
+            bindGroupEntries[3].offset = 0;
 
-            size_t startIdx = meshBufferCount;
+            size_t startIdx = meshBufferCount + 1;
 
             for (size_t i = startIdx; i < startIdx + bufferCount; i++) {
                 Buffer& buffer = buffers.at(i - startIdx);

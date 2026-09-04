@@ -1,12 +1,13 @@
 #pragma once
 #include "Ecs/Ecs.h"
+#include "RenderModule/Components/Camera.h"
 #include "RenderModule/Handles.h"
 #include "RenderModule/Structs/Buffer.h"
 #include "RenderModule/Structs/MeshBuffer.h"
 #include "RenderModule/RenderBackend.h"
 #include "RenderModule/Structs/Sampler.h"
 #include "RenderModule/Structs/Texture.h"
-#include "RenderModule/Transform.h"
+#include "RenderModule/Components/Transform.h"
 #include "glm/fwd.hpp"
 #include <GLFW/glfw3.h>
 
@@ -22,6 +23,7 @@ namespace crg::renderer {
         std::filesystem::path triangle = "assets/triangle.obj";
         std::filesystem::path circle = "assets/circle.obj";
         std::filesystem::path square = "assets/Mesh.obj";
+        std::filesystem::path cube = "assets/cube.obj";
 
         std::filesystem::path bigMesh = "assets/BigMesh.obj";
 
@@ -38,8 +40,17 @@ namespace crg::renderer {
         std::vector<float32_t>vec(30);
         renderBackend.writeBuffer(debugBuffer, vec);
 
+        Camera camera{};
+        camera.setPerspectiveProjection(
+            50,
+            1,
+            0.1,
+            10
+        );
+
         Handle<Material> material = renderBackend.newMaterial(
             shaderPath,
+            camera,
             MeshBufferSize::Large,
             debugBuffer,
             sampler,
@@ -47,33 +58,11 @@ namespace crg::renderer {
         );
 
         Transform transform{};
-        transform.translation.x = 0.5;
-        transform.scale = vec3(.2);
-        transform.rotate(-10, vec3(0, 0, 1));
+        transform.translation.z = 2;
+        transform.scale = vec3(.5);
+        transform.rotate(-15, vec3(0, 1, 0));
 
-        Transform transform2{};
-        transform2.translation.x = -.5;
-        transform2.scale = vec3(.5);
-
-        Transform transform3{};
-        transform3.translation.y = .5;
-        transform3.scale = vec3(.3);
-
-        Transform transform4{};
-        transform4.translation.y = .5;
-        transform4.translation.x = -.5;
-        transform4.scale = vec3(.5);
-
-        auto handle = renderBackend.spawnMesh(bigMesh, material, transform);
-
-        renderBackend.spawnMesh(bigMesh, material, transform2);
-
-        renderBackend.deleteInstance(handle);
-
-        renderBackend.spawnMesh(bigMesh, material, transform3);
-
-        renderBackend.spawnMesh(triangle, material, transform4);
-
+        renderBackend.spawnMesh(cube, material, transform);
     }
 
 

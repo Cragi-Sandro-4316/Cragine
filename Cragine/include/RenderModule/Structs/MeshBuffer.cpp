@@ -45,9 +45,8 @@ namespace crg::renderer {
 
     			mesh.vertices[offset + i].position = {
     				attrib.vertices[3 * idx.vertex_index + 0],
-    				-attrib.vertices[3 * idx.vertex_index + 2], // Add a minus to avoid mirroring
-    				// attrib.vertices[3 * idx.vertex_index + 1]
-                    0
+    				attrib.vertices[3 * idx.vertex_index + 1],
+    				-attrib.vertices[3 * idx.vertex_index + 2] // Add a minus to avoid mirroring
     			};
 
     			// Also apply the transform to normals!!
