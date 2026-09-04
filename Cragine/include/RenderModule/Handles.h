@@ -6,7 +6,7 @@ namespace crg {
 
 
     namespace renderer {
-        struct Texture;
+        struct ImageTexture;
         struct TextureSampler;
         struct Buffer;
         struct Material;
@@ -16,12 +16,12 @@ namespace crg {
 
 
     template<>
-    struct Handle<renderer::Texture> {
+    struct Handle<renderer::ImageTexture> {
         size_t id;
     };
 
     template<typename T> struct is_texture : std::false_type {};
-    template<> struct is_texture<Handle<renderer::Texture>> : std::true_type {};
+    template<> struct is_texture<Handle<renderer::ImageTexture>> : std::true_type {};
 
 
     template<>

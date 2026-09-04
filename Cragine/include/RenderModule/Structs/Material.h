@@ -8,8 +8,6 @@ namespace crg::renderer {
     struct Material {
 
         Material(
-            wgpu::Device& device,
-            wgpu::Queue& queue,
             wgpu::RenderPipeline pipeline,
             wgpu::ShaderModule shaderModules,
             wgpu::BindGroup bindGroup,
@@ -39,7 +37,9 @@ namespace crg::renderer {
 
         MeshBuffer m_meshBuffer;
 
+
         std::vector<Buffer> m_buffers;
+
     };
 
 

@@ -6,10 +6,12 @@
 #include "RenderModule/Structs/MeshBuffer.h"
 #include "RenderModule/RenderBackend.h"
 #include "RenderModule/Structs/Sampler.h"
-#include "RenderModule/Structs/Texture.h"
+#include "RenderModule/Structs/ImageTexture.h"
 #include "RenderModule/Components/Transform.h"
 #include "glm/fwd.hpp"
 #include <GLFW/glfw3.h>
+#include <webgpu.h>
+#include <webgpu/webgpu.hpp>
 
 namespace crg::renderer {
 
@@ -33,7 +35,7 @@ namespace crg::renderer {
 
         Handle<TextureSampler> sampler = renderBackend.newSampler();
 
-        Handle<Texture> textureHandle = renderBackend.newTexture(texturePath);
+        Handle<ImageTexture> textureHandle = renderBackend.newTexture(texturePath);
 
         Handle<Buffer> debugBuffer = renderBackend.newBuffer<float32_t>(30, StorageReadable);
 
@@ -72,19 +74,19 @@ namespace crg::renderer {
         auto& renderContext = rRenderBackend.get().getRenderContext();
         auto& materialCache = rRenderBackend.get().getMaterialCache();
 
-        wgpu::SurfaceTexture drawable;
-        renderContext.surface.getCurrentTexture(&drawable);
+        wgpu::SurfaceTexture surfaceTex;
+        renderContext.surface.getCurrentTexture(&surfaceTex);
 
-        wgpu::TextureViewDescriptor imgViewDesc{};
-        imgViewDesc.label = wgpu::StringView("Surface texture view");
-        imgViewDesc.format = renderContext.surfaceFormat;
-        imgViewDesc.dimension = WGPUTextureViewDimension_2D;
-        imgViewDesc.baseMipLevel = 0;
-        imgViewDesc.mipLevelCount = 1;
-        imgViewDesc.baseArrayLayer = 0;
-        imgViewDesc.arrayLayerCount = 1;
-        imgViewDesc.aspect = WGPUTextureAspect_All;
-        wgpu::TextureView imgView = wgpuTextureCreateView(drawable.texture, &imgViewDesc);
+        wgpu::TextureViewDescriptor surfaceTexViewDesc{};
+        surfaceTexViewDesc.label = wgpu::StringView("Surface texture view");
+        surfaceTexViewDesc.format = renderContext.surfaceFormat;
+        surfaceTexViewDesc.dimension = WGPUTextureViewDimension_2D;
+        surfaceTexViewDesc.baseMipLevel = 0;
+        surfaceTexViewDesc.mipLevelCount = 1;
+        surfaceTexViewDesc.baseArrayLayer = 0;
+        surfaceTexViewDesc.arrayLayerCount = 1;
+        surfaceTexViewDesc.aspect = WGPUTextureAspect_All;
+        wgpu::TextureView surfaceTexView = wgpuTextureCreateView(surfaceTex.texture, &surfaceTexViewDesc);
 
         wgpu::CommandEncoderDescriptor cmdEncoderDesc{};
         cmdEncoderDesc.nextInChain = nullptr;
@@ -92,7 +94,7 @@ namespace crg::renderer {
 
         std::vector<wgpu::RenderPassColorAttachment> colorAttachments;
         colorAttachments.emplace_back();
-        colorAttachments[0].view = imgView;
+        colorAttachments[0].view = surfaceTexView;
         colorAttachments[0].loadOp = wgpu::LoadOp::Clear;
         colorAttachments[0].clearValue = wgpu::Color(0.3, 0.3, 0.3, 0.0);
         colorAttachments[0].storeOp = wgpu::StoreOp::Store;
@@ -101,6 +103,7 @@ namespace crg::renderer {
         renderPassDesc.nextInChain = nullptr;
         renderPassDesc.colorAttachmentCount = colorAttachments.size();
         renderPassDesc.colorAttachments = colorAttachments.data();
+        renderPassDesc.depthStencilAttachment = &renderContext.depthStencilAttachment;
 
         wgpu::RenderPassEncoder renderPass = cmdEncoder.beginRenderPass(renderPassDesc);
 
@@ -115,9 +118,18 @@ namespace crg::renderer {
         renderPass.end();
         renderPass.release();
 
-        renderContext.queue.submit(cmdEncoder.finish());
+        auto commandBuffer = cmdEncoder.finish();
+        renderContext.queue.submit(commandBuffer);
+
+        commandBuffer.release();
 
         renderContext.surface.present();
+
+        surfaceTexView.release();
+        wgpuTextureRelease(surfaceTex.texture);
+        cmdEncoder.release();
     }
+
+
 
 }

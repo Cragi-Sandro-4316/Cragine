@@ -7,7 +7,7 @@
 #include "RenderModule/RenderContext.h"
 #include "RenderModule/Structs/Buffer.h"
 #include "RenderModule/Structs/MeshBuffer.h"
-#include "RenderModule/Structs/Texture.h"
+#include "RenderModule/Structs/ImageTexture.h"
 #include "Window.h"
 #include "utils/Logger.h"
 #include "Components/Transform.h"
@@ -32,7 +32,7 @@ namespace crg::renderer {
             GpuResources... resources
         ){
             std::vector<Buffer> buffers;
-            std::vector<Texture> textures;
+            std::vector<ImageTexture> textures;
             std::vector<TextureSampler> samplers;
 
             (appendResource(buffers, samplers, textures, resources), ...);
@@ -79,7 +79,7 @@ namespace crg::renderer {
             return m_samplerManager.newSampler(device, queue);
         }
 
-        Handle<Texture> newTexture(std::filesystem::path path) {
+        Handle<ImageTexture> newTexture(std::filesystem::path path) {
             wgpu::Device& device = m_renderContext.device;
             wgpu::Queue& queue = m_renderContext.queue;
 
@@ -151,7 +151,7 @@ namespace crg::renderer {
         inline void appendResource(
             std::vector<Buffer>& buffers,
             std::vector<TextureSampler>& samplers,
-            std::vector<Texture>& textures,
+            std::vector<ImageTexture>& textures,
             const T& resource
         ) {
             if constexpr (is_buffer<T>::value) {

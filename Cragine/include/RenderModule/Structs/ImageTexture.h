@@ -11,10 +11,10 @@ using namespace glm;
 
 namespace crg::renderer {
 
-    class Texture {
+    class ImageTexture {
     public:
 
-        Texture(wgpu::Device& device, wgpu::Queue& queue, std::filesystem::path& path) :
+        ImageTexture(wgpu::Device& device, wgpu::Queue& queue, std::filesystem::path& path) :
         m_shaderStage(wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment) {
             int width;
             int height;

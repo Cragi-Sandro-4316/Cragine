@@ -5,7 +5,7 @@
 #include "RenderModule/RenderContext.h"
 #include "RenderModule/Structs/MeshBuffer.h"
 #include "RenderModule/Structs/Sampler.h"
-#include "RenderModule/Structs/Texture.h"
+#include "RenderModule/Structs/ImageTexture.h"
 #include "RenderModule/Handles.h"
 
 #include <fstream>
@@ -28,7 +28,7 @@ namespace crg::renderer {
             MeshBufferSize meshBufferSize,
             std::vector<Buffer>& buffers,
             std::vector<TextureSampler>& samplers,
-            std::vector<Texture>& textures
+            std::vector<ImageTexture>& textures
         ) {
 
             // BIND GROUP LAYOUT ENTRIES:
@@ -149,9 +149,12 @@ namespace crg::renderer {
 
             auto pipelineLayout = renderContext.device.createPipelineLayout(pipelineLayoutDesc);
 
+
+
             wgpu::RenderPipelineDescriptor pipelineDesc{};
             pipelineDesc.label = wgpu::StringView("sum pipleine");
             pipelineDesc.layout = pipelineLayout;
+            pipelineDesc.depthStencil = &renderContext.depthStencilState;
 
             // Pipeline states
             wgpu::VertexState vertState{};
@@ -207,10 +210,7 @@ namespace crg::renderer {
 
             wgpu::RenderPipeline pipeline = renderContext.device.createRenderPipeline(pipelineDesc);
 
-
             Material material (
-                renderContext.device,
-                renderContext.queue,
                 pipeline,
                 shader,
                 bindGroup,
@@ -303,14 +303,14 @@ namespace crg::renderer {
         }
 
         inline void getTextureBindings(
-            std::vector<Texture>& textures,
+            std::vector<ImageTexture>& textures,
             std::vector<wgpu::BindGroupLayoutEntry>& layoutEntries,
             size_t textureCount,
             size_t startIdx
         ) {
             // Textures
             for (size_t i = startIdx; i < startIdx + textureCount; i++) {
-                Texture& texture = textures.at(i - startIdx);
+                ImageTexture& texture = textures.at(i - startIdx);
 
                 layoutEntries[i].nextInChain = nullptr;
                 layoutEntries[i].binding = i;
@@ -343,7 +343,7 @@ namespace crg::renderer {
             size_t bufferCount,
             std::vector<TextureSampler>& samplers,
             size_t samplerCount,
-            std::vector<Texture>& textures,
+            std::vector<ImageTexture>& textures,
             size_t textureCount
         ) {
             std::vector<wgpu::BindGroupEntry> bindGroupEntries(layoutEntries.size());
@@ -400,7 +400,7 @@ namespace crg::renderer {
 
             for (size_t i = startIdx; i < startIdx + textureCount; i++) {
 
-                Texture& texture = textures.at(i - startIdx);
+                ImageTexture& texture = textures.at(i - startIdx);
 
                 bindGroupEntries[i].nextInChain = nullptr;
                 bindGroupEntries[i].binding = i;
