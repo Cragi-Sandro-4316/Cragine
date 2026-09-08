@@ -1,5 +1,6 @@
 #pragma once
 #include "RenderModule/Components/Camera.h"
+#include "RenderModule/Managers/AtlasManager.h"
 #include "RenderModule/Managers/BufferManager.h"
 #include "RenderModule/Managers/MaterialCache.h"
 #include "RenderModule/Managers/SamplerManager.h"
@@ -8,6 +9,7 @@
 #include "RenderModule/Structs/Buffer.h"
 #include "RenderModule/Structs/MeshBuffer.h"
 #include "RenderModule/Structs/ImageTexture.h"
+#include "RenderModule/Structs/TextureAtlas.h"
 #include "Window.h"
 #include "utils/Logger.h"
 #include "Components/Transform.h"
@@ -34,8 +36,9 @@ namespace crg::renderer {
             std::vector<Buffer> buffers;
             std::vector<ImageTexture> textures;
             std::vector<TextureSampler> samplers;
+            std::vector<TextureAtlas> atlases;
 
-            (appendResource(buffers, samplers, textures, resources), ...);
+            (appendResource(buffers, samplers, textures, atlases, resources), ...);
 
             auto cameraHandle = m_bufferManager.newBuffer<CameraUniform>(
                 1,
@@ -59,7 +62,8 @@ namespace crg::renderer {
                 meshBufferSize,
                 buffers,
                 samplers,
-                textures
+                textures,
+                atlases
             );
         }
 
@@ -85,6 +89,12 @@ namespace crg::renderer {
 
             return m_textureManager.newTexture(device, queue, path);
         }
+
+
+        Handle<TextureAtlas> newAtlas(size_t pageCount) {
+            return m_atlasManager.newAtlas(pageCount, m_renderContext.device);
+        }
+
 
         template<typename T>
         void writeBuffer(Handle<Buffer> buffer, std::vector<T>& data) {
@@ -137,6 +147,7 @@ namespace crg::renderer {
 
         BufferManager m_bufferManager{};
 
+        AtlasManager m_atlasManager{};
 
         MaterialCache m_materialCache{};
 
@@ -152,6 +163,7 @@ namespace crg::renderer {
             std::vector<Buffer>& buffers,
             std::vector<TextureSampler>& samplers,
             std::vector<ImageTexture>& textures,
+            std::vector<TextureAtlas>& atlases,
             const T& resource
         ) {
             if constexpr (is_buffer<T>::value) {
@@ -167,6 +179,11 @@ namespace crg::renderer {
             else if constexpr (is_texture<T>::value) {
                 textures.push_back(
                     *m_textureManager.getTexturePtr(resource)
+                );
+            }
+            else if constexpr (is_atlas<T>::value) {
+                atlases.push_back(
+                    *m_atlasManager.getAtlasPtr(resource)
                 );
             }
         }

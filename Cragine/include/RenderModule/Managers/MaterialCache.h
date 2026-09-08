@@ -6,7 +6,10 @@
 #include "RenderModule/Structs/MeshBuffer.h"
 #include "RenderModule/Structs/Sampler.h"
 #include "RenderModule/Structs/ImageTexture.h"
+#include "RenderModule/Structs/TextureAtlas.h"
+
 #include "RenderModule/Handles.h"
+#include "utils/Logger.h"
 
 #include <fstream>
 #include <vector>
@@ -28,7 +31,8 @@ namespace crg::renderer {
             MeshBufferSize meshBufferSize,
             std::vector<Buffer>& buffers,
             std::vector<TextureSampler>& samplers,
-            std::vector<ImageTexture>& textures
+            std::vector<ImageTexture>& textures,
+            std::vector<TextureAtlas>& atlases
         ) {
 
             // BIND GROUP LAYOUT ENTRIES:
@@ -75,12 +79,15 @@ namespace crg::renderer {
 
             size_t textureCount = textures.size();
 
+            size_t atlasCount = atlases.size();
+
             std::vector<wgpu::BindGroupLayoutEntry> layoutEntries(
                 meshBufferCount +
                 1 +
                 bufferCount +
                 samplerCount +
-                textureCount
+                textureCount +
+                atlasCount
             );
 
             // getCameraBindings(camera);
@@ -95,6 +102,8 @@ namespace crg::renderer {
 
             getTextureBindings(textures, layoutEntries, textureCount, meshBufferCount + 1 + bufferCount + samplerCount);
 
+            getAtlasBindings(atlases, layoutEntries, atlasCount, meshBufferCount + 1 + bufferCount + samplerCount + textureCount);
+
             // BIND GROUP LAYOUT:
 
             const wgpu::BindGroupLayout bindGroupLayout = getBindGroupLayout(renderContext.device, layoutEntries);
@@ -107,7 +116,8 @@ namespace crg::renderer {
                 cameraUniform,
                 buffers, bufferCount,
                 samplers, samplerCount,
-                textures, textureCount
+                textures, textureCount,
+                atlases, atlasCount
             );
 
             // BIND GROUP:
@@ -320,6 +330,24 @@ namespace crg::renderer {
 
         }
 
+        inline void getAtlasBindings(
+            std::vector<TextureAtlas>& atlases,
+            std::vector<wgpu::BindGroupLayoutEntry>& layoutEntries,
+            size_t atlasCount,
+            size_t startIdx
+        ) {
+            // Textures
+            for (size_t i = startIdx; i < startIdx + atlasCount; i++) {
+                TextureAtlas& atlas = atlases.at(i - startIdx);
+
+                layoutEntries[i].nextInChain = nullptr;
+                layoutEntries[i].binding = i;
+                layoutEntries[i].visibility = atlas.getStageVisibility();
+                layoutEntries[i].texture = atlas.getBindingLayout();
+            }
+
+        }
+
         inline const wgpu::BindGroupLayout getBindGroupLayout(
             wgpu::Device& device,
             std::vector<wgpu::BindGroupLayoutEntry>& layoutEntries
@@ -344,10 +372,11 @@ namespace crg::renderer {
             std::vector<TextureSampler>& samplers,
             size_t samplerCount,
             std::vector<ImageTexture>& textures,
-            size_t textureCount
+            size_t textureCount,
+            std::vector<TextureAtlas>& atlases,
+            size_t atlasCount
         ) {
             std::vector<wgpu::BindGroupEntry> bindGroupEntries(layoutEntries.size());
-
 
             bindGroupEntries[0].nextInChain = nullptr;
             bindGroupEntries[0].binding = 0;
@@ -376,6 +405,7 @@ namespace crg::renderer {
             size_t startIdx = meshBufferCount + 1;
 
             for (size_t i = startIdx; i < startIdx + bufferCount; i++) {
+
                 Buffer& buffer = buffers.at(i - startIdx);
 
                 bindGroupEntries[i].nextInChain = nullptr;
@@ -405,6 +435,17 @@ namespace crg::renderer {
                 bindGroupEntries[i].nextInChain = nullptr;
                 bindGroupEntries[i].binding = i;
                 bindGroupEntries[i].textureView = texture.getTextureView();
+                bindGroupEntries[i].offset = 0;
+            }
+
+            startIdx += textureCount;
+
+            for (size_t i = startIdx; i < startIdx + atlasCount; i++) {
+                TextureAtlas& atlas = atlases.at(i - startIdx);
+
+                bindGroupEntries[i].nextInChain = nullptr;
+                bindGroupEntries[i].binding = i;
+                bindGroupEntries[i].textureView = atlas.getView();
                 bindGroupEntries[i].offset = 0;
             }
 

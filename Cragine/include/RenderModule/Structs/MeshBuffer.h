@@ -93,11 +93,7 @@ namespace crg::renderer {
             wgpu::BufferUsage::MapRead  |
             wgpu::BufferUsage::MapWrite |
             wgpu::BufferUsage::CopyDst
-        ) {
-            // m_meshChunks = std::vector<MeshChunk>(chunkCount);
-            // m_instanceData = std::vector<InstanceData>(instanceCount);
-            // m_meshMap.reserve(mapCount);
-        }
+        ) {}
 
         Handle<Mesh> loadMesh(const std::filesystem::path& path, Transform transform) {
 

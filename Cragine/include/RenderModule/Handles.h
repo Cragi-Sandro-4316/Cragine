@@ -12,6 +12,8 @@ namespace crg {
         struct Material;
         struct MeshData;
         struct Mesh;
+        struct AtlasEntry;
+        struct TextureAtlas;
     }
 
 
@@ -22,6 +24,16 @@ namespace crg {
 
     template<typename T> struct is_texture : std::false_type {};
     template<> struct is_texture<Handle<renderer::ImageTexture>> : std::true_type {};
+
+
+
+    template<>
+    struct Handle<renderer::TextureAtlas> {
+        size_t id;
+    };
+
+    template<typename T> struct is_atlas : std::false_type {};
+    template<> struct is_atlas<Handle<renderer::TextureAtlas>> : std::true_type {};
 
 
     template<>
@@ -55,6 +67,11 @@ namespace crg {
 
     template<>
     struct Handle<renderer::Material> {
+        size_t id;
+    };
+
+    template<>
+    struct Handle<renderer::AtlasEntry> {
         size_t id;
     };
 

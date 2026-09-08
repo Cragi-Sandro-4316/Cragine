@@ -26,12 +26,13 @@ namespace crg::renderer {
         std::filesystem::path circle = "assets/circle.obj";
         std::filesystem::path square = "assets/Mesh.obj";
         std::filesystem::path cube = "assets/cube.obj";
+        std::filesystem::path plane = "assets/plane.obj";
 
         std::filesystem::path bigMesh = "assets/BigMesh.obj";
 
         std::filesystem::path shaderPath = "assets/fragVert.wgsl";
 
-        std::string texturePath = "assets/reina.gif";
+        std::filesystem::path texturePath = "assets/immo.png";
 
         Handle<TextureSampler> sampler = renderBackend.newSampler();
 
@@ -50,21 +51,30 @@ namespace crg::renderer {
             10
         );
 
+
+        auto atlasHandle = renderBackend.newAtlas(16);
+
+        // atlasHandle.pushTexture(
+        //     texturePath,
+        //     renderBackend.getRenderContext().queue,
+        //     0
+        // );
+
         Handle<Material> material = renderBackend.newMaterial(
             shaderPath,
             camera,
             MeshBufferSize::Large,
             debugBuffer,
             sampler,
-            textureHandle
+            atlasHandle
         );
 
         Transform transform{};
         transform.translation.z = 2;
         transform.scale = vec3(.5);
-        transform.rotate(-15, vec3(0, 1, 0));
+        transform.rotate(-90, vec3(1, 0, 0));
 
-        renderBackend.spawnMesh(cube, material, transform);
+        renderBackend.spawnMesh(plane, material, transform);
     }
 
 
