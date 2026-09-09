@@ -32,7 +32,7 @@ namespace crg::renderer {
 
         std::filesystem::path shaderPath = "assets/fragVert.wgsl";
 
-        std::filesystem::path texturePath = "assets/immo.png";
+        std::filesystem::path texturePath = "assets/plunder.png";
 
         Handle<TextureSampler> sampler = renderBackend.newSampler();
 
@@ -52,13 +52,14 @@ namespace crg::renderer {
         );
 
 
-        auto atlasHandle = renderBackend.newAtlas(16);
+        auto atlasHandle = renderBackend.newAtlas(8);
+        renderBackend.writeAtlas(atlasHandle, texturePath);
+        renderBackend.writeAtlas(atlasHandle, "assets/reina.gif");
+        renderBackend.writeAtlas(atlasHandle, "assets/immo.png");
+        renderBackend.writeAtlas(atlasHandle, "assets/reina.gif");
+        renderBackend.writeAtlas(atlasHandle, texturePath);
+        renderBackend.writeAtlas(atlasHandle, "assets/immo.png");
 
-        // atlasHandle.pushTexture(
-        //     texturePath,
-        //     renderBackend.getRenderContext().queue,
-        //     0
-        // );
 
         Handle<Material> material = renderBackend.newMaterial(
             shaderPath,

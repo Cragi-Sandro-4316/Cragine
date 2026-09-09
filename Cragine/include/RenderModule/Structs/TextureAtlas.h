@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RenderModule/Handles.h"
+#include "utils/Logger.h"
 #include <filesystem>
 #include <glm/glm.hpp>
 #include <webgpu/webgpu.hpp>
@@ -25,7 +26,7 @@ namespace crg::renderer {
             size_t pageCount,
             wgpu::Device& device
         ) :
-        m_pageCapacity(ATLAS_PAGE_SIZE * pageCount),
+        m_pageCapacity(pageCount * ATLAS_PAGE_SIZE),
         m_pagesPerRow(pageCount) {
 
             m_atlasDesc = wgpu::TextureDescriptor{};
@@ -81,19 +82,65 @@ namespace crg::renderer {
                 (double)ATLAS_PAGE_SIZE
             );
 
-            size_t texturePageCount = pageCountX + pageCountY;
+            size_t texturePageCount = pageCountX * pageCountY;
+
+            // if (m_pageCount + texturePageCount >= m_pageCapacity) {
+            //     LOG_CORE_ERROR("Atlas cannot fit image {}", path.c_str());
+            //     return {};
+            // }
+
+            m_entries.emplace_back(AtlasEntry {
+                .firstPageIdx = m_pageCount,
+                .pageCount = texturePageCount
+            });
+
+            LOG_CORE_INFO("page count x: {}", pageCountX);
+            LOG_CORE_INFO("page count y: {}", pageCountY);
+
+            for (size_t pageY = 0; pageY < pageCountY; pageY++) {
+                for (size_t pageX = 0; pageX < pageCountX; pageX++) {
+
+                    size_t srcX = pageX * ATLAS_PAGE_SIZE;
+                    size_t srcY = pageY * ATLAS_PAGE_SIZE;
+
+                    size_t pageWidth = std::min(ATLAS_PAGE_SIZE, textureWidth - srcX);
+                    size_t pageHeight = std::min(ATLAS_PAGE_SIZE, textureHeight - srcY);
 
 
+                    uint32_t dstX = (m_pageCount % m_pagesPerRow) * ATLAS_PAGE_SIZE;
+                    uint32_t dstY = (m_pageCount / m_pagesPerRow) * ATLAS_PAGE_SIZE;
 
 
-            for (size_t py = 0; py < ATLAS_PAGE_SIZE; py++) {
-                for (size_t px = 0; px < ATLAS_PAGE_SIZE; px++) {
+                    const uint8_t* pageData = pixelData + (srcY * textureWidth + srcX) * channels;
 
 
+                    wgpu::TexelCopyTextureInfo destination;
+                    destination.texture = m_atlas;
+                    destination.mipLevel = 0;
+                    destination.origin = { dstX, dstY, 0 };
+                    destination.aspect = wgpu::TextureAspect::All;
+
+                    wgpu::TexelCopyBufferLayout dataLayout;
+                    dataLayout.offset = 0;
+                    dataLayout.bytesPerRow = textureWidth * channels;
+                    dataLayout.rowsPerImage = pageHeight;
+
+                    wgpu::Extent3D writeSize;
+                    writeSize.width = pageWidth;
+                    writeSize.height = pageHeight;
+                    writeSize.depthOrArrayLayers = 1;
+
+                    queue.writeTexture(
+                        destination,
+                        pageData,
+                        textureWidth * textureHeight * channels,
+                        dataLayout,
+                        writeSize
+                    );
+
+                    m_pageCount++;
                 }
             }
-
-
 
             return Handle<AtlasEntry> {
                 .id = m_entries.size() - 1

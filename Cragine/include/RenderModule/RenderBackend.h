@@ -14,6 +14,7 @@
 #include "utils/Logger.h"
 #include "Components/Transform.h"
 
+#include <filesystem>
 #include <webgpu.h>
 #include <webgpu/webgpu.hpp>
 
@@ -93,6 +94,10 @@ namespace crg::renderer {
 
         Handle<TextureAtlas> newAtlas(size_t pageCount) {
             return m_atlasManager.newAtlas(pageCount, m_renderContext.device);
+        }
+
+        void writeAtlas(Handle<TextureAtlas> handle, std::filesystem::path path) {
+            m_atlasManager.getAtlasPtr(handle)->pushTexture(path, m_renderContext.queue, 0);
         }
 
 
