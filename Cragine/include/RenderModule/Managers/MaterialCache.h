@@ -87,10 +87,9 @@ namespace crg::renderer {
                 bufferCount +
                 samplerCount +
                 textureCount +
-                atlasCount
+                (atlasCount * 2)
             );
-
-            // getCameraBindings(camera);
+            LOG_CORE_INFO("entries size: {}", layoutEntries.size());
 
             getMeshBindings(meshBuffer, layoutEntries);
 
@@ -158,8 +157,6 @@ namespace crg::renderer {
             pipelineLayoutDesc.nextInChain = nullptr;
 
             auto pipelineLayout = renderContext.device.createPipelineLayout(pipelineLayoutDesc);
-
-
 
             wgpu::RenderPipelineDescriptor pipelineDesc{};
             pipelineDesc.label = wgpu::StringView("sum pipleine");
@@ -337,15 +334,22 @@ namespace crg::renderer {
             size_t startIdx
         ) {
             // Textures
-            for (size_t i = startIdx; i < startIdx + atlasCount; i++) {
+            for (size_t i = startIdx; i < startIdx + (atlasCount * 2); i += 2) {
                 TextureAtlas& atlas = atlases.at(i - startIdx);
+
+                LOG_CORE_INFO("texture: {}", i);
 
                 layoutEntries[i].nextInChain = nullptr;
                 layoutEntries[i].binding = i;
                 layoutEntries[i].visibility = atlas.getStageVisibility();
                 layoutEntries[i].texture = atlas.getBindingLayout();
-            }
 
+                LOG_CORE_INFO("buffer: {}", i + 1);
+                layoutEntries[i + 1].nextInChain = nullptr;
+                layoutEntries[i + 1].binding = i + 1;
+                layoutEntries[i + 1].buffer = atlas.getBuffer().getBindingLayout();
+                layoutEntries[i + 1].visibility = atlas.getBuffer().getStageVisibility();
+            }
         }
 
         inline const wgpu::BindGroupLayout getBindGroupLayout(
@@ -440,13 +444,19 @@ namespace crg::renderer {
 
             startIdx += textureCount;
 
-            for (size_t i = startIdx; i < startIdx + atlasCount; i++) {
+            for (size_t i = startIdx; i < startIdx + (atlasCount * 2); i += 2) {
                 TextureAtlas& atlas = atlases.at(i - startIdx);
 
                 bindGroupEntries[i].nextInChain = nullptr;
                 bindGroupEntries[i].binding = i;
                 bindGroupEntries[i].textureView = atlas.getView();
                 bindGroupEntries[i].offset = 0;
+
+                bindGroupEntries[i + 1].nextInChain = nullptr;
+                bindGroupEntries[i + 1].binding = i + 1;
+                bindGroupEntries[i + 1].buffer = atlas.getBuffer().getRawHandle();
+                bindGroupEntries[i + 1].size = atlas.getBuffer().getByteSize();
+                bindGroupEntries[i + 1].offset = 0;
             }
 
             return bindGroupEntries;

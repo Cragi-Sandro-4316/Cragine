@@ -6,6 +6,7 @@ struct Vertex {
 };
 
 const CHUNK_VERTEX_COUNT: u32 = 501;
+const ATLAS_PAGE_SIZE: u32 = 128;
 
 struct MeshChunk {
     vertexData: array<Vertex, CHUNK_VERTEX_COUNT>
@@ -24,17 +25,22 @@ struct Camera {
     projectionMatrix: mat4x4f
 };
 
+struct AtlasEntry {
+    firstPageIdx: u32,
+    pageCount: u32
+};
+
 @group(0) @binding(0) var<storage, read_write> chunk_buffer: array<MeshChunk>;
 @group(0) @binding(1) var<storage, read_write> instance_buffer: array<InstanceData>;
 @group(0) @binding(2) var<storage, read_write> map_buffer: array<ChunkMap>;
 
 @group(0) @binding(3) var<uniform> camera: Camera;
 
-@group(0) @binding(4) var<storage, read_write> debug_buffer: array<f32>;
+@group(0) @binding(4) var texture_sampler: sampler;
 
-@group(0) @binding(5) var texture_sampler: sampler;
+@group(0) @binding(5) var texture: texture_2d<f32>;
+@group(0) @binding(6) var<storage, read_write> atlas_entries: array<AtlasEntry>;
 
-@group(0) @binding(6) var texture: texture_2d<f32>;
 
 struct VertexOutput {
     @builtin(position) position: vec4f,
@@ -67,6 +73,12 @@ fn vs_main(@builtin(vertex_index) index: u32) -> VertexOutput {
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4f {
+    let textureID = 0;
+
+    let firstPage = atlas_entries[textureID].firstPageIdx;
+    let pageCount = atlas_entries[textureID].pageCount;
+
+
 
     let color = textureSample(texture, texture_sampler, in.uv).rgb;
 

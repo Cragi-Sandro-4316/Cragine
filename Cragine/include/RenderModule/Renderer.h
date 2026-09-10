@@ -2,11 +2,9 @@
 #include "Ecs/Ecs.h"
 #include "RenderModule/Components/Camera.h"
 #include "RenderModule/Handles.h"
-#include "RenderModule/Structs/Buffer.h"
 #include "RenderModule/Structs/MeshBuffer.h"
 #include "RenderModule/RenderBackend.h"
 #include "RenderModule/Structs/Sampler.h"
-#include "RenderModule/Structs/ImageTexture.h"
 #include "RenderModule/Components/Transform.h"
 #include "glm/fwd.hpp"
 #include <GLFW/glfw3.h>
@@ -22,26 +20,7 @@ namespace crg::renderer {
     ) {
         auto& renderBackend = rGpuHandler.get();
 
-        std::filesystem::path triangle = "assets/triangle.obj";
-        std::filesystem::path circle = "assets/circle.obj";
-        std::filesystem::path square = "assets/Mesh.obj";
-        std::filesystem::path cube = "assets/cube.obj";
-        std::filesystem::path plane = "assets/plane.obj";
-
-        std::filesystem::path bigMesh = "assets/BigMesh.obj";
-
-        std::filesystem::path shaderPath = "assets/fragVert.wgsl";
-
-        std::filesystem::path texturePath = "assets/plunder.png";
-
         Handle<TextureSampler> sampler = renderBackend.newSampler();
-
-        Handle<ImageTexture> textureHandle = renderBackend.newTexture(texturePath);
-
-        Handle<Buffer> debugBuffer = renderBackend.newBuffer<float32_t>(30, StorageReadable);
-
-        std::vector<float32_t>vec(30);
-        renderBackend.writeBuffer(debugBuffer, vec);
 
         Camera camera{};
         camera.setPerspectiveProjection(
@@ -51,21 +30,19 @@ namespace crg::renderer {
             10
         );
 
-
         auto atlasHandle = renderBackend.newAtlas(8);
-        renderBackend.writeAtlas(atlasHandle, texturePath);
-        renderBackend.writeAtlas(atlasHandle, "assets/reina.gif");
-        renderBackend.writeAtlas(atlasHandle, "assets/immo.png");
-        renderBackend.writeAtlas(atlasHandle, "assets/reina.gif");
-        renderBackend.writeAtlas(atlasHandle, texturePath);
-        renderBackend.writeAtlas(atlasHandle, "assets/immo.png");
+        renderBackend.writeAtlas(atlasHandle, "../assets/plunder.png");
+        renderBackend.writeAtlas(atlasHandle, "../assets/reina.gif");
+        renderBackend.writeAtlas(atlasHandle, "../assets/immo.png");
+        renderBackend.writeAtlas(atlasHandle, "../assets/reina.gif");
+        renderBackend.writeAtlas(atlasHandle, "../assets/plunder.png");
+        renderBackend.writeAtlas(atlasHandle, "../assets/immo.png");
 
 
         Handle<Material> material = renderBackend.newMaterial(
-            shaderPath,
+            "../assets/fragVert.wgsl",
             camera,
             MeshBufferSize::Large,
-            debugBuffer,
             sampler,
             atlasHandle
         );
@@ -75,7 +52,7 @@ namespace crg::renderer {
         transform.scale = vec3(.5);
         transform.rotate(-90, vec3(1, 0, 0));
 
-        renderBackend.spawnMesh(plane, material, transform);
+        renderBackend.spawnMesh("../assets/plane.obj", material, transform);
     }
 
 

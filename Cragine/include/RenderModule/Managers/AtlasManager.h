@@ -8,8 +8,8 @@ namespace crg::renderer {
     class AtlasManager {
     public:
 
-        Handle<TextureAtlas> newAtlas(size_t pageCount, wgpu::Device& device) {
-            m_atlases.emplace_back(TextureAtlas(pageCount, device));
+        Handle<TextureAtlas> newAtlas(size_t pageCount, wgpu::Device& device, wgpu::Queue& queue) {
+            m_atlases.emplace_back(TextureAtlas(pageCount, device, queue));
 
             return Handle<TextureAtlas> {
                 .id = m_atlases.size() - 1

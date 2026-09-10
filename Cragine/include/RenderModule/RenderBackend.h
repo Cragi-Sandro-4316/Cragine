@@ -93,7 +93,7 @@ namespace crg::renderer {
 
 
         Handle<TextureAtlas> newAtlas(size_t pageCount) {
-            return m_atlasManager.newAtlas(pageCount, m_renderContext.device);
+            return m_atlasManager.newAtlas(pageCount, m_renderContext.device, m_renderContext.queue);
         }
 
         void writeAtlas(Handle<TextureAtlas> handle, std::filesystem::path path) {
