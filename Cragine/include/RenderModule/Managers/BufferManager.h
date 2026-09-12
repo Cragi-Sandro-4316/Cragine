@@ -33,6 +33,10 @@ namespace crg::renderer {
                     bindingType = wgpu::BufferBindingType::Uniform;
                     bufferUsage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Uniform;
                 break;
+                case BufferType::Debug:
+                    bindingType = wgpu::BufferBindingType::Storage;
+                    bufferUsage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Storage | wgpu::BufferUsage::MapWrite;
+                break;
                 default:
                     LOG_CORE_WARNING("Gpu buffer creation: invalid buffer type, defaulting to storage.");
                     bindingType = wgpu::BufferBindingType::Storage;

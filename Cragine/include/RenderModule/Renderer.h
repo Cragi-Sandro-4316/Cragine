@@ -2,11 +2,13 @@
 #include "Ecs/Ecs.h"
 #include "RenderModule/Components/Camera.h"
 #include "RenderModule/Handles.h"
+#include "RenderModule/Structs/Buffer.h"
 #include "RenderModule/Structs/MeshBuffer.h"
 #include "RenderModule/RenderBackend.h"
 #include "RenderModule/Structs/Sampler.h"
 #include "RenderModule/Components/Transform.h"
 #include "glm/fwd.hpp"
+#include "utils/Logger.h"
 #include <GLFW/glfw3.h>
 #include <webgpu.h>
 #include <webgpu/webgpu.hpp>
@@ -15,12 +17,16 @@ namespace crg::renderer {
 
     size_t constexpr MESH_BUFFER_SIZE = 100000;
 
+    Handle<Buffer> debugBuffer{};
+
     static void newMaterial(
         ResMut<RenderBackend> rGpuHandler
     ) {
         auto& renderBackend = rGpuHandler.get();
 
         Handle<TextureSampler> sampler = renderBackend.newSampler();
+
+        debugBuffer = renderBackend.newBuffer<float32_t>(10, BufferType::Debug);
 
         Camera camera{};
         camera.setPerspectiveProjection(
@@ -31,7 +37,7 @@ namespace crg::renderer {
         );
 
         auto atlasHandle = renderBackend.newAtlas(8);
-        renderBackend.writeAtlas(atlasHandle, "../assets/plunder.png");
+        renderBackend.writeAtlas(atlasHandle, "../assets/chunk_testing.png");
         renderBackend.writeAtlas(atlasHandle, "../assets/reina.gif");
         renderBackend.writeAtlas(atlasHandle, "../assets/immo.png");
         renderBackend.writeAtlas(atlasHandle, "../assets/reina.gif");
@@ -44,7 +50,8 @@ namespace crg::renderer {
             camera,
             MeshBufferSize::Large,
             sampler,
-            atlasHandle
+            atlasHandle,
+            debugBuffer
         );
 
         Transform transform{};
@@ -116,6 +123,14 @@ namespace crg::renderer {
         surfaceTexView.release();
         wgpuTextureRelease(surfaceTex.texture);
         cmdEncoder.release();
+
+        auto bufferView = rRenderBackend.get().getBuffer(debugBuffer).getBufferView<float32_t>();
+
+        LOG_CORE_ERROR("DebugBuffer:");
+        for (int i = 0; i < 10; i++) {
+            LOG_CORE_INFO("DebugBuffer[{}]: {}", i, bufferView[i]);
+        }
+
     }
 
 

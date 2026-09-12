@@ -19,7 +19,8 @@ namespace crg::renderer {
     enum BufferType : uint32_t {
         Storage,
         StorageReadable,
-        Uniform
+        Uniform,
+        Debug
     };
 
     class Buffer {
@@ -40,7 +41,7 @@ namespace crg::renderer {
             wgpu::BufferUsage bufferUsage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Storage,
             wgpu::BufferBindingType bindingType = wgpu::BufferBindingType::Storage,
             BufferType bufferType = BufferType::Storage,
-            wgpu::ShaderStage shaderStage = wgpu::ShaderStage::Vertex
+            wgpu::ShaderStage shaderStage = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment
         ):
         m_size(size),
         m_shaderStage(shaderStage),
@@ -56,11 +57,11 @@ namespace crg::renderer {
 
             // LOG_CORE_INFO("size: {}", sizeof(T));
 
-            ASSERT(     // TODO: Check this assert and make it work
-                (sizeof(T) % 16 == 0) ||
-                (sizeof(T) % 4 == 0 && sizeof(T) < 12),
-                "Buffer struct '{}' does not follow wgpu alignment requirements. alignment: {}", typeid(T).name(), alignof(T)
-            );
+            // ASSERT(     // TODO: Check this assert and make it work
+            //     (sizeof(T) % 16 == 0) ||
+            //     (sizeof(T) % 4 == 0 && sizeof(T) < 12),
+            //     "Buffer struct '{}' does not follow wgpu alignment requirements. alignment: {}", typeid(T).name(), alignof(T)
+            // );
 
             wgpu::BufferDescriptor bufferDesc{};
             bufferDesc.label = wgpu::StringView("Buffer");

@@ -96,6 +96,10 @@ namespace crg::renderer {
             return m_atlasManager.newAtlas(pageCount, m_renderContext.device, m_renderContext.queue);
         }
 
+        TextureAtlas& getAtlas(Handle<TextureAtlas> handle) {
+            return *m_atlasManager.getAtlasPtr(handle);
+        }
+
         void writeAtlas(Handle<TextureAtlas> handle, std::filesystem::path path) {
             m_atlasManager.getAtlasPtr(handle)->pushTexture(path, m_renderContext.queue, 0);
         }

@@ -3,6 +3,7 @@
 #include "RenderModule/Handles.h"
 #include "RenderModule/Structs/Buffer.h"
 #include "utils/Logger.h"
+#include <cstdint>
 #include <filesystem>
 #include <glm/glm.hpp>
 #include <webgpu/webgpu.hpp>
@@ -14,8 +15,9 @@ namespace crg::renderer {
     const size_t ATLAS_PAGE_SIZE = 128;
 
     struct AtlasEntry {
-        size_t firstPageIdx;
-        size_t pageCount;
+        uint32_t firstPageIdx;
+        uint32_t width;
+        uint32_t height;
     };
 
 
@@ -87,17 +89,17 @@ namespace crg::renderer {
             int textureWidth, textureHeight, channels;
             unsigned char* pixelData = loadTextureData(textureWidth, textureHeight, channels, path);
 
-            size_t pageCountX = std::ceil(
+            uint32_t pageCountX = std::ceil(
                 (double)textureWidth /
                 (double)ATLAS_PAGE_SIZE
             );
 
-            size_t pageCountY = std::ceil(
+            uint32_t pageCountY = std::ceil(
                 (double)textureHeight /
                 (double)ATLAS_PAGE_SIZE
             );
 
-            size_t texturePageCount = pageCountX * pageCountY;
+            uint32_t texturePageCount = pageCountX * pageCountY;
 
             if (m_pageCount + texturePageCount > m_pageCapacity) {
                 LOG_CORE_ERROR("Atlas cannot fit texture {} of size: ({}, {})", path.c_str(), textureWidth, textureHeight);
@@ -106,12 +108,15 @@ namespace crg::renderer {
 
             auto entry = AtlasEntry {
                 .firstPageIdx = m_pageCount,
-                .pageCount = texturePageCount
+                .width = (uint32_t) textureWidth,
+                .height = (uint32_t) textureHeight
             };
 
-            m_entries.write(entry, m_entryCount);
-            // m_entries.emplace_back(entry);
+            LOG_CORE_WARNING("writing buffer index: {}", m_entryCount);
+            LOG_CORE_WARNING("first page: {}, width: {}, height: {}", m_pageCount, entry.width, entry.height);
+            LOG_CORE_WARNING("Buffer size: {}", m_entries.size());
 
+            m_entries.write(entry, m_entryCount);
 
             for (size_t pageY = 0; pageY < pageCountY; pageY++) {
                 for (size_t pageX = 0; pageX < pageCountX; pageX++) {
@@ -159,7 +164,6 @@ namespace crg::renderer {
             }
 
             return Handle<AtlasEntry> {
-                // .id = m_entries.size() - 1
                 .id = m_entryCount++
             };
         }
@@ -185,6 +189,21 @@ namespace crg::renderer {
             return m_entries;
         }
 
+
+        void printBuffer() {
+            BufferView<AtlasEntry> view = m_entries.getBufferView<AtlasEntry>();
+
+            for (int i = 0; i < m_entryCount; i++) {
+                LOG_CORE_INFO("entries[{}]: [first page: {}, page width: {}, page height: {}]",
+                    i,
+                    view[i].firstPageIdx,
+                    view[i].width,
+                    view[i].height
+                );
+            }
+
+        }
+
     private:
 
         Buffer m_entries;
@@ -196,7 +215,7 @@ namespace crg::renderer {
 
         const size_t m_pagesPerRow;
 
-        size_t m_pageCount = 0;
+        uint32_t m_pageCount = 0;
 
         wgpu::Texture m_atlas;
 

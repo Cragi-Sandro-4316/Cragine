@@ -6,7 +6,7 @@ struct Vertex {
 };
 
 const CHUNK_VERTEX_COUNT: u32 = 501;
-const ATLAS_PAGE_SIZE: u32 = 128;
+const ATLAS_PAGE_SIZE: f32 = 128;
 
 struct MeshChunk {
     vertexData: array<Vertex, CHUNK_VERTEX_COUNT>
@@ -27,7 +27,8 @@ struct Camera {
 
 struct AtlasEntry {
     firstPageIdx: u32,
-    pageCount: u32
+    width: u32,
+    height: u32
 };
 
 @group(0) @binding(0) var<storage, read_write> chunk_buffer: array<MeshChunk>;
@@ -36,10 +37,12 @@ struct AtlasEntry {
 
 @group(0) @binding(3) var<uniform> camera: Camera;
 
-@group(0) @binding(4) var texture_sampler: sampler;
+@group(0) @binding(4) var<storage, read_write> debug_buffer: array<f32>;
 
-@group(0) @binding(5) var texture: texture_2d<f32>;
-@group(0) @binding(6) var<storage, read_write> atlas_entries: array<AtlasEntry>;
+@group(0) @binding(5) var texture_sampler: sampler;
+
+@group(0) @binding(6) var texture: texture_2d<f32>;
+@group(0) @binding(7) var<storage, read_write> atlas_entries: array<AtlasEntry>;
 
 
 struct VertexOutput {
@@ -73,14 +76,45 @@ fn vs_main(@builtin(vertex_index) index: u32) -> VertexOutput {
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4f {
-    let textureID = 0;
+    let textureID = 4;
+    let pageCount = u32(8);
+    let totalAtlasWidth = f32(pageCount) * ATLAS_PAGE_SIZE;
 
     let firstPage = atlas_entries[textureID].firstPageIdx;
-    let pageCount = atlas_entries[textureID].pageCount;
+    let width = atlas_entries[textureID].width;
+    let height = atlas_entries[textureID].height;
 
+    let texturePageWidth = u32(ceil(
+        f32(width) /
+        ATLAS_PAGE_SIZE
+    ));
 
+    let texturePageHeight = u32(ceil(
+        f32(height) /
+        ATLAS_PAGE_SIZE
+    ));
 
-    let color = textureSample(texture, texture_sampler, in.uv).rgb;
+    let textureCoord = in.uv * vec2f(
+        f32(width),
+        f32(height)
+    );
+
+    let uvPageX = u32(in.uv.x * f32(texturePageWidth));
+    let uvPageY = u32(in.uv.y * f32(texturePageHeight));
+
+    let uvLinearPage = (texturePageWidth * uvPageY) + uvPageX;
+
+    let coordXInPage = textureCoord.x % ATLAS_PAGE_SIZE;
+    let coordYInPage = textureCoord.y % ATLAS_PAGE_SIZE;
+
+    let absolutePage = firstPage + uvLinearPage;
+
+    let uv = vec2f(
+        f32(f32(absolutePage % pageCount) * ATLAS_PAGE_SIZE) + coordXInPage,
+        f32(absolutePage / pageCount * u32(ATLAS_PAGE_SIZE)) + coordYInPage
+    );
+
+    let color = textureSample(texture, texture_sampler, uv / (ATLAS_PAGE_SIZE * f32(pageCount))).rgb;
 
     let corrected_color = pow(color, vec3f(2.2));
 
