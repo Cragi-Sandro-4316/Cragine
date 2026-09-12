@@ -16,8 +16,11 @@ namespace crg::renderer {
 
     struct AtlasEntry {
         uint32_t firstPageIdx;
+        float32_t pageWidth;
+        float32_t pageHeight;
         uint32_t width;
         uint32_t height;
+
     };
 
 
@@ -108,8 +111,10 @@ namespace crg::renderer {
 
             auto entry = AtlasEntry {
                 .firstPageIdx = m_pageCount,
-                .width = (uint32_t) textureWidth,
-                .height = (uint32_t) textureHeight
+                .pageWidth = (float32_t)textureWidth / (float32_t)ATLAS_PAGE_SIZE,
+                .pageHeight = (float32_t)textureHeight / (float32_t)ATLAS_PAGE_SIZE,
+                .width = (uint32_t)textureWidth,
+                .height = (uint32_t)textureHeight
             };
 
             LOG_CORE_WARNING("writing buffer index: {}", m_entryCount);

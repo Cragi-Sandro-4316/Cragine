@@ -27,6 +27,8 @@ struct Camera {
 
 struct AtlasEntry {
     firstPageIdx: u32,
+    pageWidth: f32,
+    pageHeight: f32,
     width: u32,
     height: u32
 };
@@ -76,36 +78,30 @@ fn vs_main(@builtin(vertex_index) index: u32) -> VertexOutput {
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4f {
+
     let textureID = 4;
     let pageCount = u32(8);
     let totalAtlasWidth = f32(pageCount) * ATLAS_PAGE_SIZE;
 
     let firstPage = atlas_entries[textureID].firstPageIdx;
+    let pageWidth = atlas_entries[textureID].pageWidth;
+    let pageHeight = atlas_entries[textureID].pageHeight;
+
     let width = atlas_entries[textureID].width;
     let height = atlas_entries[textureID].height;
-
-    let texturePageWidth = u32(ceil(
-        f32(width) /
-        ATLAS_PAGE_SIZE
-    ));
-
-    let texturePageHeight = u32(ceil(
-        f32(height) /
-        ATLAS_PAGE_SIZE
-    ));
 
     let textureCoord = in.uv * vec2f(
         f32(width),
         f32(height)
     );
 
-    let uvPageX = u32(in.uv.x * f32(texturePageWidth));
-    let uvPageY = u32(in.uv.y * f32(texturePageHeight));
+    let uvPageX = u32(in.uv.x * f32(pageWidth));
+    let uvPageY = u32(in.uv.y * f32(pageHeight));
 
-    let uvLinearPage = (texturePageWidth * uvPageY) + uvPageX;
+    let uvLinearPage = (u32(ceil(pageWidth)) * uvPageY) + uvPageX;
 
-    let coordXInPage = textureCoord.x % ATLAS_PAGE_SIZE;
-    let coordYInPage = textureCoord.y % ATLAS_PAGE_SIZE;
+    let coordXInPage = (floor(textureCoord.x) + 0.5) % ATLAS_PAGE_SIZE;
+    let coordYInPage = (floor(textureCoord.y) + 0.5) % ATLAS_PAGE_SIZE;
 
     let absolutePage = firstPage + uvLinearPage;
 
