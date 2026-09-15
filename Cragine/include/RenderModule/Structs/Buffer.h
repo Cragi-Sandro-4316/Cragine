@@ -1,7 +1,7 @@
 #pragma once
 
 #include "RenderModule/Structs/BufferView.h"
-#include "utils/Assert.h"
+// #include "utils/Assert.h"
 #include "utils/Logger.h"
 #include <chrono>
 #include <cstddef>

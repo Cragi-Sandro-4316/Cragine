@@ -2,13 +2,11 @@
 #include "Ecs/Ecs.h"
 #include "RenderModule/Components/Camera.h"
 #include "RenderModule/Handles.h"
-#include "RenderModule/Structs/Buffer.h"
 #include "RenderModule/Structs/MeshBuffer.h"
 #include "RenderModule/RenderBackend.h"
 #include "RenderModule/Structs/Sampler.h"
 #include "RenderModule/Components/Transform.h"
 #include "glm/fwd.hpp"
-#include "utils/Logger.h"
 #include <GLFW/glfw3.h>
 #include <webgpu.h>
 #include <webgpu/webgpu.hpp>
@@ -17,8 +15,6 @@ namespace crg::renderer {
 
     size_t constexpr MESH_BUFFER_SIZE = 100000;
 
-    Handle<Buffer> debugBuffer{};
-
     static void newMaterial(
         ResMut<RenderBackend> rGpuHandler
     ) {
@@ -26,7 +22,6 @@ namespace crg::renderer {
 
         Handle<TextureSampler> sampler = renderBackend.newSampler();
 
-        debugBuffer = renderBackend.newBuffer<float32_t>(10, BufferType::Debug);
 
         Camera camera{};
         camera.setPerspectiveProjection(
@@ -36,32 +31,66 @@ namespace crg::renderer {
             10
         );
 
-        auto atlasHandle = renderBackend.newAtlas(8);
-        renderBackend.writeAtlas(atlasHandle, "../assets/chunk_testing.png");
-        renderBackend.writeAtlas(atlasHandle, "../assets/reina.gif");
-        renderBackend.writeAtlas(atlasHandle, "../assets/immo.png");
-        renderBackend.writeAtlas(atlasHandle, "../assets/reina.gif");
-        renderBackend.writeAtlas(atlasHandle, "../assets/plunder.png");
-        renderBackend.writeAtlas(atlasHandle, "../assets/immo.png");
-
+        auto atlasHandle = renderBackend.newAtlas(16);
+        Handle<AtlasEntry> boredHandle = renderBackend.writeAtlas(atlasHandle, "../assets/emilia.png");
+        Handle<AtlasEntry> immoHandle = renderBackend.writeAtlas(atlasHandle, "../assets/immo.png");
+        Handle<AtlasEntry> reinaHandle = renderBackend.writeAtlas(atlasHandle, "../assets/yukari.png");
 
         Handle<Material> material = renderBackend.newMaterial(
             "../assets/fragVert.wgsl",
             camera,
             MeshBufferSize::Large,
             sampler,
-            atlasHandle,
-            debugBuffer
+            atlasHandle
         );
 
         Transform transform{};
         transform.translation.z = 2;
-        transform.scale = vec3(.5);
-        transform.rotate(-90, vec3(1, 0, 0));
+        transform.translation.x = -0.4;
+        transform.scale = vec3(.25);
+        transform.rotate(-45, vec3(0, 1, 0));
+        transform.rotate(-20, vec3(1, 0, 0));
 
-        renderBackend.spawnMesh("../assets/plane.obj", material, transform);
+        renderBackend.spawnMesh(
+            "../assets/cube.obj",
+            material,
+            reinaHandle,
+            transform
+        );
+
+
+
+        Transform transform2{};
+        transform2.translation.z = 2;
+        transform2.translation.x = 0.4;
+        transform2.translation.y = 0.4;
+        transform2.scale = vec3(.3);
+        transform2.rotate(-20, vec3(1, 0, 0));
+
+        renderBackend.spawnMesh(
+            "../assets/sphere.obj",
+            material,
+            boredHandle,
+            transform2
+        );
+
+
+
+        Transform transform3{};
+        transform3.translation.z = 2;
+        transform3.translation.x = 0.4;
+        transform3.translation.y = -0.4;
+        transform3.scale = vec3(.3);
+        transform3.rotate(-20, vec3(1, 0, 0));
+
+        renderBackend.spawnMesh(
+            "../assets/pyramid.obj",
+            material,
+            immoHandle,
+            transform3
+        );
+
     }
-
 
     static void render(
         ResMut<RenderBackend> rRenderBackend
@@ -123,13 +152,6 @@ namespace crg::renderer {
         surfaceTexView.release();
         wgpuTextureRelease(surfaceTex.texture);
         cmdEncoder.release();
-
-        auto bufferView = rRenderBackend.get().getBuffer(debugBuffer).getBufferView<float32_t>();
-
-        LOG_CORE_ERROR("DebugBuffer:");
-        for (int i = 0; i < 10; i++) {
-            LOG_CORE_INFO("DebugBuffer[{}]: {}", i, bufferView[i]);
-        }
 
     }
 

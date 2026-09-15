@@ -23,6 +23,8 @@ namespace crg::renderer {
     struct MeshChunk {
         alignas(16)
         VertexData vertexData[CHUNK_VERTEX_COUNT];
+        alignas(16)
+        uint32_t textureIndex;
     };
 
     struct InstanceData {
@@ -95,7 +97,7 @@ namespace crg::renderer {
             wgpu::BufferUsage::CopyDst
         ) {}
 
-        Handle<Mesh> loadMesh(const std::filesystem::path& path, Transform transform) {
+        Handle<Mesh> loadMesh(const std::filesystem::path& path, Transform transform, Handle<AtlasEntry> textureHandle) {
 
             BufferView<MeshChunk> chunkBuffer = m_chunkBuffer.getBufferView<MeshChunk>();
             BufferView<InstanceData> instanceBuffer = m_instanceBuffer.getBufferView<InstanceData>();
@@ -139,7 +141,7 @@ namespace crg::renderer {
 
             auto& chunkIndices = m_meshToChunkIdxs[handleId];
 
-            fillChunks(handleId, chunkCount, chunkIndices.chunkIdxs, chunkBuffer, meshData);
+            fillChunks(handleId, chunkCount, chunkIndices.chunkIdxs, chunkBuffer, textureHandle, meshData);
             m_chunkCount += chunkCount;
 
             size_t instanceIndex = addInstance(
@@ -158,7 +160,13 @@ namespace crg::renderer {
         }
 
 
-        void fillChunks(MeshID meshId, size_t chunkCount, std::vector<size_t>& chunkIndices, BufferView<MeshChunk>& chunkBuffer, MeshData& meshData) {
+        void fillChunks(
+            MeshID meshId, size_t chunkCount,
+            std::vector<size_t>& chunkIndices,
+            BufferView<MeshChunk>& chunkBuffer,
+            Handle<AtlasEntry> textureHandle,
+            MeshData& meshData
+        ) {
             size_t start = m_chunkCount;
             for (size_t i = 0; i < chunkCount; i++) {
                 uint32_t chunkIndex = start + i;
@@ -169,6 +177,7 @@ namespace crg::renderer {
 
                 // Fill chunks
                 auto& meshChunk = chunkBuffer[chunkIndex];
+                meshChunk.textureIndex = textureHandle.id;
 
                 for (size_t j = 0; j < CHUNK_VERTEX_COUNT; j++) {
                     size_t vertexIndex = j + (i * CHUNK_VERTEX_COUNT);

@@ -87,7 +87,7 @@ namespace crg::renderer {
                 bufferCount +
                 samplerCount +
                 textureCount +
-                (atlasCount * 2)
+                atlasCount * 3
             );
             LOG_CORE_INFO("entries size: {}", layoutEntries.size());
 
@@ -334,7 +334,7 @@ namespace crg::renderer {
             size_t startIdx
         ) {
             // Textures
-            for (size_t i = startIdx; i < startIdx + (atlasCount * 2); i += 2) {
+            for (size_t i = startIdx; i < startIdx + (atlasCount * 3); i += 3) {
                 TextureAtlas& atlas = atlases.at(i - startIdx);
 
                 LOG_CORE_INFO("texture: {}", i);
@@ -349,6 +349,12 @@ namespace crg::renderer {
                 layoutEntries[i + 1].binding = i + 1;
                 layoutEntries[i + 1].buffer = atlas.getBuffer().getBindingLayout();
                 layoutEntries[i + 1].visibility = atlas.getBuffer().getStageVisibility();
+
+                LOG_CORE_INFO("page count: {}", i + 2);
+                layoutEntries[i + 2].nextInChain = nullptr;
+                layoutEntries[i + 2].binding = i + 2;
+                layoutEntries[i + 2].buffer = atlas.getPagesPerRowBuffer().getBindingLayout();
+                layoutEntries[i + 2].visibility = atlas.getPagesPerRowBuffer().getStageVisibility();
             }
         }
 
@@ -444,7 +450,7 @@ namespace crg::renderer {
 
             startIdx += textureCount;
 
-            for (size_t i = startIdx; i < startIdx + (atlasCount * 2); i += 2) {
+            for (size_t i = startIdx; i < startIdx + (atlasCount * 3); i += 3) {
                 TextureAtlas& atlas = atlases.at(i - startIdx);
 
                 bindGroupEntries[i].nextInChain = nullptr;
@@ -457,6 +463,12 @@ namespace crg::renderer {
                 bindGroupEntries[i + 1].buffer = atlas.getBuffer().getRawHandle();
                 bindGroupEntries[i + 1].size = atlas.getBuffer().getByteSize();
                 bindGroupEntries[i + 1].offset = 0;
+
+                bindGroupEntries[i + 2].nextInChain = nullptr;
+                bindGroupEntries[i + 2].binding = i + 2;
+                bindGroupEntries[i + 2].buffer = atlas.getPagesPerRowBuffer().getRawHandle();
+                bindGroupEntries[i + 2].size = atlas.getPagesPerRowBuffer().getByteSize();
+                bindGroupEntries[i + 2].offset = 0;
             }
 
             return bindGroupEntries;

@@ -47,7 +47,17 @@ namespace crg::renderer {
             wgpu::BufferBindingType::Storage,
             BufferType::Storage,
             wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment
-        ) {
+        ),
+        m_pagesPerRowBuffer(
+            1,
+            BUFFER_TYPE(uint32_t),
+            device,
+            queue,
+            wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Storage,
+            wgpu::BufferBindingType::Storage,
+            BufferType::Storage,
+            wgpu::ShaderStage::Fragment
+        )  {
 
             m_atlasDesc = wgpu::TextureDescriptor{};
             m_atlasDesc.dimension = wgpu::TextureDimension::_2D;
@@ -81,6 +91,10 @@ namespace crg::renderer {
             m_atlasView = m_atlas.createView(atlasViewDesc);
 
             m_shaderStage = wgpu::ShaderStage::Fragment;
+
+            uint32_t rowCount = m_pagesPerRow;
+
+            m_pagesPerRowBuffer.write(rowCount);
         }
 
 
@@ -116,10 +130,6 @@ namespace crg::renderer {
                 .width = (uint32_t)textureWidth,
                 .height = (uint32_t)textureHeight
             };
-
-            LOG_CORE_WARNING("writing buffer index: {}", m_entryCount);
-            LOG_CORE_WARNING("first page: {}, width: {}, height: {}", m_pageCount, entry.width, entry.height);
-            LOG_CORE_WARNING("Buffer size: {}", m_entries.size());
 
             m_entries.write(entry, m_entryCount);
 
@@ -194,6 +204,10 @@ namespace crg::renderer {
             return m_entries;
         }
 
+        Buffer& getPagesPerRowBuffer() {
+            return m_pagesPerRowBuffer;
+        }
+
 
         void printBuffer() {
             BufferView<AtlasEntry> view = m_entries.getBufferView<AtlasEntry>();
@@ -214,11 +228,11 @@ namespace crg::renderer {
         Buffer m_entries;
         size_t m_entryCount = 0;
 
-        // std::vector<AtlasEntry> m_entries;
-
         const size_t m_pageCapacity;
 
         const size_t m_pagesPerRow;
+
+        Buffer m_pagesPerRowBuffer;
 
         uint32_t m_pageCount = 0;
 
@@ -238,17 +252,4 @@ namespace crg::renderer {
         unsigned char* loadTextureData(int& width, int& height, int& channels, std::filesystem::path& path);
     };
 
-
-    /*  wgpu::TexelCopyTextureInfo destination;
-    destination.texture = m_texture;
-    destination.mipLevel = 0;
-    destination.origin = { 0, 0, 0 };
-    destination.aspect = wgpu::TextureAspect::All;
-
-    wgpu::TexelCopyBufferLayout source;
-    source.offset = 0;
-    source.bytesPerRow = 4 * m_size.width;
-    source.rowsPerImage = m_size.height;
-
-    queue.writeTexture(destination, pixelData, 4 * m_size.width * m_size.height, source, m_size); */
 }

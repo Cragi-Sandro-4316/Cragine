@@ -100,8 +100,8 @@ namespace crg::renderer {
             return *m_atlasManager.getAtlasPtr(handle);
         }
 
-        void writeAtlas(Handle<TextureAtlas> handle, std::filesystem::path path) {
-            m_atlasManager.getAtlasPtr(handle)->pushTexture(path, m_renderContext.queue, 0);
+        Handle<AtlasEntry> writeAtlas(Handle<TextureAtlas> handle, std::filesystem::path path) {
+            return m_atlasManager.getAtlasPtr(handle)->pushTexture(path, m_renderContext.queue, 0);
         }
 
 
@@ -110,10 +110,15 @@ namespace crg::renderer {
             m_bufferManager.writeBuffer(buffer, data);
         }
 
-        Handle<Mesh> spawnMesh(const std::filesystem::path& path, Handle<Material> materialHandle, Transform transform) {
+        Handle<Mesh> spawnMesh(
+            const std::filesystem::path& path,
+            Handle<Material> materialHandle,
+            Handle<AtlasEntry> textureHandle,
+            Transform transform
+        ) {
             auto& material = m_materialCache.getMaterial(materialHandle);
 
-            Handle<Mesh> meshHandle = material.m_meshBuffer.loadMesh(path, transform);
+            Handle<Mesh> meshHandle = material.m_meshBuffer.loadMesh(path, transform, textureHandle);
 
             m_meshMap[meshHandle.id] = materialHandle;
 
