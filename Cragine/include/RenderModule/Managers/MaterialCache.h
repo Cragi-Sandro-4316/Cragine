@@ -1,13 +1,16 @@
 #pragma once
 
 #include "RenderModule/Structs/Buffer.h"
-#include "RenderModule/Managers/MeshServer.h"
-#include "RenderModule/Material/Material.h"
+#include "RenderModule/Structs/Material.h"
 #include "RenderModule/RenderContext.h"
+#include "RenderModule/Structs/MeshBuffer.h"
 #include "RenderModule/Structs/Sampler.h"
-#include "RenderModule/Structs/Texture.h"
+#include "RenderModule/Structs/ImageTexture.h"
+#include "RenderModule/Structs/TextureAtlas.h"
 
+#include "RenderModule/Handles.h"
 #include "utils/Logger.h"
+
 #include <fstream>
 #include <vector>
 #include <webgpu/webgpu.hpp>
@@ -21,22 +24,54 @@ namespace crg::renderer {
     class MaterialCache {
     public:
 
-
-        MaterialID newMaterial(
+        Handle<Material> newMaterial(
             std::string path,
+            Buffer cameraUniform,
             RenderContext renderContext,
-            MeshServer& meshServer,
-            std::vector<Buffer*>& buffers,
-            std::vector<TextureSampler*>& samplers,
-            std::vector<Texture*>& textures,
-            size_t indexCount = 0
+            MeshBufferSize meshBufferSize,
+            std::vector<Buffer>& buffers,
+            std::vector<TextureSampler>& samplers,
+            std::vector<ImageTexture>& textures,
+            std::vector<TextureAtlas>& atlases
         ) {
-            // TODO: limit to one vertex buffer, one index buffer and one instance buffer.
-
-
-            LOG_CORE_INFO("Creating material at path: {}", path);
 
             // BIND GROUP LAYOUT ENTRIES:
+
+            size_t chunkCount, instanceCount, mapCount;
+
+            switch (meshBufferSize) {
+                case MeshBufferSize::Null:
+                   chunkCount = 0;
+                   instanceCount = 0;
+                   mapCount = 0;
+                break;
+                case MeshBufferSize::Small:
+                   chunkCount = 1024;
+                   instanceCount = 32767;
+                   mapCount = 256000;
+                break;
+                case MeshBufferSize::Large:
+                    chunkCount = 2048;
+                    instanceCount = 65535;
+                    mapCount = 512000;
+                break;
+                default:
+                   LOG_CORE_WARNING("Material creation: No mesh buffer size given. Defaulting to Large...");
+                   chunkCount = 2048;
+                   instanceCount = 65535;
+                   mapCount = 512000;
+                break;
+            }
+
+            MeshBuffer meshBuffer = MeshBuffer(
+                renderContext.device,
+                renderContext.queue,
+                chunkCount,
+                instanceCount,
+                mapCount
+            );
+
+            size_t meshBufferCount = 3;
 
             size_t bufferCount = buffers.size();
 
@@ -44,17 +79,29 @@ namespace crg::renderer {
 
             size_t textureCount = textures.size();
 
+            size_t atlasCount = atlases.size();
+
             std::vector<wgpu::BindGroupLayoutEntry> layoutEntries(
+                meshBufferCount +
+                1 +
                 bufferCount +
                 samplerCount +
-                textureCount
+                textureCount +
+                atlasCount * 3
             );
+            LOG_CORE_INFO("entries size: {}", layoutEntries.size());
 
-            getBufferBindings(buffers, layoutEntries, bufferCount, 0);
+            getMeshBindings(meshBuffer, layoutEntries);
 
-            getSamplerBindings(samplers, layoutEntries, samplerCount, bufferCount);
+            getCameraBindings(cameraUniform, layoutEntries);
 
-            getTextureBindings(textures, layoutEntries, textureCount, bufferCount + samplerCount);
+            getBufferBindings(buffers, layoutEntries, bufferCount, meshBufferCount + 1);
+
+            getSamplerBindings(samplers, layoutEntries, samplerCount, meshBufferCount + 1 + bufferCount);
+
+            getTextureBindings(textures, layoutEntries, textureCount, meshBufferCount + 1 + bufferCount + samplerCount);
+
+            getAtlasBindings(atlases, layoutEntries, atlasCount, meshBufferCount + 1 + bufferCount + samplerCount + textureCount);
 
             // BIND GROUP LAYOUT:
 
@@ -64,9 +111,12 @@ namespace crg::renderer {
 
             std::vector<wgpu::BindGroupEntry> bindGroupEntries = getBindGroupEntries(
                 layoutEntries,
+                meshBuffer, meshBufferCount,
+                cameraUniform,
                 buffers, bufferCount,
                 samplers, samplerCount,
-                textures, textureCount
+                textures, textureCount,
+                atlases, atlasCount
             );
 
             // BIND GROUP:
@@ -81,7 +131,7 @@ namespace crg::renderer {
 
             if (!file.is_open()) {
                 LOG_CORE_ERROR("Failed to open file");
-                return -1;
+                return {static_cast<size_t>(-1)};
             }
             file.seekg(0, std::ios::end);
             size_t size = file.tellg();
@@ -111,6 +161,7 @@ namespace crg::renderer {
             wgpu::RenderPipelineDescriptor pipelineDesc{};
             pipelineDesc.label = wgpu::StringView("sum pipleine");
             pipelineDesc.layout = pipelineLayout;
+            pipelineDesc.depthStencil = &renderContext.depthStencilState;
 
             // Pipeline states
             wgpu::VertexState vertState{};
@@ -158,7 +209,6 @@ namespace crg::renderer {
             multiSampleState.mask = !0;
             multiSampleState.alphaToCoverageEnabled = false;
 
-
             pipelineDesc.vertex = vertState;
             pipelineDesc.fragment = &fragState;
 
@@ -167,33 +217,64 @@ namespace crg::renderer {
 
             wgpu::RenderPipeline pipeline = renderContext.device.createRenderPipeline(pipelineDesc);
 
-            Material material{};
-            material.m_pipeline = pipeline;
-            material.m_shaderModules = {shader};
-            material.m_binding = bindGroup;
-            material.m_bindingLayout = bindGroupLayout;
-            material.m_buffers = buffers;
-
-            material.updateCounts();
+            Material material (
+                pipeline,
+                shader,
+                bindGroup,
+                bindGroupLayout,
+                buffers,
+                meshBuffer
+            );
 
             m_materialCache.emplace_back(material);
 
-            return m_materialCache.size() - 1;
+            return Handle<Material>{ m_materialCache.size() - 1 };
         }
 
-        const Material& getMaterial(MaterialID matID) const {
-            return m_materialCache[matID];
+        Material& getMaterial(Handle<Material> handle) {
+            return m_materialCache[handle.id];
         }
 
-        const std::vector<Material>& getMaterials() {
+        std::vector<Material>& getMaterials() {
             return m_materialCache;
         }
 
     private:
         std::vector<Material> m_materialCache;
 
+        inline void getMeshBindings(
+            MeshBuffer& meshBuffer,
+            std::vector<wgpu::BindGroupLayoutEntry>& layoutEntries
+        ) {
+            layoutEntries[0].nextInChain = nullptr;
+            layoutEntries[0].binding = 0;
+            layoutEntries[0].buffer = meshBuffer.chunkBuffer().getBindingLayout();
+            layoutEntries[0].visibility = meshBuffer.chunkBuffer().getStageVisibility();
+
+            layoutEntries[1].nextInChain = nullptr;
+            layoutEntries[1].binding = 1;
+            layoutEntries[1].buffer = meshBuffer.instanceBuffer().getBindingLayout();
+            layoutEntries[1].visibility = meshBuffer.instanceBuffer().getStageVisibility();
+
+            layoutEntries[2].nextInChain = nullptr;
+            layoutEntries[2].binding = 2;
+            layoutEntries[2].buffer = meshBuffer.meshMapBuffer().getBindingLayout();
+            layoutEntries[2].visibility = meshBuffer.meshMapBuffer().getStageVisibility();
+        }
+
+        inline void getCameraBindings(
+            Buffer& cameraUniform,
+            std::vector<wgpu::BindGroupLayoutEntry>& layoutEntries
+        ) {
+            layoutEntries[3].nextInChain = nullptr;
+            layoutEntries[3].binding = 3;
+            layoutEntries[3].buffer = cameraUniform.getBindingLayout();
+            layoutEntries[3].visibility = cameraUniform.getStageVisibility();
+        }
+
+
         inline void getBufferBindings(
-            std::vector<Buffer*>& buffers,
+            std::vector<Buffer>& buffers,
             std::vector<wgpu::BindGroupLayoutEntry>& layoutEntries,
             size_t bufferCount,
             size_t startIdx
@@ -201,7 +282,7 @@ namespace crg::renderer {
 
             // Buffers
             for (size_t i = startIdx; i < startIdx + bufferCount; i++) {
-                Buffer& buffer = *buffers.at(i - startIdx);
+                Buffer& buffer = buffers.at(i - startIdx);
 
                 layoutEntries[i].nextInChain = nullptr;
                 layoutEntries[i].binding = i;
@@ -212,14 +293,14 @@ namespace crg::renderer {
 
 
         inline void getSamplerBindings(
-            std::vector<TextureSampler*>& samplers,
+            std::vector<TextureSampler>& samplers,
             std::vector<wgpu::BindGroupLayoutEntry>& layoutEntries,
             size_t samplerCount,
             size_t startIdx
         ) {
             // Samplers
             for (size_t i = startIdx; i < startIdx + samplerCount; i++) {
-                TextureSampler& sampler = *samplers.at(i - startIdx);
+                TextureSampler& sampler = samplers.at(i - startIdx);
 
                 layoutEntries[i].nextInChain = nullptr;
                 layoutEntries[i].binding = i;
@@ -229,14 +310,14 @@ namespace crg::renderer {
         }
 
         inline void getTextureBindings(
-            std::vector<Texture*>& textures,
+            std::vector<ImageTexture>& textures,
             std::vector<wgpu::BindGroupLayoutEntry>& layoutEntries,
             size_t textureCount,
             size_t startIdx
         ) {
             // Textures
             for (size_t i = startIdx; i < startIdx + textureCount; i++) {
-                Texture& texture = *textures.at(i - startIdx);
+                ImageTexture& texture = textures.at(i - startIdx);
 
                 layoutEntries[i].nextInChain = nullptr;
                 layoutEntries[i].binding = i;
@@ -246,6 +327,37 @@ namespace crg::renderer {
 
         }
 
+        inline void getAtlasBindings(
+            std::vector<TextureAtlas>& atlases,
+            std::vector<wgpu::BindGroupLayoutEntry>& layoutEntries,
+            size_t atlasCount,
+            size_t startIdx
+        ) {
+            // Textures
+            for (size_t i = startIdx; i < startIdx + (atlasCount * 3); i += 3) {
+                TextureAtlas& atlas = atlases.at(i - startIdx);
+
+                LOG_CORE_INFO("texture: {}", i);
+
+                layoutEntries[i].nextInChain = nullptr;
+                layoutEntries[i].binding = i;
+                layoutEntries[i].visibility = atlas.getStageVisibility();
+                layoutEntries[i].texture = atlas.getBindingLayout();
+
+                LOG_CORE_INFO("buffer: {}", i + 1);
+                layoutEntries[i + 1].nextInChain = nullptr;
+                layoutEntries[i + 1].binding = i + 1;
+                layoutEntries[i + 1].buffer = atlas.getBuffer().getBindingLayout();
+                layoutEntries[i + 1].visibility = atlas.getBuffer().getStageVisibility();
+
+                LOG_CORE_INFO("page count: {}", i + 2);
+                layoutEntries[i + 2].nextInChain = nullptr;
+                layoutEntries[i + 2].binding = i + 2;
+                layoutEntries[i + 2].buffer = atlas.getPagesPerRowBuffer().getBindingLayout();
+                layoutEntries[i + 2].visibility = atlas.getPagesPerRowBuffer().getStageVisibility();
+            }
+        }
+
         inline const wgpu::BindGroupLayout getBindGroupLayout(
             wgpu::Device& device,
             std::vector<wgpu::BindGroupLayoutEntry>& layoutEntries
@@ -253,6 +365,7 @@ namespace crg::renderer {
 
             wgpu::BindGroupLayoutDescriptor bindGroupLayoutDesc{};
             bindGroupLayoutDesc.nextInChain = nullptr;
+            bindGroupLayoutDesc.label = wgpu::StringView("pipa");
             bindGroupLayoutDesc.entryCount = layoutEntries.size();
             bindGroupLayoutDesc.entries = layoutEntries.data();
 
@@ -261,19 +374,49 @@ namespace crg::renderer {
 
         inline std::vector<wgpu::BindGroupEntry> getBindGroupEntries(
             std::vector<wgpu::BindGroupLayoutEntry>& layoutEntries,
-            std::vector<Buffer*>& buffers,
+            MeshBuffer& meshBuffer,
+            size_t meshBufferCount,
+            Buffer& cameraUniform,
+            std::vector<Buffer>& buffers,
             size_t bufferCount,
-            std::vector<TextureSampler*>& samplers,
+            std::vector<TextureSampler>& samplers,
             size_t samplerCount,
-            std::vector<Texture*>& textures,
-            size_t textureCount
+            std::vector<ImageTexture>& textures,
+            size_t textureCount,
+            std::vector<TextureAtlas>& atlases,
+            size_t atlasCount
         ) {
             std::vector<wgpu::BindGroupEntry> bindGroupEntries(layoutEntries.size());
 
-            size_t startIdx = 0;
+            bindGroupEntries[0].nextInChain = nullptr;
+            bindGroupEntries[0].binding = 0;
+            bindGroupEntries[0].buffer = meshBuffer.chunkBuffer().getRawHandle();
+            bindGroupEntries[0].size = meshBuffer.chunkBuffer().getByteSize();
+            bindGroupEntries[0].offset = 0;
 
-            for (size_t i = startIdx; i < bufferCount; i++) {
-                Buffer& buffer = *buffers.at(i - startIdx);
+            bindGroupEntries[1].nextInChain = nullptr;
+            bindGroupEntries[1].binding = 1;
+            bindGroupEntries[1].buffer = meshBuffer.instanceBuffer().getRawHandle();
+            bindGroupEntries[1].size = meshBuffer.instanceBuffer().getByteSize();
+            bindGroupEntries[1].offset = 0;
+
+            bindGroupEntries[2].nextInChain = nullptr;
+            bindGroupEntries[2].binding = 2;
+            bindGroupEntries[2].buffer = meshBuffer.meshMapBuffer().getRawHandle();
+            bindGroupEntries[2].size = meshBuffer.meshMapBuffer().getByteSize();
+            bindGroupEntries[2].offset = 0;
+
+            bindGroupEntries[3].nextInChain = nullptr;
+            bindGroupEntries[3].binding = 3;
+            bindGroupEntries[3].buffer = cameraUniform.getRawHandle();
+            bindGroupEntries[3].size = cameraUniform.getByteSize();
+            bindGroupEntries[3].offset = 0;
+
+            size_t startIdx = meshBufferCount + 1;
+
+            for (size_t i = startIdx; i < startIdx + bufferCount; i++) {
+
+                Buffer& buffer = buffers.at(i - startIdx);
 
                 bindGroupEntries[i].nextInChain = nullptr;
                 bindGroupEntries[i].binding = i;
@@ -285,7 +428,8 @@ namespace crg::renderer {
             startIdx += bufferCount;
 
             for (size_t i = startIdx; i < startIdx + samplerCount; i++) {
-                TextureSampler& sampler = *samplers.at(i - startIdx);
+
+                TextureSampler& sampler = samplers.at(i - startIdx);
 
                 bindGroupEntries[i].nextInChain = nullptr;
                 bindGroupEntries[i].binding = i;
@@ -295,12 +439,36 @@ namespace crg::renderer {
             startIdx += samplerCount;
 
             for (size_t i = startIdx; i < startIdx + textureCount; i++) {
-                Texture& texture = *textures.at(i - startIdx);
+
+                ImageTexture& texture = textures.at(i - startIdx);
 
                 bindGroupEntries[i].nextInChain = nullptr;
                 bindGroupEntries[i].binding = i;
                 bindGroupEntries[i].textureView = texture.getTextureView();
                 bindGroupEntries[i].offset = 0;
+            }
+
+            startIdx += textureCount;
+
+            for (size_t i = startIdx; i < startIdx + (atlasCount * 3); i += 3) {
+                TextureAtlas& atlas = atlases.at(i - startIdx);
+
+                bindGroupEntries[i].nextInChain = nullptr;
+                bindGroupEntries[i].binding = i;
+                bindGroupEntries[i].textureView = atlas.getView();
+                bindGroupEntries[i].offset = 0;
+
+                bindGroupEntries[i + 1].nextInChain = nullptr;
+                bindGroupEntries[i + 1].binding = i + 1;
+                bindGroupEntries[i + 1].buffer = atlas.getBuffer().getRawHandle();
+                bindGroupEntries[i + 1].size = atlas.getBuffer().getByteSize();
+                bindGroupEntries[i + 1].offset = 0;
+
+                bindGroupEntries[i + 2].nextInChain = nullptr;
+                bindGroupEntries[i + 2].binding = i + 2;
+                bindGroupEntries[i + 2].buffer = atlas.getPagesPerRowBuffer().getRawHandle();
+                bindGroupEntries[i + 2].size = atlas.getPagesPerRowBuffer().getByteSize();
+                bindGroupEntries[i + 2].offset = 0;
             }
 
             return bindGroupEntries;
@@ -321,9 +489,7 @@ namespace crg::renderer {
             return device.createBindGroup(bindGroupDesc);
         }
 
-
-
-};
+    };
 
 
 }

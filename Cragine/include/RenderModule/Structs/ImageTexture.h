@@ -11,15 +11,17 @@ using namespace glm;
 
 namespace crg::renderer {
 
-    class Texture {
+    class ImageTexture {
     public:
 
-        Texture(wgpu::Device& device, wgpu::Queue& queue, std::filesystem::path& path) :
+        ImageTexture(wgpu::Device& device, wgpu::Queue& queue, std::filesystem::path& path) :
         m_shaderStage(wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment) {
             int width;
             int height;
             int channels;
             unsigned char* pixelData = loadTextureData(width, height, channels, path);
+
+            LOG_CORE_INFO("texture: {} width and height: [{}, {}]", path.string(), width, height);
 
             m_textureDesc = wgpu::TextureDescriptor{};
             m_textureDesc.dimension = wgpu::TextureDimension::_2D;
@@ -33,22 +35,9 @@ namespace crg::renderer {
 
             m_size = m_textureDesc.size;
 
-            if (!pixelData) {
-                LOG_CORE_WARNING("Texture path: {} not found, returning default", path.string());
-                for (uint32_t i = 0; i < m_textureDesc.size.width; ++i) {
-                    for (uint32_t j = 0; j < m_textureDesc.size.height; ++j) {
-                        uint8_t *p = &pixelData[4 * (j * m_textureDesc.size.width + i)];
-                        p[0] = (i / 16) % 2 == (j / 16) % 2 ? 255 : 0; // r
-                        p[1] = ((i - j) / 16) % 2 == 0 ? 255 : 0; // g
-                        p[2] = ((i + j) / 16) % 2 == 0 ? 255 : 0; // b
-                        p[3] = 255; // a
-                    }
-                }
-            }
-
             m_texture = device.createTexture(m_textureDesc);
 
-            writeTexture(device, queue, m_textureDesc.mipLevelCount, pixelData);
+            writeTexture(queue, m_textureDesc.mipLevelCount, pixelData);
 
             m_bindingLayout = wgpu::TextureBindingLayout{};
             m_bindingLayout.nextInChain = nullptr;
@@ -84,7 +73,7 @@ namespace crg::renderer {
             return m_shaderStage;
         }
 
-        void writeTexture(wgpu::Device& device, wgpu::Queue& queue, uint32_t mipLevelCount, const unsigned char* pixelData) {
+        void writeTexture(wgpu::Queue& queue, uint32_t mipLevelCount, const unsigned char* pixelData) {
 
             wgpu::TexelCopyTextureInfo destination;
             destination.texture = m_texture;
@@ -99,6 +88,7 @@ namespace crg::renderer {
 
             queue.writeTexture(destination, pixelData, 4 * m_size.width * m_size.height, source, m_size);
         }
+
 
 
     private:
@@ -118,6 +108,7 @@ namespace crg::renderer {
         unsigned char* loadTextureData(int& width, int& height, int& channels, std::filesystem::path& path);
 
     };
+
 
 
 }

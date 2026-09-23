@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RenderModule/Structs/Texture.h"
+#include "RenderModule/Structs/ImageTexture.h"
 #include "utils/Logger.h"
 #include "RenderModule/Handles.h"
 
@@ -12,13 +12,13 @@ namespace crg::renderer {
     class TextureManager {
     public:
 
-        Handle<Texture> newTexture(wgpu::Device& device, wgpu::Queue& queue, std::filesystem::path& path) {
+        Handle<ImageTexture> newTexture(wgpu::Device& device, wgpu::Queue& queue, std::filesystem::path& path) {
 
-            Handle<Texture> handle {
+            Handle<ImageTexture> handle {
                 .id = m_currentID
             };
 
-            m_textures.insert({m_currentID, Texture(device, queue, path)});
+            m_textures.insert({m_currentID, ImageTexture(device, queue, path)});
 
             m_currentID++;
 
@@ -26,7 +26,7 @@ namespace crg::renderer {
         }
 
 
-        Texture* getTexturePtr(Handle<Texture> handle) {
+        ImageTexture* getTexturePtr(Handle<ImageTexture> handle) {
             auto it = m_textures.find(handle.id);
 
             if (it == m_textures.end()) {
@@ -37,11 +37,11 @@ namespace crg::renderer {
             return &it->second;
         }
 
-        inline bool validateHandle(Handle<Texture> handle) {
+        inline bool validateHandle(Handle<ImageTexture> handle) {
             return m_textures.contains(handle.id);
         }
 
-        void deleteTexture(Handle<Texture> handle) {
+        void deleteTexture(Handle<ImageTexture> handle) {
             if (!validateHandle(handle)) {
                 LOG_CORE_WARNING("Texture deletion error: given handle is invalid");
                 return;
@@ -53,7 +53,7 @@ namespace crg::renderer {
     private:
         size_t m_currentID = 0;
 
-        std::unordered_map<size_t, Texture> m_textures;
+        std::unordered_map<size_t, ImageTexture> m_textures;
     };
 
 

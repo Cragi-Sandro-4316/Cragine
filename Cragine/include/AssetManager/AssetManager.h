@@ -6,7 +6,7 @@ namespace crg {
 
     template<typename T>
     struct Handle {
-        size_t index;
+        size_t id;
     };
 
     class AssetManager {

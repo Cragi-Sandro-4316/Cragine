@@ -1,5 +1,6 @@
 #pragma once
 
+#include "RenderModule/Structs/DepthTexture.h"
 #include "Window.h"
 #include <webgpu/webgpu.hpp>
 namespace crg::renderer {
@@ -13,6 +14,10 @@ namespace crg::renderer {
         wgpu::Surface surface;
         wgpu::SurfaceCapabilities capabilities;
         wgpu::TextureFormat surfaceFormat;
+
+        DepthTexture depthTexture;
+        wgpu::DepthStencilState depthStencilState;
+        wgpu::RenderPassDepthStencilAttachment depthStencilAttachment;
 
         wgpu::Device device;
         wgpu::Adapter adapter;

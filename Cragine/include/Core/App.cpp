@@ -68,7 +68,7 @@ namespace crg {
             m_world.getEventManager()->clearAll();
 
             // i++;
-            if (i == 3) {
+            if (i == 10) {
                 break;
             }
         }

@@ -20,18 +20,10 @@ namespace crg::renderer {
             wgpu::BufferBindingType bindingType{};
             wgpu::BufferUsage bufferUsage{};
 
-            switch (bufferType) {
-                case BufferType::Vertex:
+            switch (bufferType){
+                case BufferType::StorageReadable:
                     bindingType = wgpu::BufferBindingType::Storage;
-                    bufferUsage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Storage;
-                break;
-                case BufferType::Index:
-                    bindingType = wgpu::BufferBindingType::Storage;
-                    bufferUsage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Storage;
-                break;
-                case BufferType::Instance:
-                    bindingType = wgpu::BufferBindingType::Storage;
-                    bufferUsage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Storage;
+                    bufferUsage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Storage | wgpu::BufferUsage::MapRead;
                 break;
                 case BufferType::Storage:
                     bindingType = wgpu::BufferBindingType::Storage;
@@ -41,6 +33,10 @@ namespace crg::renderer {
                     bindingType = wgpu::BufferBindingType::Uniform;
                     bufferUsage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Uniform;
                 break;
+                case BufferType::Debug:
+                    bindingType = wgpu::BufferBindingType::Storage;
+                    bufferUsage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Storage | wgpu::BufferUsage::MapWrite;
+                break;
                 default:
                     LOG_CORE_WARNING("Gpu buffer creation: invalid buffer type, defaulting to storage.");
                     bindingType = wgpu::BufferBindingType::Storage;
@@ -48,7 +44,7 @@ namespace crg::renderer {
                 break;
             }
 
-            m_buffers.emplace(m_currentID, Buffer(size, BUFFER_TYPE(T), device, queue, bindingType, bufferUsage, bufferType));
+            m_buffers.emplace(m_currentID, Buffer(size, BUFFER_TYPE(T), device, queue, bufferUsage, bindingType, bufferType));
 
             Handle<Buffer> handle{ m_currentID };
 
@@ -96,7 +92,7 @@ namespace crg::renderer {
                 return;
             }
 
-            it->second.writeBuffer(data);
+            it->second.writeBuffer(data.data(), data.size());
         }
 
     private:

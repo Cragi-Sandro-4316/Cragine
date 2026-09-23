@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core/App.h"
+#include "Ecs/Schedule.h"
 #include "Renderer.h"
 
 namespace crg {
@@ -9,6 +10,7 @@ namespace crg {
         virtual void build(App& app) {
             app.addResource<renderer::RenderBackend>(app.getWindow());
 
+            // 75 mb
             app.addSystem(Schedule::Startup, renderer::newMaterial);
             app.addSystem(Schedule::Update, renderer::render);
         }

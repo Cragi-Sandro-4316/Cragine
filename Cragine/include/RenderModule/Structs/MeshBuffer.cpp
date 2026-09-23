@@ -1,12 +1,12 @@
-#include "MeshServer.h"
+#include "MeshBuffer.h"
 #include "utils/Logger.h"
-
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tiny_obj_loader.h"
 
 namespace crg::renderer {
 
-    void MeshServer::loadMeshFromObj(std::filesystem::path& path, Mesh& mesh) {
+
+    void MeshBuffer::loadFromObj(const std::filesystem::path& path, MeshData& mesh) {
 
         tinyobj::attrib_t attrib;
         std::vector<tinyobj::shape_t> shapes;
@@ -18,7 +18,7 @@ namespace crg::renderer {
         bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, path.string().c_str());
 
         if (!warn.empty()) {
-            LOG_CORE_WARNING("Mesh loading warning: {}", warn);
+            // LOG_CORE_WARNING("Mesh loading warning: {}", warn);
         }
 
         if (!err.empty()) {
@@ -34,7 +34,6 @@ namespace crg::renderer {
 
         mesh.vertices.resize(shape.mesh.indices.size());
 
-
         // Filling in vertexData:
     	mesh.vertices.clear();
     	for (const auto& shape : shapes) {
@@ -46,9 +45,8 @@ namespace crg::renderer {
 
     			mesh.vertices[offset + i].position = {
     				attrib.vertices[3 * idx.vertex_index + 0],
-    				-attrib.vertices[3 * idx.vertex_index + 2], // Add a minus to avoid mirroring
-    				// attrib.vertices[3 * idx.vertex_index + 1]
-                    0
+    				attrib.vertices[3 * idx.vertex_index + 1],
+    				-attrib.vertices[3 * idx.vertex_index + 2] // Add a minus to avoid mirroring
     			};
 
     			// Also apply the transform to normals!!
@@ -71,9 +69,15 @@ namespace crg::renderer {
     		}
     	}
 
-        LOG_CORE_INFO("Mesh {} loaded.", path.c_str());
+        // for (auto vert : mesh.vertices) {
+        //     LOG_CORE_INFO(
+        //         "vertex: ({}, {}, {})",
+        //         vert.position.x,
+        //         vert.position.y,
+        //         vert.position.z
+        //     );
+        // }
 
-        return;
     }
 
 

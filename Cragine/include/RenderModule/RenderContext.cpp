@@ -42,6 +42,25 @@ namespace crg::renderer {
         surface.configure(config);
 
         LOG_CORE_INFO("Created gpu handler");
+
+        depthTexture.initialize(device, config);
+
+        depthStencilState.nextInChain = nullptr;
+        depthStencilState.format = WGPUTextureFormat_Depth24Plus;
+        depthStencilState.depthWriteEnabled = wgpu::OptionalBool::True;
+        depthStencilState.depthCompare = WGPUCompareFunction_Less;
+        depthStencilState.stencilFront = {};
+        depthStencilState.stencilBack = {};
+        depthStencilState.stencilReadMask = 0xFFFFFFFF;
+        depthStencilState.stencilWriteMask = 0xFFFFFFFF;
+
+        depthStencilAttachment.view = depthTexture.getView();
+        depthStencilAttachment.depthClearValue = 1.0f;
+        depthStencilAttachment.depthLoadOp = WGPULoadOp_Clear;
+        depthStencilAttachment.depthStoreOp = WGPUStoreOp_Store;
+        depthStencilAttachment.stencilClearValue = 0;
+        depthStencilAttachment.stencilLoadOp = WGPULoadOp_Clear;
+        depthStencilAttachment.stencilStoreOp = WGPUStoreOp_Store;
     }
 
 
