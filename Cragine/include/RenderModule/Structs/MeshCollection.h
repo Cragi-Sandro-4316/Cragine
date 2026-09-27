@@ -1,11 +1,11 @@
 #pragma once
 
-#include "RenderModule/Handles.h"
 #include "AssetManager/AssetManager.h"
 #include "RenderModule/Structs/Buffer.h"
 #include "RenderModule/Structs/BufferView.h"
 #include "RenderModule/Structs/MeshData.h"
 #include "RenderModule/Components/Transform.h"
+#include "RenderModule/Structs/TextureAtlas.h"
 #include "glm/fwd.hpp"
 #include "utils/Logger.h"
 #include <cstdint>
@@ -16,9 +16,34 @@
 #include <vector>
 #include <webgpu/webgpu.hpp>
 
+namespace crg {
+    namespace renderer {
+        struct MeshCollection;
+        struct Mesh;
+
+    }
+
+    template<>
+    struct Handle<renderer::Mesh> {
+        size_t id;
+        size_t instanceId;
+    };
+
+    template<>
+    struct Handle<renderer::MeshCollection> {
+        size_t id = -1;
+    };
+
+
+    template<typename T> struct is_meshBuffer : std::false_type {};
+    template<> struct is_meshBuffer<Handle<renderer::MeshCollection>> : std::true_type {};
+}
+
 namespace crg::renderer {
 
     constexpr uint32_t CHUNK_VERTEX_COUNT = 501;
+
+    using MeshID = size_t;
 
     struct MeshChunk {
         alignas(16)
@@ -41,11 +66,7 @@ namespace crg::renderer {
         uint32_t instance;
     };
 
-    enum MeshBufferSize {
-        Null,
-        Small,
-        Large
-    };
+
 
     // A Chunk's instance block
     struct InstanceBlock {
@@ -54,12 +75,14 @@ namespace crg::renderer {
     };
 
 
-    class MeshBuffer {
+    class MeshCollection {
     public:
+        enum Size {
+            Small,
+            Large
+        };
 
-        using MeshID = size_t;
-
-        MeshBuffer(
+        MeshCollection(
             wgpu::Device& device,
             wgpu::Queue& queue,
             size_t chunkCount,

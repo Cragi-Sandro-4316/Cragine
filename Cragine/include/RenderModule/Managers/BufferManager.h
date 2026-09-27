@@ -1,15 +1,8 @@
 #pragma once
-#include "AssetManager/AssetManager.h"
-#include "RenderModule/Structs/Buffer.h"
-#include <typeindex>
-#include <unordered_map>
-#include <webgpu/webgpu.hpp>
-#include "RenderModule/Handles.h"
-#include "utils/Logger.h"
 
+#include "RenderModule/Structs/Buffer.h"
 
 namespace crg::renderer {
-
 
     class BufferManager {
     public:
@@ -50,6 +43,7 @@ namespace crg::renderer {
 
             m_currentID++;
 
+            // TODO: is this actually needed?
             if (!m_typeMap.contains(typeid(T))) {
                 m_typeMap[typeid(T)] = {};
             }
@@ -60,39 +54,17 @@ namespace crg::renderer {
         }
 
 
-        Buffer* getBufferPtr(Handle<Buffer> handle) {
-            auto it = m_buffers.find(handle.id);
-
-            if (it == m_buffers.end()) {
-                LOG_CORE_ERROR("Gpu getBuffer error: given handle is invalid");
-                return nullptr;
-            }
-
-            return &it->second;
-        }
-
-        inline bool validateHandle(Handle<Buffer> handle) {
-            return m_buffers.contains(handle.id);
+        Buffer& getBuffer(Handle<Buffer> handle) {
+            return m_buffers.at(handle.id);
         }
 
         void deleteBuffer(Handle<Buffer> handle) {
-            if (!validateHandle(handle)) {
-                LOG_CORE_WARNING("Buffer deletion error: given handle is invalid");
-                return;
-            }
-
             m_buffers.erase(handle.id);
         }
 
         template<typename T>
         void writeBuffer(Handle<Buffer> buffer, std::vector<T>& data) {
-            auto it = m_buffers.find(buffer.id);
-            if (it == m_buffers.end()) {
-                LOG_CORE_WARNING("Buffer write: invalid handle");
-                return;
-            }
-
-            it->second.writeBuffer(data.data(), data.size());
+            m_buffers.at(buffer.id).writeBuffer(data.data(), data.size());
         }
 
     private:
@@ -105,6 +77,5 @@ namespace crg::renderer {
             std::vector<Handle<Buffer>>
         > m_typeMap;
     };
-
 
 }

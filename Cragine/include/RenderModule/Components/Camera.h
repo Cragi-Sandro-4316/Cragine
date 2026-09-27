@@ -60,6 +60,10 @@ namespace crg {
             return m_uniform.projectionMatrix;
         }
 
+        const CameraUniform getUniform() {
+            return m_uniform;
+        }
+
     private:
         CameraUniform m_uniform;
     };

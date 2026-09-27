@@ -6,8 +6,25 @@
 #include <glm/glm.hpp>
 #include <webgpu/webgpu.hpp>
 #include <stb_image.h>
+#include "Ecs/Handle.h"
 
 using namespace glm;
+
+namespace crg {
+    namespace renderer {
+        struct ImageTexture;
+    }
+
+    template<>
+    struct Handle<renderer::ImageTexture> {
+        size_t id = -1;
+    };
+
+    template<typename T> struct is_texture : std::false_type {};
+    template<> struct is_texture<Handle<renderer::ImageTexture>> : std::true_type {};
+
+}
+
 
 namespace crg::renderer {
 
@@ -39,11 +56,11 @@ namespace crg::renderer {
 
             writeTexture(queue, m_textureDesc.mipLevelCount, pixelData);
 
-            m_bindingLayout = wgpu::TextureBindingLayout{};
-            m_bindingLayout.nextInChain = nullptr;
-            m_bindingLayout.multisampled = false;
-            m_bindingLayout.sampleType = wgpu::TextureSampleType::Float;
-            m_bindingLayout.viewDimension = wgpu::TextureViewDimension::_2D;
+            // m_bindingLayout = wgpu::TextureBindingLayout{};
+            // m_bindingLayout.nextInChain = nullptr;
+            // m_bindingLayout.multisampled = false;
+            // m_bindingLayout.sampleType = wgpu::TextureSampleType::Float;
+            // m_bindingLayout.viewDimension = wgpu::TextureViewDimension::_2D;
 
             wgpu::TextureViewDescriptor textureViewDesc{};
             textureViewDesc.aspect = wgpu::TextureAspect::All;

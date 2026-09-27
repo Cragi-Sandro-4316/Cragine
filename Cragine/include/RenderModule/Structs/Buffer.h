@@ -1,7 +1,6 @@
 #pragma once
 
 #include "RenderModule/Structs/BufferView.h"
-// #include "utils/Assert.h"
 #include "utils/Logger.h"
 #include <chrono>
 #include <cstddef>
@@ -11,8 +10,24 @@
 #include <typeindex>
 #include <webgpu.h>
 #include <webgpu/webgpu.hpp>
+#include "Ecs/Handle.h"
 
 #define BUFFER_TYPE(type) (type*)nullptr
+
+namespace crg {
+    namespace renderer {
+        class Buffer;
+    }
+
+    template<>
+    struct Handle<renderer::Buffer> {
+        size_t id = -1;
+    };
+
+    template<typename T> struct is_buffer : std::false_type {};
+    template<> struct is_buffer<Handle<renderer::Buffer>> : std::true_type {};
+}
+
 
 namespace crg::renderer {
 

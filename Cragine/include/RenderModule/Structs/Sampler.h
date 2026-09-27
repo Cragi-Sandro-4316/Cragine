@@ -1,12 +1,32 @@
 #pragma once
 
 #include <webgpu/webgpu.hpp>
+#include "Ecs/Handle.h"
+
+namespace crg {
+
+    namespace renderer {
+        struct Sampler;
+    }
+
+
+    template<>
+    struct Handle<renderer::Sampler> {
+        size_t id = -1;
+    };
+
+    template<typename T> struct is_sampler : std::false_type {};
+    template<> struct is_sampler<Handle<renderer::Sampler>> : std::true_type {};
+
+
+}
+
 namespace crg::renderer {
 
-    class TextureSampler {
+    class Sampler {
     public:
 
-        TextureSampler(wgpu::Device& device, wgpu::Queue& queue) {
+        Sampler(wgpu::Device& device, wgpu::Queue& queue) {
 
             wgpu::SamplerDescriptor samplerDesc;
             samplerDesc.addressModeU = wgpu::AddressMode::ClampToEdge;

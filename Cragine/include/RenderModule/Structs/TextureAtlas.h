@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RenderModule/Handles.h"
+#include "Ecs/Handle.h"
 #include "RenderModule/Structs/Buffer.h"
 #include "utils/Logger.h"
 #include <cstdint>
@@ -9,6 +9,26 @@
 #include <webgpu/webgpu.hpp>
 
 using namespace glm;
+
+namespace crg {
+    namespace renderer {
+        struct TextureAtlas;
+        struct AtlasEntry;
+    }
+
+    template<>
+    struct Handle<renderer::AtlasEntry> {
+        size_t id;
+    };
+
+    template<>
+    struct Handle<renderer::TextureAtlas> {
+        size_t id = -1;
+    };
+
+    template<typename T> struct is_atlas : std::false_type {};
+    template<> struct is_atlas<Handle<renderer::TextureAtlas>> : std::true_type {};
+}
 
 namespace crg::renderer {
 

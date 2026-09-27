@@ -1,5 +1,5 @@
 #pragma once
-#include "RenderModule/Handles.h"
+#include "RenderModule/RenderContext.h"
 #include "RenderModule/Structs/TextureAtlas.h"
 #include <webgpu/webgpu.hpp>
 
@@ -16,11 +16,25 @@ namespace crg::renderer {
             };
         }
 
-        TextureAtlas* getAtlasPtr(Handle<TextureAtlas> handle) {
-            return &m_atlases[handle.id];
+        TextureAtlas& getAtlas(Handle<TextureAtlas> handle) {
+            return m_atlases.at(handle.id);
+        }
+
+        Handle<AtlasEntry> pushTexture(
+            Handle<TextureAtlas> handle,
+            std::filesystem::path& path,
+            RenderContext& renderContext
+        ) {
+            auto& atlas = m_atlases.at(handle.id);
+            return atlas.pushTexture(
+                path,
+                renderContext.queue,
+                0
+            );
         }
 
     private:
+        // TODO: make this an unordered map
         std::vector<TextureAtlas> m_atlases;
 
     };

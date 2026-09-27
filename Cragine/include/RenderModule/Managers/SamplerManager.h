@@ -2,7 +2,6 @@
 
 #include "RenderModule/Structs/Sampler.h"
 #include "utils/Logger.h"
-#include "RenderModule/Handles.h"
 
 namespace crg::renderer {
 
@@ -10,13 +9,13 @@ namespace crg::renderer {
     class SamplerManager {
     public:
 
-        Handle<TextureSampler> newSampler(wgpu::Device& device, wgpu::Queue& queue) {
+        Handle<Sampler> newSampler(wgpu::Device& device, wgpu::Queue& queue) {
 
-            Handle<TextureSampler> handle {
+            Handle<Sampler> handle {
                 .id = m_currentID
             };
 
-            m_samplers.insert({m_currentID, TextureSampler(device, queue)});
+            m_samplers.insert({m_currentID, Sampler(device, queue)});
 
             m_currentID++;
 
@@ -24,22 +23,15 @@ namespace crg::renderer {
         }
 
 
-        TextureSampler* getSamplerPtr(Handle<TextureSampler> handle) {
-            auto it = m_samplers.find(handle.id);
-
-            if (it == m_samplers.end()) {
-                LOG_CORE_ERROR("Gpu getBuffer error: given handle is invalid");
-                return nullptr;
-            }
-
-            return &it->second;
+        Sampler& getSampler(Handle<Sampler> handle) {
+            return m_samplers.at(handle.id);
         }
 
-        inline bool validateHandle(Handle<TextureSampler> handle) {
+        inline bool validateHandle(Handle<Sampler> handle) {
             return m_samplers.contains(handle.id);
         }
 
-        void deleteSampler(Handle<TextureSampler> handle) {
+        void deleteSampler(Handle<Sampler> handle) {
             if (!validateHandle(handle)) {
                 LOG_CORE_WARNING("Sampler deletion error: given handle is invalid");
                 return;
@@ -51,7 +43,7 @@ namespace crg::renderer {
     private:
         size_t m_currentID = 0;
 
-        std::unordered_map<size_t, TextureSampler> m_samplers;
+        std::unordered_map<size_t, Sampler> m_samplers;
     };
 
 

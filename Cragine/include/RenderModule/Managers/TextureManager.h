@@ -2,12 +2,8 @@
 
 #include "RenderModule/Structs/ImageTexture.h"
 #include "utils/Logger.h"
-#include "RenderModule/Handles.h"
 
 namespace crg::renderer {
-
-
-
 
     class TextureManager {
     public:
@@ -26,15 +22,8 @@ namespace crg::renderer {
         }
 
 
-        ImageTexture* getTexturePtr(Handle<ImageTexture> handle) {
-            auto it = m_textures.find(handle.id);
-
-            if (it == m_textures.end()) {
-                LOG_CORE_ERROR("Gpu getBuffer error: given handle is invalid");
-                return nullptr;
-            }
-
-            return &it->second;
+        ImageTexture& getTexture(Handle<ImageTexture> handle) {
+            return m_textures.at(handle.id);
         }
 
         inline bool validateHandle(Handle<ImageTexture> handle) {
@@ -55,7 +44,6 @@ namespace crg::renderer {
 
         std::unordered_map<size_t, ImageTexture> m_textures;
     };
-
 
 
 }

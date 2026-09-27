@@ -3,6 +3,7 @@
 #include "RenderModule/Structs/DepthTexture.h"
 #include "Window.h"
 #include <webgpu/webgpu.hpp>
+
 namespace crg::renderer {
 
     struct RenderContext {
