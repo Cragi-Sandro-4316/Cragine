@@ -1,8 +1,9 @@
 #pragma once
 
-#include "RenderModule/Structs/MeshCollection.h"
 #include <cstddef>
-#include <unordered_map>
+
+#include "RenderModule/Handles.h"
+#include "RenderModule/Structs/MeshCollection.h"
 
 namespace crg::renderer {
 

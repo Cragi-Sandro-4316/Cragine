@@ -11,18 +11,22 @@ namespace crg::ecs {
         Commands(World& world) : m_world(world), m_commandQueue(world.getCommandQueue()) {}
 
         template<typename... Components>
-        void spawn(Components&&... components) {
+        Entity spawn(Components&&... components) {
 
+            Entity entity = m_world.getEntityManager().newEntity();
 
             auto lambda = [
+                ent = entity,
                 components = std::make_tuple(std::forward<Components>(components)...)
             ](World& world) {
-                std::apply([&world](auto&&...args) {
-                    world.spawn(std::move(args)...);
+                std::apply([&world, &ent](auto&&...args) {
+                    world.spawn(ent, std::move(args)...);
                 }, components);
             };
 
             m_commandQueue.emplace_back(Command(lambda));
+
+            return entity;
         }
 
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "RenderModule/Handles.h"
 #include "RenderModule/Structs/Buffer.h"
 
 namespace crg::renderer {

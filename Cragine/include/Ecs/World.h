@@ -51,13 +51,15 @@ namespace crg::ecs {
             return m_queryManager;
         }
 
+        EntityManager& getEntityManager() {
+            return m_entityManager;
+        }
+
 
         template<typename... Components>
-        Entity spawn(Components... components) {
+        Entity spawn(Entity entity, Components... components) {
 
             LOG_CORE_INFO("Spawning entity...");
-
-            Entity entity = m_entityManager.newEntity();
 
             auto signature = m_componentManager.getSignature<Components..., Entity>();
 

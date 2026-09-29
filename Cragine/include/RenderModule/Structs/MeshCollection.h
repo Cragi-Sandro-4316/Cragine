@@ -1,43 +1,16 @@
 #pragma once
 
-#include "AssetManager/AssetManager.h"
-#include "RenderModule/Structs/Buffer.h"
-#include "RenderModule/Structs/BufferView.h"
-#include "RenderModule/Structs/MeshData.h"
-#include "RenderModule/Components/Transform.h"
-#include "RenderModule/Structs/TextureAtlas.h"
-#include "glm/fwd.hpp"
-#include "utils/Logger.h"
+#include <cstddef>
 #include <cstdint>
-#include <cstring>
 #include <filesystem>
-#include <functional>
-#include <unordered_map>
-#include <vector>
+#include <webgpu.h>
 #include <webgpu/webgpu.hpp>
 
-namespace crg {
-    namespace renderer {
-        struct MeshCollection;
-        struct Mesh;
-
-    }
-
-    template<>
-    struct Handle<renderer::Mesh> {
-        size_t id;
-        size_t instanceId;
-    };
-
-    template<>
-    struct Handle<renderer::MeshCollection> {
-        size_t id = -1;
-    };
-
-
-    template<typename T> struct is_meshBuffer : std::false_type {};
-    template<> struct is_meshBuffer<Handle<renderer::MeshCollection>> : std::true_type {};
-}
+#include "RenderModule/Components/Mesh.h"
+#include "RenderModule/Components/Transform.h"
+#include "RenderModule/Structs/MeshData.h"
+#include "RenderModule/Handles.h"
+#include "RenderModule/Structs/Buffer.h"
 
 namespace crg::renderer {
 
@@ -57,7 +30,7 @@ namespace crg::renderer {
     };
 
 
-    struct Mesh {
+    struct ChunkList {
         std::vector<size_t> chunkIdxs;
     };
 
@@ -143,7 +116,7 @@ namespace crg::renderer {
 
                 Handle<Mesh> handle = {
                     .id = handleId,
-                    .instanceId = instanceIndex
+                    .instanceID = instanceIndex
                 };
 
                 return handle;
@@ -159,7 +132,7 @@ namespace crg::renderer {
 
             m_meshToChunkIdxs.insert({
                 handleId,
-                Mesh{ .chunkIdxs = std::vector<size_t>(chunkCount) }
+                ChunkList { .chunkIdxs = std::vector<size_t>(chunkCount) }
             });
 
             auto& chunkIndices = m_meshToChunkIdxs[handleId];
@@ -176,7 +149,7 @@ namespace crg::renderer {
 
             Handle<Mesh> handle = {
                 .id = handleId,
-                .instanceId = instanceIndex
+                .instanceID = instanceIndex
             };
 
             return handle;
@@ -283,7 +256,7 @@ namespace crg::renderer {
 
             auto& firstBlock = m_instanceBlocks[it->second.chunkIdxs[0]];
             for (size_t i = 0; i < firstBlock.count; i++) {
-                if (mapBuffer[i + firstBlock.first].instance == handle.instanceId) {
+                if (mapBuffer[i + firstBlock.first].instance == handle.instanceID) {
                     offset = i;
                     break;
                 }
@@ -325,7 +298,7 @@ namespace crg::renderer {
             return m_chunkCount;
         }
 
-        inline size_t vertexCount() {
+        inline uint32_t vertexCount() {
             return m_mapCount * CHUNK_VERTEX_COUNT;
         }
 
@@ -341,10 +314,63 @@ namespace crg::renderer {
             return m_meshMapBuffer;
         }
 
+        void bindLayoutEntry(std::vector<WGPUBindGroupLayoutEntry>& entries) {
+
+            entries.emplace_back(WGPUBindGroupLayoutEntry {
+                .nextInChain = nullptr,
+                .binding = (uint32_t) entries.size(),
+                .visibility = chunkBuffer().getStageVisibility(),
+                .buffer = chunkBuffer().getBindingLayout()
+            });
+
+            entries.emplace_back(WGPUBindGroupLayoutEntry {
+                .nextInChain = nullptr,
+                .binding = (uint32_t) entries.size(),
+                .visibility = instanceBuffer().getStageVisibility(),
+                .buffer = instanceBuffer().getBindingLayout()
+            });
+
+            entries.emplace_back(WGPUBindGroupLayoutEntry {
+                .nextInChain = nullptr,
+                .binding = (uint32_t) entries.size(),
+                .visibility = meshMapBuffer().getStageVisibility(),
+                .buffer = meshMapBuffer().getBindingLayout()
+            });
+        }
+
+
+        void bindEntry(std::vector<WGPUBindGroupEntry>& entries) {
+
+            entries.emplace_back(WGPUBindGroupEntry{
+                .nextInChain = nullptr,
+                .binding = (uint32_t)entries.size(),
+                .buffer = m_chunkBuffer.getRawHandle(),
+                .offset = 0,
+                .size = m_chunkBuffer.getByteSize(),
+            });
+
+            entries.emplace_back(WGPUBindGroupEntry{
+                .nextInChain = nullptr,
+                .binding = (uint32_t)entries.size(),
+                .buffer = m_instanceBuffer.getRawHandle(),
+                .offset = 0,
+                .size = m_instanceBuffer.getByteSize(),
+            });
+
+            entries.emplace_back(WGPUBindGroupEntry{
+                .nextInChain = nullptr,
+                .binding = (uint32_t)entries.size(),
+                .buffer = m_meshMapBuffer.getRawHandle(),
+                .offset = 0,
+                .size = m_meshMapBuffer.getByteSize(),
+            });
+
+        }
+
     private:
 
         // Maps a Mesh ID to its chunk index list
-        std::unordered_map<MeshID, Mesh> m_meshToChunkIdxs{};
+        std::unordered_map<MeshID, ChunkList> m_meshToChunkIdxs{};
 
         // Maps a Chunk index to the MeshID it belongs to
         std::unordered_map<size_t, MeshID> m_chunkToMeshID{};
@@ -373,7 +399,7 @@ namespace crg::renderer {
             BufferView<ChunkMap>& mapBuffer
         ) {
             // Chunk index list of the deleted mesh
-            Mesh& mesh = m_meshToChunkIdxs[handle.id];
+            ChunkList& mesh = m_meshToChunkIdxs[handle.id];
 
             for (auto& chunkIdx : mesh.chunkIdxs) {
                 // Swap and pop

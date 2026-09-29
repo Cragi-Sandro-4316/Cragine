@@ -1,45 +1,96 @@
 #pragma once
 
-#include "RenderModule/GpuInterface.h"
-#include "RenderModule/GpuResourceManager.h"
-#include "RenderModule/Structs/GpuResource.h"
-#include <webgpu/webgpu.hpp>
+#include <filesystem>
 #include <fstream>
+#include <type_traits>
+#include <webgpu.h>
+#include <webgpu/webgpu.hpp>
+#include <boost/pfr/core.hpp>
+
+#include "RenderModule/Structs/MeshCollection.h"
+#include "RenderModule/RenderContext.h"
+#include "utils/Logger.h"
+#include "utils/Assert.h"
 
 
 namespace crg::renderer {
 
-    struct Material {
+    struct IMaterial {
+        uint32_t getVertexCount() {
+            return m_meshCollection->vertexCount();
+        }
+
+        MeshCollection* m_meshCollection = nullptr;
+
+        wgpu::BindGroupLayout m_bindingLayout;
+        wgpu::BindGroup m_bindGroup;
+        wgpu::RenderPipeline m_pipeline;
+        wgpu::ShaderModule m_shaderModule;
+    };
+
+
+
+    template<typename MaterialDef>
+    struct Material : IMaterial {
 
         Material(
             const std::filesystem::path& path,
-            std::initializer_list<Handle<GpuResource>> res,
-            GpuInterface& gpuInterface
+            RenderContext& renderContext,
+            MaterialDef def
         ) :
-        m_resources(res){
+        m_materialDef(def) {
+            std::vector<WGPUBindGroupLayoutEntry> layoutEntries;
 
-            GpuResourceManager& resManager = gpuInterface.getResourceManager();
-            RenderContext& renderContext = gpuInterface.getRenderContext();
+            boost::pfr::for_each_field(
+                m_materialDef,
+                [&](auto& field) {
+                    using field_t = std::remove_cvref_t<decltype(field)>;
+                    ASSERT(is_gpuResource<field_t>::value, "material {} has non-gpuResource elements", path.c_str());
 
-            std::vector<wgpu::BindGroupLayoutEntry> entries;
-            entries.reserve(m_resources.size());
+                    field.bindLayoutEntry(layoutEntries);
 
-            for (auto& handle : m_resources) {
-                resManager.getLayout(entries, handle);
-            }
+                    if constexpr (std::is_same<field_t, MeshCollection>::value) {
+                        ASSERT(!m_meshCollection, "MeshCollection for material {} is already set", path.c_str());
+                        m_meshCollection = &field;
+                    }
+                }
+            );
+
+            ASSERT(m_meshCollection, "Material {} is missing a mesh collection", path.c_str());
 
             wgpu::BindGroupLayoutDescriptor bindGroupLayoutDesc{};
             bindGroupLayoutDesc.nextInChain = nullptr;
-            bindGroupLayoutDesc.label = wgpu::StringView("pipa");
-            bindGroupLayoutDesc.entryCount = entries.size();
-            bindGroupLayoutDesc.entries = entries.data();
+            bindGroupLayoutDesc.label = wgpu::StringView(path.c_str());
+            bindGroupLayoutDesc.entryCount = layoutEntries.size();
+            bindGroupLayoutDesc.entries = layoutEntries.data();
 
             m_bindingLayout = renderContext.device.createBindGroupLayout(bindGroupLayoutDesc);
+
+
+            std::vector<WGPUBindGroupEntry> bindingEntries;
+
+            boost::pfr::for_each_field(
+                m_materialDef,
+                [&](auto& field) {
+                    using field_t = std::remove_cvref_t<decltype(field)>;
+                    ASSERT(is_gpuResource<field_t>::value, "material {} has non-gpuResource elements", path.c_str());
+
+                    field.bindEntry(bindingEntries);
+                }
+            );
+
+            wgpu::BindGroupDescriptor bindGroupDesc{};
+            bindGroupDesc.nextInChain = nullptr;
+            bindGroupDesc.layout = m_bindingLayout;
+            bindGroupDesc.entryCount = bindingEntries.size();
+            bindGroupDesc.entries = bindingEntries.data();
+
+            m_bindGroup = renderContext.device.createBindGroup(bindGroupDesc);
 
             std::ifstream file(path);
 
             if (!file.is_open()) {
-                LOG_CORE_ERROR("Failed to open file");
+                LOG_CORE_ERROR("Failed to open file {}", path.c_str());
                 return;
             }
             file.seekg(0, std::ios::end);
@@ -62,13 +113,13 @@ namespace crg::renderer {
             wgpu::PipelineLayoutDescriptor pipelineLayoutDesc{};
             pipelineLayoutDesc.bindGroupLayoutCount = 1;
             pipelineLayoutDesc.bindGroupLayouts = (WGPUBindGroupLayout*) &m_bindingLayout;
-            pipelineLayoutDesc.label = wgpu::StringView("Sum pipeline shi");
+            pipelineLayoutDesc.label = wgpu::StringView(path.generic_string().append(" layout"));
             pipelineLayoutDesc.nextInChain = nullptr;
 
             auto pipelineLayout = renderContext.device.createPipelineLayout(pipelineLayoutDesc);
 
             wgpu::RenderPipelineDescriptor pipelineDesc{};
-            pipelineDesc.label = wgpu::StringView("sum pipleine");
+            pipelineDesc.label = wgpu::StringView(path.generic_string().append(" pipeline"));
             pipelineDesc.layout = pipelineLayout;
             pipelineDesc.depthStencil = &renderContext.depthStencilState;
 
@@ -127,13 +178,7 @@ namespace crg::renderer {
             m_pipeline = renderContext.device.createRenderPipeline(pipelineDesc);
         }
 
-
-        size_t m_vertexCount = 0;
-
-        std::vector<Handle<GpuResource>> m_resources;
-        wgpu::BindGroupLayout m_bindingLayout;
-        wgpu::RenderPipeline m_pipeline;
-        wgpu::ShaderModule m_shaderModule;
+        MaterialDef m_materialDef;
     };
 
 

@@ -1,75 +1,90 @@
 #pragma once
 
+#include "Ecs/Commands/Command.h"
+#include "Ecs/Commands/Commands.h"
 #include "Ecs/Ecs.h"
+#include "Ecs/Entity/Entity.h"
+#include "Ecs/SystemParams/QueryParam.h"
+#include "Ecs/SystemParams/ResParam.h"
 #include "RenderModule/Components/Camera.h"
+#include "RenderModule/Components/Transform.h"
 #include "RenderModule/GpuInterface.h"
 #include "RenderModule/GpuResourceManager.h"
 #include "RenderModule/Managers/MaterialManager.h"
-#include "RenderModule/Structs/Buffer.h"
 #include "RenderModule/Managers/BindGroupManager.h"
+#include "RenderModule/Structs/Buffer.h"
+#include "RenderModule/Structs/CameraBuffer.h"
 #include "RenderModule/Structs/GpuResource.h"
+#include "RenderModule/Structs/TextureAtlas.h"
 
 namespace crg::renderer {
 
 
-    static void materialUpdate(
-        Material& material,
-        GpuResourceManager& resManager
-    ) {
-
-        for(auto& handle : material.m_resources) {
-            auto type = resManager.getType(handle);
-            if (type == GpuResource::Type::MeshCollection) {
-
-                MeshCollection& meshes = resManager.getMeshCollection(handle);
-
-                material.m_vertexCount = meshes.vertexCount();
-
-                break;
-            }
-        }
-
-
-    }
-
-
-    static void setup(
+    static void setupCameras(
+        Query<Entity, Camera> q,
+        Commands commands,
         ResMut<MaterialManager> rMaterials,
         ResMut<GpuInterface> rGpuInterface
     ) {
         MaterialManager& materials = rMaterials.get();
         GpuInterface& gpuInterface = rGpuInterface.get();
 
-        std::filesystem::path shaderPath = "../assets/fragVert.wgsl";
+        for (auto [entity, camera] : q) {
+            Handle<GpuResource> handle = gpuInterface.newCamera(
+                camera,
+                entity
+            );
 
-        Handle<GpuResource> cameraBuffer = gpuInterface.newBuffer<CameraUniform>(1, Uniform);
-        Handle<GpuResource> meshCollection = gpuInterface.newMeshCollection(MeshCollection::Size::Large);
-        Handle<GpuResource> atlas = gpuInterface.newAtlas(8);
-
-        auto materialHandle = materials.newMaterial(
-            shaderPath,
-            {
-                meshCollection,
-                cameraBuffer,
-                gpuInterface.newSampler(),
-                atlas
-            },
-            gpuInterface,
-            materialUpdate
-        );
+            commands.addComponent(entity, handle);
+        }
+    }
 
 
-        Camera camera{};
-        camera.setPerspectiveProjection(
+    struct Sample {
+        MeshCollection& meshCollection;
+        CameraBuffer& cameraBuffer;
+        Sampler& sampler;
+        TextureAtlas& atlas;
+    };
+
+
+    static void spawnExample(
+        Commands commands,
+        ResMut<MaterialManager> rMaterials,
+        ResMut<GpuInterface> rGpuInterface
+    ) {
+        MaterialManager& materials = rMaterials.get();
+        GpuInterface& gpuInterface = rGpuInterface.get();
+
+        Camera cam{};
+        cam.setPerspectiveProjection(
             50,
             1,
             0.1,
             10
         );
 
-        gpuInterface.getBuffer(cameraBuffer).write(camera.getUniform());
+        auto cameraEntity = commands.spawn(cam);
 
-        auto texture = gpuInterface.pushTexture(atlas, "../assets/emilia.png");
+        LOG_CORE_INFO("ent: {}", cameraEntity.id);
+
+        auto meshes = gpuInterface.newMeshCollection(MeshCollection::Size::Large);
+        auto camera = gpuInterface.newCamera(cam, cameraEntity);
+        auto samp = gpuInterface.newSampler();
+        auto atlas = gpuInterface.newAtlas(8);
+
+        materials.newMaterial(
+            "../assets/fragVert.wgsl",
+            gpuInterface.getRenderContext(),
+            Sample {
+                gpuInterface.getMeshCollection(meshes),
+                gpuInterface.getCamera(camera),
+                gpuInterface.getSampler(samp),
+                gpuInterface.getAtlas(atlas)
+            }
+        );
+
+        auto textureHandle = gpuInterface.pushTexture(atlas, "../assets/emilia.png");
 
         Transform transform{};
         transform.translation.z = 2;
@@ -78,11 +93,119 @@ namespace crg::renderer {
         transform.rotate(-45, vec3(0, 1, 0));
         transform.rotate(-20, vec3(1, 0, 0));
 
-        gpuInterface.getMeshCollection(meshCollection).loadMesh(
-            "../assets/pyramid.obj",
+        std::filesystem::path meshPath = "../assets/cube.obj";
+
+        gpuInterface.getMeshCollection(meshes).loadMesh(
+            meshPath,
             transform,
-            texture
+            textureHandle
         );
+
+
+
+        // auto atlas = gpuInterface.newAtlas(8);
+        // auto texture = gpuInterface.pushTexture(atlas, "../assets/emilia.png");
+
+        // commands.spawn(
+        //     Mesh {
+        //         .path = "../assets/sphere.obj",
+        //         .material = materials.newMaterial(
+        //             "../assets/fragVert.wgsl",
+        //             {
+        //                 gpuInterface.newMeshCollection(MeshCollection::Size::Large),
+        //                 gpuInterface.newCamera(cam, cameraEntity),
+        //                 gpuInterface.newSampler(),
+        //                 gpuInterface.newAtlas(8)
+        //             },
+        //             gpuInterface,
+        //             materialUpdate
+        //         ),
+        //         .texture = texture
+        //     },
+        //     Transform{}
+        // );
+    }
+
+
+    static void spawnMeshes(
+        Query<Entity, Mesh, Transform> q,
+        Commands commands,
+        ResMut<MaterialManager> rMaterials,
+        ResMut<GpuInterface> rGpuInterface
+    ) {
+        // MaterialManager& materials = rMaterials.get();
+        // GpuInterface& gpuInterface = rGpuInterface.get();
+
+
+        // for (auto [entity, mesh, transform] : q) {
+        //     Material& material = materials.getMaterial(mesh.material);
+
+        //     for (auto& handle : material.m_resources) {
+
+        //         auto type = gpuInterface.getHandleType(handle);
+
+        //         if (type == GpuResource::Type::MeshCollection) {
+        //             auto meshHandle = gpuInterface.getMeshCollection(handle).loadMesh(
+        //                 mesh.path,
+        //                 transform,
+        //                 mesh.texture
+        //             );
+
+        //             commands.removeComponent<Mesh>(entity);
+        //             commands.addComponent(entity, meshHandle);
+        //             break;
+        //         }
+
+        //     }
+    }
+
+
+
+
+    static void setup(
+        Query<Entity, Handle<GpuResource>, With<Camera>> q,
+        ResMut<MaterialManager> rMaterials,
+        ResMut<GpuInterface> rGpuInterface
+    ) {
+        // MaterialManager& materials = rMaterials.get();
+        // GpuInterface& gpuInterface = rGpuInterface.get();
+
+        // std::filesystem::path shaderPath = "../assets/fragVert.wgsl";
+
+        // Handle<GpuResource> meshCollection = gpuInterface.newMeshCollection(MeshCollection::Size::Large);
+        // Handle<GpuResource> atlas = gpuInterface.newAtlas(8);
+
+        // Handle<GpuResource> camera{};
+        // for (auto [entity, gpuRes] : q) {
+        //     camera = gpuRes;
+        // }
+
+        // auto materialHandle = materials.newMaterial(
+        //     shaderPath,
+        //     {
+        //         meshCollection,
+        //         camera,
+        //         gpuInterface.newSampler(),
+        //         atlas
+        //     },
+        //     gpuInterface,
+        //     materialUpdate
+        // );
+
+        // auto texture = gpuInterface.pushTexture(atlas, "../assets/emilia.png");
+
+        // Transform transform{};
+        // transform.translation.z = 2;
+        // transform.translation.x = -0.4;
+        // transform.scale = vec3(.25);
+        // transform.rotate(-45, vec3(0, 1, 0));
+        // transform.rotate(-20, vec3(1, 0, 0));
+
+        // gpuInterface.getMeshCollection(meshCollection).loadMesh(
+        //     "../assets/pyramid.obj",
+        //     transform,
+        //     texture
+        // );
     }
 
     static void runMaterialUpdates(
@@ -90,9 +213,9 @@ namespace crg::renderer {
         ResMut<MaterialManager> rMaterialManager
 
     ) {
-        MaterialManager& materials = rMaterialManager.get();
+        // MaterialManager& materials = rMaterialManager.get();
 
-        materials.runUpdates(rGpuResManager.get().getResourceManager());
+        // materials.runUpdates(rGpuResManager.get().getResourceManager());
     }
 
 
@@ -140,15 +263,13 @@ namespace crg::renderer {
 
         wgpu::RenderPassEncoder renderPass = cmdEncoder.beginRenderPass(renderPassDesc);
 
-        for (auto& [materialID, material] : materialCache.getMaterials()) {
-            renderPass.setPipeline(material.m_pipeline);
+        for (auto& [type, material] : materialCache.getMaterials()) {
+            renderPass.setPipeline(material->m_pipeline);
 
-            wgpu::BindGroup& binding = bindGroupManager.getBindGroup(gpuInterface, materialID, material);
+            renderPass.setBindGroup(0, material->m_bindGroup, 0, nullptr);
 
-            renderPass.setBindGroup(0, binding, 0, nullptr);
-
-            renderPass.draw(material.m_vertexCount, 1, 0, 0);
-            LOG_CORE_INFO("material vert count: {}", material.m_vertexCount);
+            renderPass.draw(material->getVertexCount(), 1, 0, 0);
+            LOG_CORE_INFO("material vert count: {}", material->getVertexCount());
         }
 
         renderPass.end();

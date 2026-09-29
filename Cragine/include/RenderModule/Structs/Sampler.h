@@ -1,25 +1,6 @@
 #pragma once
 
 #include <webgpu/webgpu.hpp>
-#include "Ecs/Handle.h"
-
-namespace crg {
-
-    namespace renderer {
-        struct Sampler;
-    }
-
-
-    template<>
-    struct Handle<renderer::Sampler> {
-        size_t id = -1;
-    };
-
-    template<typename T> struct is_sampler : std::false_type {};
-    template<> struct is_sampler<Handle<renderer::Sampler>> : std::true_type {};
-
-
-}
 
 namespace crg::renderer {
 
@@ -60,6 +41,26 @@ namespace crg::renderer {
 
         wgpu::ShaderStage getStageVisibility() {
             return m_shaderStage;
+        }
+
+        void bindLayoutEntry(std::vector<WGPUBindGroupLayoutEntry>& entries) {
+            entries.emplace_back(WGPUBindGroupLayoutEntry {
+                .nextInChain = nullptr,
+                .binding = (uint32_t) entries.size(),
+                .visibility = m_shaderStage,
+                .sampler = m_bindingLayout
+            });
+        }
+
+
+        void bindEntry(std::vector<WGPUBindGroupEntry>& entries) {
+
+            entries.emplace_back(WGPUBindGroupEntry{
+                .nextInChain = nullptr,
+                .binding = (uint32_t)entries.size(),
+                .sampler = m_sampler,
+            });
+
         }
 
     private:

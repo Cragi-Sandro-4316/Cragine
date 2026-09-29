@@ -1,9 +1,12 @@
 #pragma once
+
+#include "Window.h"
+#include "Ecs/Ecs.h"
+#include "RenderModule/Handles.h"
+#include "RenderModule/Components/Camera.h"
 #include "RenderModule/GpuResourceManager.h"
-#include "RenderModule/RenderContext.h"
-#include "RenderModule/Structs/GpuResource.h"
 #include "RenderModule/Structs/MeshCollection.h"
-#include "RenderModule/Structs/TextureAtlas.h"
+
 
 namespace crg::renderer {
 
@@ -13,9 +16,13 @@ namespace crg::renderer {
         GpuInterface(Window* window) :
         m_renderContext(window) {}
 
+        GpuResource::Type getHandleType(Handle<GpuResource> handle) {
+            return m_resourceManager.getType(handle);
+        }
+
         template<typename T>
         Handle<GpuResource> newBuffer (
-            size_t size,
+            size_t size = 1,
             BufferType bufferType = BufferType::Storage
         ) {
             return m_resourceManager.newBuffer<T>(m_renderContext, size, bufferType);
@@ -25,6 +32,20 @@ namespace crg::renderer {
             return m_resourceManager.getBuffer(handle);
         }
 
+        Handle<GpuResource> newCamera(
+            Camera& cameraData,
+            Entity& entity
+        ) {
+            return m_resourceManager.newCamera(
+                m_renderContext,
+                cameraData,
+                entity
+            );
+        }
+
+        CameraBuffer& getCamera(Handle<GpuResource> handle) {
+            return m_resourceManager.getCamera(handle);
+        }
 
         Handle<GpuResource> newAtlas (
             size_t pageCount

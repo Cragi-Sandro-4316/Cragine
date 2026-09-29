@@ -1,71 +1,48 @@
 #pragma once
-#include "RenderModule/GpuInterface.h"
+
 #include "RenderModule/Structs/Material.h"
-#include "RenderModule/Structs/MaterialUpdate.h"
-#include <unordered_map>
+#include <typeindex>
 
 namespace crg::renderer {
 
-    class GpuResourceManager;
-
-    using MaterialID = size_t;
+    class GpuInterface;
 
     class MaterialManager {
     public:
 
-        Handle<Material> newMaterial(
-            const std::filesystem::path& path,
-            std::initializer_list<Handle<GpuResource>> res,
-            GpuInterface& gpuInterface,
-            MaterialUpdate::FuncType updateFunc = nullptr
+        template<typename MaterialDef>
+        void newMaterial(
+            const std::filesystem::path path,
+            RenderContext& renderContext,
+            MaterialDef def
         ) {
-
-            Handle<Material> handle {
-                .id = m_nextID++
-            };
-
             m_materials.emplace(
-                handle.id,
-                Material(
+                std::type_index(typeid(MaterialDef)),
+                std::make_unique<Material<MaterialDef>>(
                     path,
-                    res,
-                    gpuInterface
+                    renderContext,
+                    def
                 )
             );
-
-            if (updateFunc) {
-                m_updates.emplace_back(
-                    handle,
-                    updateFunc
-                );
-            }
-
-            return handle;
         }
 
-        Material& getMaterial(Handle<Material> handle) {
-            return m_materials.at(handle.id);
+        template<typename MaterialDef>
+        Material<MaterialDef>& getMaterial() {
+            return *static_cast<Material<MaterialDef>*>(m_materials.at(typeid(MaterialDef)));
         }
 
-        std::unordered_map<MaterialID, Material>& getMaterials() {
+        std::unordered_map<
+            std::type_index,
+            std::unique_ptr<IMaterial>
+        >& getMaterials() {
             return m_materials;
         }
 
-        void runUpdates(GpuResourceManager& resManager) {
-            for (auto& update : m_updates) {
-                update.update(
-                    m_materials.at(update.material.id),
-                    resManager
-                );
-            }
-        }
-
     private:
-
-        MaterialID m_nextID = 0;
-
-        std::unordered_map<MaterialID, Material> m_materials;
-        std::vector<MaterialUpdate> m_updates;
+        std::unordered_map<
+            std::type_index,
+            std::unique_ptr<IMaterial>
+        > m_materials;
     };
 
 

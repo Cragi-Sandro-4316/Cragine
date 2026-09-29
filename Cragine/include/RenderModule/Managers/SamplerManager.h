@@ -1,5 +1,6 @@
 #pragma once
 
+#include "RenderModule/Handles.h"
 #include "RenderModule/Structs/Sampler.h"
 #include "utils/Logger.h"
 

@@ -15,8 +15,7 @@ namespace crg {
             app.addResource<renderer::MaterialManager>();
             app.addResource<renderer::BindGroupManager>();
 
-            app.addSystem(Startup, renderer::setup);
-            app.addSystem(ecs::Schedule::Update, renderer::runMaterialUpdates);
+            app.addSystem(Startup, renderer::spawnExample);
             app.addSystem(ecs::Schedule::Update, renderer::render);
         }
     };

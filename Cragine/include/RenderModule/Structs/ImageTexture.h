@@ -1,30 +1,13 @@
 #pragma once
-
-#include "utils/Logger.h"
 #include <cstdint>
 #include <filesystem>
 #include <glm/glm.hpp>
 #include <webgpu/webgpu.hpp>
 #include <stb_image.h>
-#include "Ecs/Handle.h"
+
+#include "utils/Logger.h"
 
 using namespace glm;
-
-namespace crg {
-    namespace renderer {
-        struct ImageTexture;
-    }
-
-    template<>
-    struct Handle<renderer::ImageTexture> {
-        size_t id = -1;
-    };
-
-    template<typename T> struct is_texture : std::false_type {};
-    template<> struct is_texture<Handle<renderer::ImageTexture>> : std::true_type {};
-
-}
-
 
 namespace crg::renderer {
 
@@ -106,7 +89,25 @@ namespace crg::renderer {
             queue.writeTexture(destination, pixelData, 4 * m_size.width * m_size.height, source, m_size);
         }
 
+        void bindLayoutEntry(std::vector<WGPUBindGroupLayoutEntry>& entries) {
+            entries.emplace_back(WGPUBindGroupLayoutEntry {
+                .nextInChain = nullptr,
+                .binding = (uint32_t) entries.size(),
+                .visibility = m_shaderStage,
+                .texture = m_bindingLayout
+            });
+        }
 
+        void bindEntry(std::vector<WGPUBindGroupEntry>& entries) {
+
+            entries.emplace_back(WGPUBindGroupEntry{
+                .nextInChain = nullptr,
+                .binding = (uint32_t)entries.size(),
+                .offset = 0,
+                .textureView = m_textureView,
+            });
+
+        }
 
     private:
         wgpu::Texture m_texture;

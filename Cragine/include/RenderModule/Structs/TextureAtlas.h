@@ -1,34 +1,16 @@
 #pragma once
 
-#include "Ecs/Handle.h"
-#include "RenderModule/Structs/Buffer.h"
-#include "utils/Logger.h"
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <glm/glm.hpp>
 #include <webgpu/webgpu.hpp>
 
+#include "RenderModule/Structs/Buffer.h"
+#include "RenderModule/Handles.h"
+
 using namespace glm;
 
-namespace crg {
-    namespace renderer {
-        struct TextureAtlas;
-        struct AtlasEntry;
-    }
-
-    template<>
-    struct Handle<renderer::AtlasEntry> {
-        size_t id;
-    };
-
-    template<>
-    struct Handle<renderer::TextureAtlas> {
-        size_t id = -1;
-    };
-
-    template<typename T> struct is_atlas : std::false_type {};
-    template<> struct is_atlas<Handle<renderer::TextureAtlas>> : std::true_type {};
-}
 
 namespace crg::renderer {
 
@@ -40,7 +22,6 @@ namespace crg::renderer {
         float32_t pageHeight;
         uint32_t width;
         uint32_t height;
-
     };
 
 
@@ -240,6 +221,58 @@ namespace crg::renderer {
                     view[i].height
                 );
             }
+
+        }
+
+        void bindLayoutEntry(std::vector<WGPUBindGroupLayoutEntry>& entries) {
+
+            entries.emplace_back(WGPUBindGroupLayoutEntry {
+                .nextInChain = nullptr,
+                .binding = (uint32_t) entries.size(),
+                .visibility = m_shaderStage,
+                .texture = m_bindingLayout
+            });
+
+            entries.emplace_back(WGPUBindGroupLayoutEntry {
+                .nextInChain = nullptr,
+                .binding = (uint32_t) entries.size(),
+                .visibility = m_entries.getStageVisibility(),
+                .buffer = m_entries.getBindingLayout()
+            });
+
+            entries.emplace_back(WGPUBindGroupLayoutEntry {
+                .nextInChain = nullptr,
+                .binding = (uint32_t) entries.size(),
+                .visibility = m_pagesPerRowBuffer.getStageVisibility(),
+                .buffer = m_pagesPerRowBuffer.getBindingLayout()
+            });
+        }
+
+
+        void bindEntry(std::vector<WGPUBindGroupEntry>& entries) {
+
+            entries.emplace_back(WGPUBindGroupEntry{
+                .nextInChain = nullptr,
+                .binding = (uint32_t)entries.size(),
+                .offset = 0,
+                .textureView = m_atlasView,
+            });
+
+            entries.emplace_back(WGPUBindGroupEntry{
+                .nextInChain = nullptr,
+                .binding = (uint32_t)entries.size(),
+                .buffer = m_entries.getRawHandle(),
+                .offset = 0,
+                .size = m_entries.getByteSize()
+            });
+
+            entries.emplace_back(WGPUBindGroupEntry{
+                .nextInChain = nullptr,
+                .binding = (uint32_t)entries.size(),
+                .buffer = m_pagesPerRowBuffer.getRawHandle(),
+                .offset = 0,
+                .size = m_pagesPerRowBuffer.getByteSize()
+            });
 
         }
 

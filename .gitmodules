@@ -16,3 +16,6 @@
 [submodule "Cragine/deps/glm"]
 	path = Cragine/deps/glm
 	url = https://github.com/g-truc/glm.git
+[submodule "Cragine/deps/Boost/pfr"]
+	path = Cragine/deps/Boost/pfr
+	url = https://github.com/boostorg/pfr.git

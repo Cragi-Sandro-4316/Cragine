@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstddef>
-#include "../Handle.h"
 #include "spdlog/fmt/bundled/base.h"
 
 namespace crg::ecs {
@@ -10,17 +9,9 @@ namespace crg::ecs {
     using EntityGeneration = size_t;
 
     struct Entity {
-        size_t id;
-        size_t generation;
+        EntityId id;
+        EntityGeneration generation;
     };
-
-
-
-    // template<>
-    // struct Handle<Entity> {
-    //     Entity entity;
-
-    // };
 
 }
 

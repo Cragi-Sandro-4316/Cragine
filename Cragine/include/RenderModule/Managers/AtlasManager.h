@@ -1,7 +1,8 @@
 #pragma once
-#include "RenderModule/RenderContext.h"
+
+#include "RenderModule/Handles.h"
 #include "RenderModule/Structs/TextureAtlas.h"
-#include <webgpu/webgpu.hpp>
+#include "RenderModule/RenderContext.h"
 
 namespace crg::renderer {
 
@@ -26,11 +27,12 @@ namespace crg::renderer {
             RenderContext& renderContext
         ) {
             auto& atlas = m_atlases.at(handle.id);
-            return atlas.pushTexture(
+            auto entry = atlas.pushTexture(
                 path,
                 renderContext.queue,
                 0
             );
+            return entry;
         }
 
     private:

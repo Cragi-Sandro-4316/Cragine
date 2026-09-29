@@ -1,20 +1,16 @@
 #pragma once
 
+#include <cstddef>
+
+#include "Ecs/Ecs.h"
 #include "RenderModule/RenderContext.h"
-#include "RenderModule/Structs/Buffer.h"
 #include "RenderModule/Structs/GpuResource.h"
 #include "RenderModule/Managers/AtlasManager.h"
 #include "RenderModule/Managers/BufferManager.h"
+#include "RenderModule/Managers/CameraManager.h"
 #include "RenderModule/Managers/MeshManager.h"
 #include "RenderModule/Managers/SamplerManager.h"
 #include "RenderModule/Managers/TextureManager.h"
-#include "RenderModule/Structs/ImageTexture.h"
-#include "RenderModule/Structs/MeshCollection.h"
-#include "RenderModule/Structs/TextureAtlas.h"
-#include "utils/Assert.h"
-#include <unordered_map>
-#include <webgpu.h>
-#include <webgpu/webgpu.hpp>
 
 namespace crg::renderer {
 
@@ -29,6 +25,39 @@ namespace crg::renderer {
 
         GpuResource& getResource(Handle<GpuResource> handle) {
             return m_resources.at(handle.id);
+        }
+
+        Handle<GpuResource> newCamera (
+            RenderContext& renderContext,
+            Camera& cameraData,
+            Entity entity
+        ) {
+            Handle<GpuResource> handle{
+                .id = m_nextID++
+            };
+
+            m_resources.emplace(
+                handle.id,
+                GpuResource {
+                    .type = GpuResource::Type::Camera,
+                    .camera = m_cameraManager.newCamera(
+                        renderContext.device,
+                        renderContext.queue,
+                        cameraData,
+                        entity
+                    )
+                }
+            );
+
+            return handle;
+        }
+
+        CameraBuffer& getCamera(Handle<GpuResource> handle) {
+            GpuResource camera = m_resources.at(handle.id);
+
+            ASSERT(camera.type == GpuResource::Type::Camera, "Camera fetch: Given handle was not camera handle.", 0);
+
+            return m_cameraManager.getCamera(camera.camera);
         }
 
         template<typename T>
@@ -241,6 +270,18 @@ namespace crg::renderer {
                     });
                 }
                 break;
+                case GpuResource::Type::Camera: {
+                    CameraBuffer& camera = m_cameraManager.getCamera(resource.camera);
+
+                    entries.emplace_back(WGPUBindGroupEntry {
+                        .nextInChain = nullptr,
+                        .binding = (uint32_t) entries.size(),
+                        .buffer = camera.get().getRawHandle(),
+                        .offset = 0,
+                        .size = camera.get().getByteSize()
+                    });
+                }
+                break;
                 case GpuResource::Type::MeshCollection: {
                     MeshCollection& meshCollection = m_meshManager.getCollection(resource.meshCollection);
 
@@ -336,6 +377,17 @@ namespace crg::renderer {
                     });
                 }
                 break;
+                case GpuResource::Type::Camera: {
+                    CameraBuffer& camera = m_cameraManager.getCamera(resource.camera);
+
+                    entries.emplace_back(WGPUBindGroupLayoutEntry {
+                        .nextInChain = nullptr,
+                        .binding = (uint32_t) entries.size(),
+                        .visibility = camera.get().getStageVisibility(),
+                        .buffer = camera.get().getBindingLayout()
+                    });
+                }
+                break;
                 case GpuResource::Type::MeshCollection: {
                     MeshCollection& meshCollection = m_meshManager.getCollection(resource.meshCollection);
 
@@ -398,6 +450,8 @@ namespace crg::renderer {
         MeshManager m_meshManager;
         SamplerManager m_samplerManager;
         TextureManager m_textureManager;
+
+        CameraManager m_cameraManager;
     };
 
 }

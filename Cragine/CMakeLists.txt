@@ -24,6 +24,7 @@ target_include_directories(
     Cragine
     PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/deps/boost/pfr/include
     ${CMAKE_CURRENT_SOURCE_DIR}/deps/spdlog/include
     ${CMAKE_CURRENT_SOURCE_DIR}/deps/vma/include
     ${CMAKE_CURRENT_SOURCE_DIR}/deps/imgui
@@ -41,9 +42,6 @@ TARGET_COMPILE_DEFINITIONS(
     PUBLIC GLFW_EXPOSE_NATIVE_WAYLAND
     GLFW_INCLUDE_NONE
 )
-
-
-
 
 # Link glfw to your Engine library
 target_link_libraries(

@@ -1,7 +1,7 @@
 #pragma once
 
+#include "RenderModule/Handles.h"
 #include "RenderModule/Structs/ImageTexture.h"
-#include "utils/Logger.h"
 
 namespace crg::renderer {
 

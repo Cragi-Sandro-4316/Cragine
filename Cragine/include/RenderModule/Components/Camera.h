@@ -11,7 +11,6 @@ using namespace glm;
 
 namespace crg {
 
-
     struct CameraUniform {
         mat4 projectionMatrix{1.f};
     };
