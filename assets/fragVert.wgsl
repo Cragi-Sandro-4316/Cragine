@@ -1,15 +1,18 @@
-struct Vertex {
+struct VertexData {
     position: vec3f,
     color: vec3f,
     normal: vec3f,
     uv: vec2f
 };
 
-const CHUNK_VERTEX_COUNT: u32 = 501;
-const ATLAS_PAGE_SIZE: f32 = 128;
+const CLUSTER_VERTEX_COUNT: u32 = 501;
 
-struct MeshChunk {
-    vertexData: array<Vertex, CHUNK_VERTEX_COUNT>,
+const MAX_CLUSTER_COUNT: u32 = 2048;
+const MAX_INSTANCE_COUNT: u32 = 65535;
+const MAX_CLUSTER_INSTANCE_MAP: u32 = 512000;
+
+struct VertexCluster {
+    vertexData: array<VertexData, CLUSTER_VERTEX_COUNT>,
     textureIndex: u32
 };
 
@@ -17,14 +20,24 @@ struct InstanceData {
     modelMatrix: mat4x4f
 };
 
-struct ChunkMap {
-    chunk: u32,
+struct ClusterInstance {
+    cluster: u32,
     instance: u32
 };
+
+struct MeshCollection {
+     clusters: array<VertexCluster, MAX_CLUSTER_COUNT>,
+     instances: array<InstanceData, MAX_INSTANCE_COUNT>,
+     clusterInstances: array<ClusterInstance, MAX_CLUSTER_INSTANCE_MAP>
+};
+
 
 struct Camera {
     projectionMatrix: mat4x4f
 };
+
+const ATLAS_PAGE_SIZE: f32 = 128;
+const ATLAS_PAGE_LENGTH: f32 = 8;
 
 struct AtlasEntry {
     firstPageIdx: u32,
@@ -34,18 +47,19 @@ struct AtlasEntry {
     height: u32
 };
 
-@group(0) @binding(0) var<storage, read_write> chunk_buffer: array<MeshChunk>;
-@group(0) @binding(1) var<storage, read_write> instance_buffer: array<InstanceData>;
-@group(0) @binding(2) var<storage, read_write> map_buffer: array<ChunkMap>;
+struct AtlasMetadata {
+    pageLenght: u32,
+    entries: array<AtlasEntry, u32(ATLAS_PAGE_LENGTH * ATLAS_PAGE_LENGTH)>
+};
 
-@group(0) @binding(3) var<uniform> camera: Camera;
+@group(0) @binding(0) var<storage, read_write> mesh_collection: MeshCollection;
 
-@group(0) @binding(4) var texture_sampler: sampler;
+@group(0) @binding(1) var<uniform> camera: Camera;
 
-@group(0) @binding(5) var texture: texture_2d<f32>;
-@group(0) @binding(6) var<storage, read_write> atlas_entries: array<AtlasEntry>;
-@group(0) @binding(7) var<storage, read_write> atlas_page_count: u32;
+@group(0) @binding(2) var texture_sampler: sampler;
 
+@group(0) @binding(3) var<storage, read_write> atlas_metadata: AtlasMetadata;
+@group(0) @binding(4) var texture: texture_2d<f32>;
 
 struct VertexOutput {
     @builtin(position) position: vec4f,
@@ -57,23 +71,23 @@ struct VertexOutput {
 @vertex
 fn vs_main(@builtin(vertex_index) index: u32) -> VertexOutput {
 
-    var mapIndex = u32(index / CHUNK_VERTEX_COUNT);
+    var mapIndex = u32(index / CLUSTER_VERTEX_COUNT);
 
-    var chunkIndex = map_buffer[mapIndex].chunk;
+    var chunkIndex = mesh_collection.clusterInstances[mapIndex].cluster;
 
-    var instanceIndex = map_buffer[mapIndex].instance;
+    var instanceIndex = mesh_collection.clusterInstances[mapIndex].instance;
 
-    var vertIdx = index % CHUNK_VERTEX_COUNT;
+    var vertIdx = index % CLUSTER_VERTEX_COUNT;
 
-    var vertex = chunk_buffer[chunkIndex].vertexData[vertIdx];
+    var vertex = mesh_collection.clusters[chunkIndex].vertexData[vertIdx];
 
-    var instance = instance_buffer[instanceIndex];
+    var instance = mesh_collection.instances[instanceIndex];
 
     var out: VertexOutput;
     out.position = camera.projectionMatrix * instance.modelMatrix * vec4f(vertex.position, 1);
     out.color = vec4f(vertex.color, 1);
     out.uv = vertex.uv;
-    out.textureID = chunk_buffer[chunkIndex].textureIndex;
+    out.textureID = mesh_collection.clusters[chunkIndex].textureIndex;
 
     return out;
 }
@@ -82,14 +96,14 @@ fn vs_main(@builtin(vertex_index) index: u32) -> VertexOutput {
 fn fs_main(in: VertexOutput) -> @location(0) vec4f {
 
     let textureID = in.textureID;
-    let totalAtlasWidth = f32(atlas_page_count) * ATLAS_PAGE_SIZE;
+    let totalAtlasWidth = f32(atlas_metadata.pageLenght) * ATLAS_PAGE_SIZE;
 
-    let firstPage = atlas_entries[textureID].firstPageIdx;
-    let pageWidth = atlas_entries[textureID].pageWidth;
-    let pageHeight = atlas_entries[textureID].pageHeight;
+    let firstPage = atlas_metadata.entries[textureID].firstPageIdx;
+    let pageWidth = atlas_metadata.entries[textureID].pageWidth;
+    let pageHeight = atlas_metadata.entries[textureID].pageHeight;
 
-    let width = atlas_entries[textureID].width;
-    let height = atlas_entries[textureID].height;
+    let width = atlas_metadata.entries[textureID].width;
+    let height = atlas_metadata.entries[textureID].height;
 
     let textureCoord = in.uv * vec2f(
         f32(width),
@@ -107,11 +121,11 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4f {
     let absolutePage = firstPage + uvLinearPage;
 
     let uv = vec2f(
-        f32(f32(absolutePage % atlas_page_count) * ATLAS_PAGE_SIZE) + coordXInPage,
-        f32(absolutePage / atlas_page_count * u32(ATLAS_PAGE_SIZE)) + coordYInPage
+        f32(f32(absolutePage % atlas_metadata.pageLenght) * ATLAS_PAGE_SIZE) + coordXInPage,
+        f32(absolutePage / atlas_metadata.pageLenght * u32(ATLAS_PAGE_SIZE)) + coordYInPage
     );
 
-    let color = textureSample(texture, texture_sampler, uv / (ATLAS_PAGE_SIZE * f32(atlas_page_count))).rgb;
+    let color = textureSample(texture, texture_sampler, uv / (ATLAS_PAGE_SIZE * f32(atlas_metadata.pageLenght))).rgb;
 
     let corrected_color = pow(color, vec3f(2.2));
 

@@ -6,8 +6,11 @@
 #include <glm/glm.hpp>
 #include <webgpu/webgpu.hpp>
 
+#include "Ecs/Handle.h"
+
+#include "RenderModule/RenderContext.h"
 #include "RenderModule/Structs/Buffer.h"
-#include "RenderModule/Handles.h"
+#include "RenderModule/Structs/BufferView.h"
 
 using namespace glm;
 
@@ -15,6 +18,7 @@ using namespace glm;
 namespace crg::renderer {
 
     const size_t ATLAS_PAGE_SIZE = 128;
+    const size_t ATLAS_PAGE_LENGTH = 8;
 
     struct AtlasEntry {
         uint32_t firstPageIdx;
@@ -24,86 +28,74 @@ namespace crg::renderer {
         uint32_t height;
     };
 
+    struct AtlasMetadata {
+        uint32_t pageLenght;
+        AtlasEntry entries[ATLAS_PAGE_LENGTH * ATLAS_PAGE_LENGTH];
+    };
 
     class TextureAtlas {
     public:
 
+        static constexpr WGPUTextureBindingLayout bindingLayout = {
+            .nextInChain = nullptr,
+            .sampleType = wgpu::TextureSampleType::Float,
+            .viewDimension = wgpu::TextureViewDimension::_2D,
+            .multisampled = false
+        };
+
+        static constexpr wgpu::BufferBindingType bufferBindingType = wgpu::BufferBindingType::Storage;
+        using BufferType = AtlasMetadata;
+
 
         TextureAtlas(
-            size_t pageCount,
-            wgpu::Device& device,
-            wgpu::Queue& queue
+            RenderContext& renderContext
         ) :
-        m_pageCapacity(pageCount * pageCount),
-        m_pagesPerRow(pageCount),
-        m_entries(
-            pageCount * pageCount,
-            BUFFER_TYPE(AtlasEntry),
-            device,
-            queue,
+        m_metadata(
+            renderContext,
             wgpu::BufferUsage::Storage  |
             wgpu::BufferUsage::MapRead  |
             wgpu::BufferUsage::MapWrite |
-            wgpu::BufferUsage::CopyDst,
-            wgpu::BufferBindingType::Storage,
-            BufferType::Storage,
-            wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment
-        ),
-        m_pagesPerRowBuffer(
-            1,
-            BUFFER_TYPE(uint32_t),
-            device,
-            queue,
-            wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Storage,
-            wgpu::BufferBindingType::Storage,
-            BufferType::Storage,
-            wgpu::ShaderStage::Fragment
-        )  {
+            wgpu::BufferUsage::CopyDst
+        ) {
 
-            m_atlasDesc = wgpu::TextureDescriptor{};
-            m_atlasDesc.dimension = wgpu::TextureDimension::_2D;
-            m_atlasDesc.size = { (uint32_t) (m_pagesPerRow * ATLAS_PAGE_SIZE), (uint32_t) (m_pagesPerRow * ATLAS_PAGE_SIZE), 1 };
-            m_atlasDesc.mipLevelCount = 1;
-            m_atlasDesc.sampleCount = 1;
-            m_atlasDesc.format = wgpu::TextureFormat::RGBA8Unorm;
-            m_atlasDesc.usage = wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::CopyDst;
-            m_atlasDesc.viewFormatCount = 0;
-            m_atlasDesc.viewFormats = nullptr;
+            wgpu::TextureDescriptor atlasDesc{};
+            atlasDesc.dimension = wgpu::TextureDimension::_2D;
+            atlasDesc.size = { (uint32_t) (m_pageLength * ATLAS_PAGE_SIZE), (uint32_t) (m_pageLength * ATLAS_PAGE_SIZE), 1 };
+            atlasDesc.mipLevelCount = 1;
+            atlasDesc.sampleCount = 1;
+            atlasDesc.format = wgpu::TextureFormat::RGBA8Unorm;
+            atlasDesc.usage = wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::CopyDst;
+            atlasDesc.viewFormatCount = 0;
+            atlasDesc.viewFormats = nullptr;
 
-            m_size = m_atlasDesc.size;
+            m_size = atlasDesc.size;
 
-            m_atlas = device.createTexture(m_atlasDesc);
-
-            m_bindingLayout = wgpu::TextureBindingLayout{};
-            m_bindingLayout.nextInChain = nullptr;
-            m_bindingLayout.multisampled = false;
-            m_bindingLayout.sampleType = wgpu::TextureSampleType::Float;
-            m_bindingLayout.viewDimension = wgpu::TextureViewDimension::_2D;
+            m_atlas = renderContext.device.createTexture(atlasDesc);
 
             wgpu::TextureViewDescriptor atlasViewDesc{};
             atlasViewDesc.aspect = wgpu::TextureAspect::All;
             atlasViewDesc.baseArrayLayer = 0;
             atlasViewDesc.arrayLayerCount = 1;
             atlasViewDesc.baseMipLevel = 0;
-            atlasViewDesc.mipLevelCount = m_atlasDesc.mipLevelCount;
+            atlasViewDesc.mipLevelCount = atlasDesc.mipLevelCount;
             atlasViewDesc.dimension = wgpu::TextureViewDimension::_2D;
-            atlasViewDesc.format = m_atlasDesc.format;
+            atlasViewDesc.format = atlasDesc.format;
 
             m_atlasView = m_atlas.createView(atlasViewDesc);
 
-            m_shaderStage = wgpu::ShaderStage::Fragment;
-
-            uint32_t rowCount = m_pagesPerRow;
-
-            m_pagesPerRowBuffer.write(rowCount);
+            BufferView<AtlasMetadata> view = m_metadata.getBufferView();
+            view.get()->pageLenght = m_pageLength;
         }
 
 
         Handle<AtlasEntry> pushTexture(
-            std::filesystem::path& path,
+            std::filesystem::path path,
             wgpu::Queue& queue,
             uint32_t mipLevelCount
         ) {
+            BufferView<AtlasMetadata> view = m_metadata.getBufferView();
+            AtlasMetadata* metadata = view.get();
+
             int textureWidth, textureHeight, channels;
             unsigned char* pixelData = loadTextureData(textureWidth, textureHeight, channels, path);
 
@@ -132,7 +124,7 @@ namespace crg::renderer {
                 .height = (uint32_t)textureHeight
             };
 
-            m_entries.write(entry, m_entryCount);
+            metadata->entries[m_entryCount] = entry;
 
             for (size_t pageY = 0; pageY < pageCountY; pageY++) {
                 for (size_t pageX = 0; pageX < pageCountX; pageX++) {
@@ -143,13 +135,10 @@ namespace crg::renderer {
                     size_t pageWidth = std::min(ATLAS_PAGE_SIZE, textureWidth - srcX);
                     size_t pageHeight = std::min(ATLAS_PAGE_SIZE, textureHeight - srcY);
 
-
-                    uint32_t dstX = (m_pageCount % m_pagesPerRow) * ATLAS_PAGE_SIZE;
-                    uint32_t dstY = (m_pageCount / m_pagesPerRow) * ATLAS_PAGE_SIZE;
-
+                    uint32_t dstX = (m_pageCount % m_pageLength) * ATLAS_PAGE_SIZE;
+                    uint32_t dstY = (m_pageCount / m_pageLength) * ATLAS_PAGE_SIZE;
 
                     const uint8_t* pageData = pixelData + (srcY * textureWidth + srcX) * channels;
-
 
                     wgpu::TexelCopyTextureInfo destination;
                     destination.texture = m_atlas;
@@ -184,123 +173,28 @@ namespace crg::renderer {
             };
         }
 
-
-        wgpu::Texture getAtlas() {
-            return m_atlas;
-        }
-
         wgpu::TextureView getView() {
             return m_atlasView;
         }
 
-        wgpu::TextureBindingLayout getBindingLayout() {
-            return m_bindingLayout;
+        auto& getBuffer() {
+            return m_metadata;
         }
-
-        wgpu::ShaderStage getStageVisibility() {
-            return m_shaderStage;
-        }
-
-        Buffer& getBuffer() {
-            return m_entries;
-        }
-
-        Buffer& getPagesPerRowBuffer() {
-            return m_pagesPerRowBuffer;
-        }
-
-
-        void printBuffer() {
-            BufferView<AtlasEntry> view = m_entries.getBufferView<AtlasEntry>();
-
-            for (int i = 0; i < m_entryCount; i++) {
-                LOG_CORE_INFO("entries[{}]: [first page: {}, page width: {}, page height: {}]",
-                    i,
-                    view[i].firstPageIdx,
-                    view[i].width,
-                    view[i].height
-                );
-            }
-
-        }
-
-        void bindLayoutEntry(std::vector<WGPUBindGroupLayoutEntry>& entries) {
-
-            entries.emplace_back(WGPUBindGroupLayoutEntry {
-                .nextInChain = nullptr,
-                .binding = (uint32_t) entries.size(),
-                .visibility = m_shaderStage,
-                .texture = m_bindingLayout
-            });
-
-            entries.emplace_back(WGPUBindGroupLayoutEntry {
-                .nextInChain = nullptr,
-                .binding = (uint32_t) entries.size(),
-                .visibility = m_entries.getStageVisibility(),
-                .buffer = m_entries.getBindingLayout()
-            });
-
-            entries.emplace_back(WGPUBindGroupLayoutEntry {
-                .nextInChain = nullptr,
-                .binding = (uint32_t) entries.size(),
-                .visibility = m_pagesPerRowBuffer.getStageVisibility(),
-                .buffer = m_pagesPerRowBuffer.getBindingLayout()
-            });
-        }
-
-
-        void bindEntry(std::vector<WGPUBindGroupEntry>& entries) {
-
-            entries.emplace_back(WGPUBindGroupEntry{
-                .nextInChain = nullptr,
-                .binding = (uint32_t)entries.size(),
-                .offset = 0,
-                .textureView = m_atlasView,
-            });
-
-            entries.emplace_back(WGPUBindGroupEntry{
-                .nextInChain = nullptr,
-                .binding = (uint32_t)entries.size(),
-                .buffer = m_entries.getRawHandle(),
-                .offset = 0,
-                .size = m_entries.getByteSize()
-            });
-
-            entries.emplace_back(WGPUBindGroupEntry{
-                .nextInChain = nullptr,
-                .binding = (uint32_t)entries.size(),
-                .buffer = m_pagesPerRowBuffer.getRawHandle(),
-                .offset = 0,
-                .size = m_pagesPerRowBuffer.getByteSize()
-            });
-
-        }
-
     private:
 
-        Buffer m_entries;
+        Buffer<wgpu::BufferBindingType::Storage, AtlasMetadata> m_metadata;
         size_t m_entryCount = 0;
-
-        const size_t m_pageCapacity;
-
-        const size_t m_pagesPerRow;
-
-        Buffer m_pagesPerRowBuffer;
-
         uint32_t m_pageCount = 0;
+
+        const size_t m_pageCapacity = ATLAS_PAGE_LENGTH * ATLAS_PAGE_LENGTH;
+
+        const size_t m_pageLength = ATLAS_PAGE_LENGTH;
 
         wgpu::Texture m_atlas;
 
         wgpu::TextureView m_atlasView;
 
-        wgpu::TextureDescriptor m_atlasDesc;
-
-        wgpu::TextureBindingLayout m_bindingLayout;
-
-        wgpu::ShaderStage m_shaderStage;
-
         wgpu::Extent3D m_size;
-
 
         unsigned char* loadTextureData(int& width, int& height, int& channels, std::filesystem::path& path);
     };

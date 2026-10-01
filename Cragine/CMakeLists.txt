@@ -24,7 +24,7 @@ target_include_directories(
     Cragine
     PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/deps/boost/pfr/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/deps/Boost/pfr/include
     ${CMAKE_CURRENT_SOURCE_DIR}/deps/spdlog/include
     ${CMAKE_CURRENT_SOURCE_DIR}/deps/vma/include
     ${CMAKE_CURRENT_SOURCE_DIR}/deps/imgui

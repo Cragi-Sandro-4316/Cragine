@@ -1,6 +1,10 @@
 #pragma once
 
+#include <cstddef>
+
 namespace crg {
     template<typename T>
-    struct Handle;
+    struct Handle {
+        size_t id;
+    };
 }

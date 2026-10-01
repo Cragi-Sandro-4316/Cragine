@@ -14,6 +14,13 @@ namespace crg::renderer {
     class ImageTexture {
     public:
 
+        static constexpr WGPUTextureBindingLayout bindingLayout = WGPUTextureBindingLayout {
+            .nextInChain = nullptr,
+            .sampleType = wgpu::TextureSampleType::Float,
+            .viewDimension = wgpu::TextureViewDimension::_2D,
+            .multisampled = false
+        };
+
         ImageTexture(wgpu::Device& device, wgpu::Queue& queue, std::filesystem::path& path) :
         m_shaderStage(wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment) {
             int width;
@@ -39,12 +46,6 @@ namespace crg::renderer {
 
             writeTexture(queue, m_textureDesc.mipLevelCount, pixelData);
 
-            // m_bindingLayout = wgpu::TextureBindingLayout{};
-            // m_bindingLayout.nextInChain = nullptr;
-            // m_bindingLayout.multisampled = false;
-            // m_bindingLayout.sampleType = wgpu::TextureSampleType::Float;
-            // m_bindingLayout.viewDimension = wgpu::TextureViewDimension::_2D;
-
             wgpu::TextureViewDescriptor textureViewDesc{};
             textureViewDesc.aspect = wgpu::TextureAspect::All;
             textureViewDesc.baseArrayLayer = 0;
@@ -63,10 +64,6 @@ namespace crg::renderer {
 
         wgpu::TextureView getTextureView() {
             return m_textureView;
-        }
-
-        wgpu::TextureBindingLayout getBindingLayout() {
-            return m_bindingLayout;
         }
 
         wgpu::ShaderStage getStageVisibility() {
@@ -94,7 +91,7 @@ namespace crg::renderer {
                 .nextInChain = nullptr,
                 .binding = (uint32_t) entries.size(),
                 .visibility = m_shaderStage,
-                .texture = m_bindingLayout
+                .texture = bindingLayout
             });
         }
 
@@ -113,8 +110,6 @@ namespace crg::renderer {
         wgpu::Texture m_texture;
 
         wgpu::TextureDescriptor m_textureDesc;
-
-        wgpu::TextureBindingLayout m_bindingLayout;
 
         wgpu::ShaderStage m_shaderStage;
 

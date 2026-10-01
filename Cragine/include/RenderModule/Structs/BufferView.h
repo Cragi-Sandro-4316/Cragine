@@ -38,25 +38,6 @@ namespace crg::renderer {
             return m_data;
         }
 
-        // Inserts elements at the specified index
-        void insert(T* values, size_t index, size_t count = 1) {
-            std::memmove(
-                m_data + index + count,
-                m_data + index,
-                (m_size - index) * sizeof(T)
-            );
-
-            std::memcpy(m_data + index, values, count * sizeof(T));
-        }
-
-        void erase(size_t index, size_t count = 1) {
-            std::memmove(
-                m_data + index,
-                m_data + index + count,
-                (m_size - index - count) * sizeof(T)
-            );
-        }
-
     private:
         T* m_data;
         const size_t m_size;

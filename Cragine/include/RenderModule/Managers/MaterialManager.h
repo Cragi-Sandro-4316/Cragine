@@ -5,13 +5,11 @@
 
 namespace crg::renderer {
 
-    class GpuInterface;
-
     class MaterialManager {
     public:
 
         template<typename MaterialDef>
-        void newMaterial(
+        Material<MaterialDef>& newMaterial(
             const std::filesystem::path path,
             RenderContext& renderContext,
             MaterialDef def
@@ -24,6 +22,8 @@ namespace crg::renderer {
                     def
                 )
             );
+
+            return (Material<MaterialDef>&)*m_materials.at(typeid(MaterialDef));
         }
 
         template<typename MaterialDef>

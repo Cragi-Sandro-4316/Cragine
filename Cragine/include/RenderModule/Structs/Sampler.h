@@ -1,13 +1,14 @@
 #pragma once
 
 #include <webgpu/webgpu.hpp>
+#include "RenderModule/RenderContext.h"
 
 namespace crg::renderer {
 
     class Sampler {
     public:
 
-        Sampler(wgpu::Device& device, wgpu::Queue& queue) {
+        Sampler(RenderContext& renderContext) {
 
             wgpu::SamplerDescriptor samplerDesc;
             samplerDesc.addressModeU = wgpu::AddressMode::ClampToEdge;
@@ -21,14 +22,11 @@ namespace crg::renderer {
             samplerDesc.compare = wgpu::CompareFunction::Undefined;
             samplerDesc.maxAnisotropy = 1;
 
-            m_sampler = device.createSampler(samplerDesc);
-
+            m_sampler = renderContext.device.createSampler(samplerDesc);
 
             m_bindingLayout = wgpu::SamplerBindingLayout{};
             m_bindingLayout.nextInChain = nullptr;
             m_bindingLayout.type = wgpu::SamplerBindingType::Filtering;
-
-            m_shaderStage = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment;
         }
 
         wgpu::Sampler getRawHandle() {
@@ -38,20 +36,6 @@ namespace crg::renderer {
         wgpu::SamplerBindingLayout getBindingLayout() {
             return m_bindingLayout;
         }
-
-        wgpu::ShaderStage getStageVisibility() {
-            return m_shaderStage;
-        }
-
-        void bindLayoutEntry(std::vector<WGPUBindGroupLayoutEntry>& entries) {
-            entries.emplace_back(WGPUBindGroupLayoutEntry {
-                .nextInChain = nullptr,
-                .binding = (uint32_t) entries.size(),
-                .visibility = m_shaderStage,
-                .sampler = m_bindingLayout
-            });
-        }
-
 
         void bindEntry(std::vector<WGPUBindGroupEntry>& entries) {
 
@@ -68,10 +52,6 @@ namespace crg::renderer {
         wgpu::Sampler m_sampler;
 
         wgpu::SamplerBindingLayout m_bindingLayout;
-
-        wgpu::ShaderStage m_shaderStage;
-
-
     };
 
 
