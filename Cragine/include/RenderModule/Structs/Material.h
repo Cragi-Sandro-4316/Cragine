@@ -76,14 +76,12 @@ namespace crg::renderer {
                 .buffer = buffer
             });
 
-            LOG_CORE_TRACE("Added MeshCollection");
 
             boost::pfr::for_each_field(
                 m_materialDef,
                 [&](auto& field) {
                     using field_t = typename std::remove_cvref_t<decltype(field)>::Type;
 
-                    LOG_CORE_INFO("type name: {}", typeid(field_t).name());
                     constexpr bool meshCollection = !std::is_same_v<MeshCollection, field_t>;
                     ASSERT(meshCollection, "Material {} cannot have user-defined mesh collection", path.c_str());
 
@@ -269,7 +267,6 @@ namespace crg::renderer {
                     .offset = 0,
                     .size = sizeof(typename FieldType::Type)
                 });
-                LOG_CORE_TRACE("Bound buffer {} to material", field.handle.id);
             }
             else if constexpr (std::is_same_v<ImageTexture, FieldType>) {
                 auto texture = textureManager.get(field.handle);
@@ -280,7 +277,6 @@ namespace crg::renderer {
                     .offset = 0,
                     .textureView = texture.getTextureView(),
                 });
-                LOG_CORE_TRACE("Bound texture {} to material", field.handle.id);
             }
             else if constexpr (std::is_same_v<Sampler, FieldType>) {
                 auto sampler = samplerManager.get(field.handle);
@@ -290,7 +286,6 @@ namespace crg::renderer {
                     .binding = (uint32_t)entries.size(),
                     .sampler = sampler.getRawHandle(),
                 });
-                LOG_CORE_TRACE("Bound texture {} to material", field.handle.id);
             }
             else if constexpr (std::is_same_v<TextureAtlas, FieldType>) {
                 auto atlas = atlasManager.get(field.handle);
@@ -332,7 +327,6 @@ namespace crg::renderer {
                     .buffer = buffer
                 });
 
-                LOG_CORE_TRACE("Added Buffer");
             }
             else if constexpr (std::is_same_v<ImageTexture, FieldType>) {
 
@@ -343,7 +337,6 @@ namespace crg::renderer {
                     .texture = FieldType::bindingLayout
                 });
 
-                LOG_CORE_TRACE("Added Texture");
             }
             else if constexpr (std::is_same_v<Sampler, FieldType>) {
 
@@ -357,7 +350,6 @@ namespace crg::renderer {
                     }
                 });
 
-                LOG_CORE_TRACE("Added Sampler");
             }
             else if constexpr (std::is_same_v<TextureAtlas, FieldType>) {
                 layoutEntries.emplace_back(WGPUBindGroupLayoutEntry {

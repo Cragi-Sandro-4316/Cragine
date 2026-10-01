@@ -34,7 +34,7 @@ namespace crg::renderer {
     };
 
 
-    static void spawnExample(
+    static void startup(
         Commands commands,
         ResMut<RenderContext> rRenderContext,
         ResMut<MaterialManager> rMaterials,
@@ -48,20 +48,7 @@ namespace crg::renderer {
         auto& samplerManager =  rSamplerManager.get();
         auto& textureAtlasManager =  rTextureAtlasManager.get();
 
-        Camera cam{};
-        cam.setPerspectiveProjection(
-            50,
-            1,
-            0.1,
-            10
-        );
-
-        auto cameraEntity = commands.spawn(cam);
-
-        LOG_CORE_INFO("ent: {}", cameraEntity.id);
-
         std::filesystem::path p = "../assets/fragVert.wgsl";
-
 
         auto camera = bufferManager.add<wgpu::BufferBindingType::Uniform, CameraUniform>(
             renderContext,
@@ -70,8 +57,7 @@ namespace crg::renderer {
         auto sampler = samplerManager.add(renderContext);
         auto atlas = textureAtlasManager.add(renderContext);
 
-
-        auto mat = materials.newMaterial(
+        auto& mat = materials.newMaterial(
             p,
             renderContext,
             SampleMaterial {
@@ -81,14 +67,6 @@ namespace crg::renderer {
             }
         );
 
-        auto mesh = mat.m_meshCollection.loadMesh(
-            "../assets/cube.obj",
-            textureAtlasManager.get(atlas).pushTexture(
-                "../assets/emilia.gif",
-                renderContext.queue,
-                1
-            )
-        );
 
         Transform transform{};
         transform.translation.z = 2;
@@ -97,9 +75,17 @@ namespace crg::renderer {
         transform.rotate(-45, vec3(0, 1, 0));
         transform.rotate(-20, vec3(1, 0, 0));
 
-        mat.m_meshCollection.addInstance(
-            transform,
-            mesh
+        commands.spawn(
+            materials.getMaterial<SampleMaterial>().m_meshCollection.loadMesh(
+                "../assets/cube.obj",
+                textureAtlasManager.get(atlas).pushTexture(
+                    "../assets/emilia.png",
+                    renderContext.queue,
+                    1
+                )
+            ),
+            materials.getHandle<SampleMaterial>(),
+            transform
         );
 
         Camera cameraObj{};
@@ -111,6 +97,34 @@ namespace crg::renderer {
         );
 
         bufferManager.get(camera).write(cameraObj.getUniform());
+    }
+
+
+    static void spawnMeshes(
+        Query<
+            Entity,
+            Transform,
+            Handle<Mesh>,
+            Handle<IMaterial>,
+            Without<Handle<Instance>>
+        > q,
+        Commands commands,
+        ResMut<MaterialManager> rMaterialManager
+    ) {
+
+        auto& materials = rMaterialManager.get();
+
+        for (auto [entity, transform, mesh, material] : q) {
+
+            commands.addComponent(
+                entity,
+                materials.getMaterial(material).m_meshCollection.addInstance(
+                    transform,
+                    mesh
+                )
+            );
+        }
+
     }
 
 
@@ -181,7 +195,6 @@ namespace crg::renderer {
             );
 
             renderPass.draw(material->getVertexCount(), 1, 0, 0);
-            LOG_CORE_INFO("material vert count: {}", material->getVertexCount());
         }
 
         renderPass.end();

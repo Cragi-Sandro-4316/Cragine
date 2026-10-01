@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Ecs/Handle.h"
+
 #include "RenderModule/Structs/Material.h"
 #include <typeindex>
 
@@ -14,8 +16,11 @@ namespace crg::renderer {
             RenderContext& renderContext,
             MaterialDef def
         ) {
+
+            auto id = std::hash<std::type_index>{}(typeid(MaterialDef));
+
             m_materials.emplace(
-                std::type_index(typeid(MaterialDef)),
+                id,
                 std::make_unique<Material<MaterialDef>>(
                     path,
                     renderContext,
@@ -23,16 +28,30 @@ namespace crg::renderer {
                 )
             );
 
-            return (Material<MaterialDef>&)*m_materials.at(typeid(MaterialDef));
+            return (Material<MaterialDef>&)*m_materials.at(id);
         }
 
         template<typename MaterialDef>
         Material<MaterialDef>& getMaterial() {
-            return *static_cast<Material<MaterialDef>*>(m_materials.at(typeid(MaterialDef)));
+            auto id = std::hash<std::type_index>{}(typeid(MaterialDef));
+
+            return (Material<MaterialDef>&)*m_materials.at(id);
         }
 
+        template<typename MaterialDef>
+        Handle<IMaterial> getHandle() {
+            return Handle<IMaterial> {
+                .id = std::hash<std::type_index>{}(typeid(MaterialDef))
+            };
+        }
+
+        IMaterial& getMaterial(Handle<IMaterial> handle) {
+            return *m_materials.at(handle.id);
+        }
+
+
         std::unordered_map<
-            std::type_index,
+            size_t,
             std::unique_ptr<IMaterial>
         >& getMaterials() {
             return m_materials;
@@ -40,7 +59,7 @@ namespace crg::renderer {
 
     private:
         std::unordered_map<
-            std::type_index,
+            size_t,
             std::unique_ptr<IMaterial>
         > m_materials;
     };

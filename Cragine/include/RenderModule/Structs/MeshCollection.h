@@ -83,7 +83,7 @@ namespace crg::renderer {
 
             MeshID meshID = std::hash<std::filesystem::path>{}(path);
 
-            auto it = m_meshClusterIDs.end();
+            auto it = m_meshClusterIDs.find(meshID);
 
             if (it != m_meshClusterIDs.end()) {
                 LOG_CORE_INFO("Mesh {} already loaded", path.c_str());
@@ -106,7 +106,6 @@ namespace crg::renderer {
                 ClusterIndices { .idxs = std::vector<uint32_t>(clusterCount) }
             });
 
-
             auto& indices = m_meshClusterIDs[meshID];
 
             fillClusters(
@@ -116,10 +115,6 @@ namespace crg::renderer {
                 textureHandle
             );
             m_clusterCount += clusterCount;
-
-            // AddInstance...
-
-            LOG_CORE_WARNING("loaded mesh {}", path.c_str());
 
             return Handle<Mesh> {
                 .id = meshID
@@ -133,9 +128,6 @@ namespace crg::renderer {
         ) {
             auto view = m_buffer.getBufferView();
             MeshCollectionData* collection = view.get();
-
-            LOG_CORE_WARNING("Adding mesh instance...");
-
 
             ClusterIndices clusterIndices = m_meshClusterIDs.at(mesh.id);
 
@@ -324,14 +316,13 @@ namespace crg::renderer {
         ) {
             BufferView<MeshCollectionData> view = m_buffer.getBufferView();
             MeshCollectionData* collection = view.get();
-            // TODO:
+
             ClusterIndices& clusterIDs = m_meshClusterIDs[handle.id];
 
             for (auto& clusterID : clusterIDs.idxs) {
                 // Swap and pop
                 VertexCluster& backCluster = collection->clusters[--m_clusterCount];
                 collection->clusters[clusterID] = backCluster;
-
 
                 // Find the mesh id of the back cluster
                 auto& backMeshID = m_clusterToMeshID[m_clusterCount];
@@ -346,7 +337,6 @@ namespace crg::renderer {
 
                 m_clusterToMeshID[clusterID] = backMeshID;
                 m_clusterToMeshID.erase(m_clusterCount);
-
 
                 // Move instances
                 InstanceBlock& backInstanceBlock = m_instanceBlocks.back();

@@ -25,7 +25,8 @@ namespace crg {
             app.addResource<renderer::GpuResource<renderer::TextureAtlas>>();
 
 
-            app.addSystem(ecs::Schedule::Startup, renderer::spawnExample);
+            app.addSystem(ecs::Schedule::Startup, renderer::startup);
+            app.addSystem(ecs::Schedule::Update, renderer::spawnMeshes);
             app.addSystem(ecs::Schedule::Update, renderer::render);
         }
     };

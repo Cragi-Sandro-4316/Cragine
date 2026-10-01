@@ -111,6 +111,7 @@ namespace crg::renderer {
 
             uint32_t texturePageCount = pageCountX * pageCountY;
 
+
             if (m_pageCount + texturePageCount > m_pageCapacity) {
                 LOG_CORE_ERROR("Atlas cannot fit texture {} of size: ({}, {})", path.c_str(), textureWidth, textureHeight);
                 return { .id = (size_t) -1 };
