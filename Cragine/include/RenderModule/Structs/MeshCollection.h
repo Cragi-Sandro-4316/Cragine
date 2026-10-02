@@ -109,9 +109,11 @@ namespace crg::renderer {
             auto& indices = m_meshClusterIDs[meshID];
 
             fillClusters(
+                meshID,
                 collection,
                 meshData,
-                indices,
+                indices.idxs,
+                clusterCount,
                 textureHandle
             );
             m_clusterCount += clusterCount;
@@ -165,20 +167,13 @@ namespace crg::renderer {
                     .instance = (uint32_t) instanceIndex
                 };
 
-
-                size_t blockEnd = instanceBlock.first + instanceBlock.count;
-
-                size_t count = (MAX_CLUSTER_INSTANCE_MAP - blockEnd) * sizeof(ClusterInstance);
-                void* src = collection->clusterInstances + blockEnd;
-                void* dst = collection->clusterInstances + blockEnd + 1;
-
-                std::memmove(
-                    dst,
-                    src,
-                    count
+                arrayInsert(
+                    collection->clusterInstances,
+                    MAX_CLUSTER_INSTANCE_MAP,
+                    instanceBlock.first + instanceBlock.count++,
+                    &clusterInstance
                 );
-
-                instanceBlock.count++;
+                m_mapCount++;
 
                 for (size_t i = clusterIdx + 1; i < m_instanceBlocks.size(); i++) {
                     m_instanceBlocks[i].first++;
@@ -282,16 +277,19 @@ namespace crg::renderer {
         std::vector<InstanceBlock> m_instanceBlocks;
 
         void fillClusters(
+            MeshID meshID,
             MeshCollectionData* collection,
             MeshData& data,
-            ClusterIndices& indices,
+            std::vector<uint32_t>& indices,
+            size_t& clusterCount,
             Handle<AtlasEntry>& textureHandle
         ) {
             size_t start = m_clusterCount;
-            for(size_t i = 0; i < indices.idxs.size(); i++) {
+            for(size_t i = 0; i < indices.size(); i++) {
                 uint32_t clusterIndex = start + i;
 
-                // m_chunkToMeshID[chunkIndex] = meshId;
+                indices[i] = clusterIndex;
+                m_clusterToMeshID[clusterIndex] = meshID;
 
                 auto& cluster = collection->clusters[clusterIndex];
                 cluster.textureIndex = textureHandle.id;
@@ -368,6 +366,39 @@ namespace crg::renderer {
             }
 
             m_meshClusterIDs.erase(handle.id);
+        }
+
+
+        // TODO: implement edge guards
+        template<typename T>
+        void arrayInsert(
+            T* array,
+            size_t arrSize,
+            size_t index,
+            T* values,
+            size_t count = 1
+        ) {
+            std::memmove(
+                array + index + count,
+                array + index,
+                (arrSize - index) * sizeof(T)
+            );
+
+            std::memcpy(array + index, values, count * sizeof(T));
+        }
+
+        template<typename T>
+        void arrayErase(
+            T* array,
+            size_t arrSize,
+            size_t index,
+            size_t count
+        ) {
+            std::memmove(
+                array + index,
+                array + index + count,
+                (arrSize - index - count) * sizeof(T)
+            );
         }
 
 

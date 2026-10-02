@@ -12,6 +12,7 @@
 #include "RenderModule/Structs/ImageTexture.h"
 #include "RenderModule/Structs/MaterialParam.h"
 #include "RenderModule/Structs/TextureAtlas.h"
+#include "utils/Logger.h"
 
 namespace crg::renderer {
 
@@ -88,6 +89,28 @@ namespace crg::renderer {
             transform
         );
 
+
+        Transform transform2{};
+        transform2.translation.z = 2;
+
+        transform2.translation.x = 0.4;
+        transform2.scale = vec3(.25);
+        transform2.rotate(-90, vec3(1, 0, 0));
+        // transform2.rotate(-20, vec3(1, 0, 0));
+
+        commands.spawn(
+            materials.getMaterial<SampleMaterial>().m_meshCollection.loadMesh(
+                "../assets/BigMesh.obj",
+                textureAtlasManager.get(atlas).pushTexture(
+                    "../assets/reina.gif",
+                    renderContext.queue,
+                    1
+                )
+            ),
+            materials.getHandle<SampleMaterial>(),
+            transform2
+        );
+
         Camera cameraObj{};
         cameraObj.setPerspectiveProjection(
             50,
@@ -115,6 +138,8 @@ namespace crg::renderer {
         auto& materials = rMaterialManager.get();
 
         for (auto [entity, transform, mesh, material] : q) {
+
+            LOG_CORE_WARNING("Mesh handle: {}", mesh.id);
 
             commands.addComponent(
                 entity,
