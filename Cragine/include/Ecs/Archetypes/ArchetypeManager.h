@@ -103,7 +103,8 @@ namespace crg::ecs {
         std::tuple<
             bool,
             Archetype*,
-            ArchetypeID
+            ArchetypeID,
+            Component
         > removeComponent(
             Entity entity,
             ArchetypeID srcArchID
@@ -121,7 +122,7 @@ namespace crg::ecs {
 
             if (res == 0) {
                 LOG_CORE_WARNING("Entity {} does not have component {} to remove", entity.id, newCompID);
-                return { false, &srcArch, srcArchID };
+                return { false, &srcArch, srcArchID, Component{} };
             }
 
             auto [srcChunkID, srcEntityIdx] = srcArch.findEntity(entity);
@@ -147,7 +148,8 @@ namespace crg::ecs {
 
             srcArch.removeEntity(entity);
 
-            return std::make_tuple( isNew, &dstArch, dstArchID );
+            Component c = *((Component*)(srcChunk->m_rawDataBuffers[newCompID].get()) + srcEntityIdx);
+            return std::make_tuple( isNew, &dstArch, dstArchID, c );
         }
 
 

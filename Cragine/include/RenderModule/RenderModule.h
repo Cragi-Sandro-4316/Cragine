@@ -27,6 +27,7 @@ namespace crg {
 
             app.addSystem(ecs::Schedule::Startup, renderer::startup);
             app.addSystem(ecs::Schedule::Update, renderer::spawnMeshes);
+            app.addSystem(ecs::Schedule::Update, renderer::despawnMeshes);
             app.addSystem(ecs::Schedule::Update, renderer::render);
         }
     };

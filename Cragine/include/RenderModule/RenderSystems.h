@@ -3,6 +3,8 @@
 
 #include "Ecs/Ecs.h"
 
+#include "Ecs/Entity/Entity.h"
+#include "Ecs/SystemParams/EventParam.h"
 #include "RenderModule/Components/Camera.h"
 #include "RenderModule/Managers/MaterialManager.h"
 #include "RenderModule/Managers/GpuResource.h"
@@ -76,16 +78,16 @@ namespace crg::renderer {
         transform.rotate(-45, vec3(0, 1, 0));
         transform.rotate(-20, vec3(1, 0, 0));
 
-        commands.spawn(
-            materials.getMaterial<SampleMaterial>().m_meshCollection.loadMesh(
+        Entity ent = commands.spawn(
+            mat.m_meshCollection.loadMesh(
                 "../assets/cube.obj",
+                materials.getHandle<SampleMaterial>(),
                 textureAtlasManager.get(atlas).pushTexture(
                     "../assets/emilia.png",
                     renderContext.queue,
                     1
                 )
             ),
-            materials.getHandle<SampleMaterial>(),
             transform
         );
 
@@ -95,19 +97,19 @@ namespace crg::renderer {
 
         transform2.translation.x = 0.4;
         transform2.scale = vec3(.25);
-        transform2.rotate(-90, vec3(1, 0, 0));
+        // transform2.rotate(-90, vec3(1, 0, 0));
         // transform2.rotate(-20, vec3(1, 0, 0));
 
         commands.spawn(
-            materials.getMaterial<SampleMaterial>().m_meshCollection.loadMesh(
-                "../assets/BigMesh.obj",
+            mat.m_meshCollection.loadMesh(
+                "../assets/pyramid.obj",
+                materials.getHandle<SampleMaterial>(),
                 textureAtlasManager.get(atlas).pushTexture(
                     "../assets/reina.gif",
                     renderContext.queue,
                     1
                 )
             ),
-            materials.getHandle<SampleMaterial>(),
             transform2
         );
 
@@ -120,38 +122,51 @@ namespace crg::renderer {
         );
 
         bufferManager.get(camera).write(cameraObj.getUniform());
+
+        commands.removeComponent<Mesh>(ent);
     }
 
 
     static void spawnMeshes(
-        Query<
-            Entity,
-            Transform,
-            Handle<Mesh>,
-            Handle<IMaterial>,
-            Without<Handle<Instance>>
-        > q,
+        Query<Entity, Transform> q,
+        EventReader<Added<Mesh>> meshes,
         Commands commands,
         ResMut<MaterialManager> rMaterialManager
     ) {
 
         auto& materials = rMaterialManager.get();
 
-        for (auto [entity, transform, mesh, material] : q) {
-
-            LOG_CORE_WARNING("Mesh handle: {}", mesh.id);
-
-            commands.addComponent(
-                entity,
-                materials.getMaterial(material).m_meshCollection.addInstance(
-                    transform,
-                    mesh
-                )
-            );
+        for (auto [ent, transform] : q) {
+            for (auto& mesh : meshes.read()) {
+                if (ent.id == mesh.entity.id) {
+                    materials.getMaterial(mesh.component.material).m_meshCollection.addInstance(
+                        transform,
+                        mesh.component
+                    );
+                }
+            }
         }
 
     }
 
+
+    static void despawnMeshes(
+        EventReader<Removed<Mesh>> meshes,
+        Commands commands,
+        ResMut<MaterialManager> rMaterialManager
+    ) {
+        auto& materials = rMaterialManager.get();
+
+        // TODO: currently broken
+        for (auto& mesh : meshes.read()) {
+            LOG_CORE_ERROR("Removing mesh...");
+
+            materials.getMaterial(mesh.component.material).m_meshCollection.removeInstance(
+                mesh.component
+            );
+        }
+
+    }
 
 
     static void render(

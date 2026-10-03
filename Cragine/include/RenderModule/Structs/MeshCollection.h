@@ -2,6 +2,7 @@
 
 #include "Ecs/Handle.h"
 
+#include "RenderModule/Components/Mesh.h"
 #include "RenderModule/Components/Transform.h"
 #include "RenderModule/Structs/Buffer.h"
 #include "RenderModule/Structs/MeshData.h"
@@ -56,7 +57,7 @@ namespace crg::renderer {
 
     // TODO: cleanup
     struct AtlasEntry;
-    struct Mesh;
+    struct IMaterial;
 
     class MeshCollection {
     public:
@@ -72,8 +73,9 @@ namespace crg::renderer {
             wgpu::BufferUsage::CopyDst
         ) {}
 
-        Handle<Mesh> loadMesh(
+        Mesh loadMesh(
             const std::filesystem::path path,
+            Handle<IMaterial> material,
             Handle<AtlasEntry> textureHandle = Handle<AtlasEntry> {
                 .id = 0
             }
@@ -83,13 +85,24 @@ namespace crg::renderer {
 
             MeshID meshID = std::hash<std::filesystem::path>{}(path);
 
+            size_t instanceID = -1;
+            if (m_freeInstanceIdxs.empty()) {
+                instanceID = m_instanceCount++;
+            }
+            else {
+                instanceID = m_freeInstanceIdxs.back();
+                m_freeInstanceIdxs.pop_back();
+            }
+
             auto it = m_meshClusterIDs.find(meshID);
 
             if (it != m_meshClusterIDs.end()) {
                 LOG_CORE_INFO("Mesh {} already loaded", path.c_str());
 
-                return Handle<Mesh> {
-                    .id = meshID
+                return Mesh {
+                    .id = meshID,
+                    .instanceID = instanceID,
+                    .material = material
                 };
             }
 
@@ -118,15 +131,17 @@ namespace crg::renderer {
             );
             m_clusterCount += clusterCount;
 
-            return Handle<Mesh> {
-                .id = meshID
+            return Mesh {
+                .id = meshID,
+                .instanceID = instanceID,
+                .material = material
             };
         }
 
 
-        Handle<Instance> addInstance(
+        void addInstance(
             Transform& transform,
-            Handle<Mesh> mesh
+            Mesh mesh
         ) {
             auto view = m_buffer.getBufferView();
             MeshCollectionData* collection = view.get();
@@ -139,16 +154,8 @@ namespace crg::renderer {
                 .modelMatrix = modelMatrix
             };
 
-            size_t instanceIndex = -1;
-            if (m_freeInstanceIdxs.empty()) {
-                instanceIndex = m_instanceCount++;
-            }
-            else {
-                instanceIndex = m_freeInstanceIdxs.back();
-                m_freeInstanceIdxs.pop_back();
-            }
 
-            collection->instances[instanceIndex] = instance;
+            collection->instances[mesh.instanceID] = instance;
 
             for (auto& clusterIdx : clusterIndices.idxs) {
                 if (m_instanceBlocks.size() <= clusterIdx) {
@@ -164,7 +171,7 @@ namespace crg::renderer {
 
                 ClusterInstance clusterInstance {
                     .cluster = (uint32_t) clusterIdx,
-                    .instance = (uint32_t) instanceIndex
+                    .instance = (uint32_t) mesh.instanceID
                 };
 
                 arrayInsert(
@@ -179,21 +186,16 @@ namespace crg::renderer {
                     m_instanceBlocks[i].first++;
                 }
             }
-
-            return Handle<Instance> {
-                .id = instanceIndex
-            };
         }
 
 
         void removeInstance(
-            Handle<Mesh> meshHandle,
-            Handle<Instance> instanceHandle
+            Mesh mesh
         ) {
             BufferView<MeshCollectionData> view = m_buffer.getBufferView();
             MeshCollectionData* collection = view.get();
 
-            auto it = m_meshClusterIDs.find(meshHandle.id);
+            auto it = m_meshClusterIDs.find(mesh.id);
             if (it == m_meshClusterIDs.end()) {
                 LOG_CORE_WARNING("Instance deletion: given handle not found. Skipping...");
                 return;
@@ -203,7 +205,7 @@ namespace crg::renderer {
 
             InstanceBlock& firstBlock = m_instanceBlocks[it->second.idxs[0]];
             for (size_t i = 0; i < firstBlock.count; i++) {
-                if (collection->clusterInstances[i + firstBlock.first].instance == instanceHandle.id) {
+                if (collection->clusterInstances[i + firstBlock.first].instance == mesh.instanceID) {
                     instanceOffset = i;
                     break;
                 }

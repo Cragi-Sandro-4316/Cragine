@@ -1,9 +1,17 @@
 #pragma once
 
 #include "Ecs/Handle.h"
-#include "RenderModule/Structs/Material.h"
 
 namespace crg {
 
+    namespace renderer {
+        struct IMaterial;
+    }
+
+    struct Mesh {
+        size_t id;
+        size_t instanceID;
+        Handle<renderer::IMaterial> material;
+    };
 
 }

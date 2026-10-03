@@ -1,6 +1,7 @@
 #include "App.h"
 #include "Ecs/Ecs.h"
 #include "Ecs/Schedule.h"
+#include "Ecs/SystemParams/EventParam.h"
 #include "Ecs/SystemParams/ResParam.h"
 #include "InputModule/InputManager.h"
 #include "InputModule/KeyCode.h"
@@ -37,15 +38,6 @@ namespace crg {
     };
 
 
-    void inputTest(
-        Res<InputManager> rInputManager
-    ) {
-        auto& inputManager = rInputManager.get();
-        if (inputManager.keyPressed(KeyCode::KeyA)) {
-            LOG_CORE_INFO("Pressed A");
-        }
-
-    }
 
 
 
@@ -54,7 +46,6 @@ namespace crg {
 
         int i = 0;
 
-        m_world.addSystem(Schedule::Update, inputTest);
 
         m_world.runSystems(Schedule::Startup);
         while(!glfwWindowShouldClose(m_window->getGlfwWindow())) {

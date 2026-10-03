@@ -6,6 +6,7 @@
 #include "Ecs/Commands/Command.h"
 #include "Ecs/Entity/EntityManager.h"
 
+#include "Ecs/Events/AddedEvent.h"
 #include "Ecs/Events/EventManager.h"
 #include "Ecs/Query/QueryManager.h"
 #include "Ecs/Resource/ResourceManager.h"
@@ -69,6 +70,7 @@ namespace crg::ecs {
 
             m_entityManager.assignArchetype(entity, archID);
 
+            (m_eventManager.emit(Added<Components>{.entity = entity, .component = components}), ...);
 
             if (isNew) {
                 m_queryManager.updateQueries(&m_archetypeManager.getArchetype(archID));
@@ -107,15 +109,19 @@ namespace crg::ecs {
             }
 
             m_entityManager.assignArchetype(entity, newArchID);
+
+            m_eventManager.emit(Added<Component>{.entity = entity, .component = component});
         }
 
 
         template<typename Component>
         void removeComponent(Entity entity)  {
 
+            LOG_CORE_INFO("Removing component");
+
             ArchetypeID srcArchID = m_entityManager.getArchetype(entity);
 
-            auto [isNew, newArch, newArchID] = m_archetypeManager.removeComponent<Component>(
+            auto [isNew, newArch, newArchID, component] = m_archetypeManager.removeComponent<Component>(
                 entity,
                 srcArchID
             );
@@ -125,6 +131,7 @@ namespace crg::ecs {
             }
 
             m_entityManager.assignArchetype(entity, newArchID);
+            m_eventManager.emit(Removed<Component>{.entity = entity, .component = component});
         }
 
         std::deque<Command>& getCommandQueue() {
