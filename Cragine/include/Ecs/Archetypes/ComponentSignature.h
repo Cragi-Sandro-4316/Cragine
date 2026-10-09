@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Ecs/Entity/Entity.h"
+#include "Ecs/Events/EventManager.h"
 #include <algorithm>
 #include <cstdint>
 #include <unordered_set>
@@ -25,24 +27,21 @@ namespace crg::ecs {
         }
     };
 
+    using Copy = void(*)(void* src, uint32_t srcIdx, void* dst, uint32_t dstIdx);
 
-    using ComponentOverwrite = void(*)(void* buffer, size_t to, size_t from);
-    using ComponentCopy = void(*)(void* src, uint32_t srcIdx, void* dst, uint32_t dstIdx);
+    using Write = void(*)(void* to, void* from);
+    using ArrayWrite = void(*)(void* arr, void* data, size_t index);
+    using ArraySwapNPop = void(*)(void* arr, size_t index, size_t count);
+    using GetPtr = void*(*)(void* arr, size_t index);
+    using EmitAdded = void(*)(EventManager& eventManager, Entity entity, void* data);
+    using EmitRemoved = void(*)(EventManager& eventManager, Entity entity, void* data);
 
-
-    struct ComponentMetadata {
-        size_t componentSize;
-        ComponentID componentID;
-
-        // TODO: Possible type erased constructor and destructor callbacks
-        // TypeErasedCopy copyLambda;
-        // TypeErasedDelete deleteLambda;
+    struct FuncTable {
+        Write write;
+        ArrayWrite arrWrite;
+        ArraySwapNPop swapAndPop;
+        GetPtr getPtr;
+        EmitAdded emitAdded;
+        EmitRemoved emitRemoved;
     };
-
-    struct TypeErasedComponent {
-        uint8_t* pData;
-        ComponentMetadata metadata;
-    };
-
-
 }

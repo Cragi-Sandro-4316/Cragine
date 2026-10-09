@@ -16,45 +16,21 @@ namespace crg::ecs {
     struct Chunk {
         static size_t constexpr MAX_ENTITY_COUNT = 64;
 
-
         Chunk(const Chunk&) = delete;
         Chunk& operator=(const Chunk&) = delete;
 
-
-        Chunk(ComponentSignature& signature, ComponentManager& manager) {
-            initBuffers(signature, manager);
+        Chunk(std::unordered_map<ComponentID, size_t>& sizes) {
+            for (auto [compID, size] : sizes) {
+                m_buffers[compID] = std::make_unique<uint8_t[]>(size * MAX_ENTITY_COUNT);
+            }
         }
-
-        // TODO: make more data oriented by allocating a single big array for all components and mapping indices and offsets to component ids.
 
         std::unordered_map<
             ComponentID,
             std::unique_ptr<uint8_t[]>
-        > m_rawDataBuffers;
+        > m_buffers;
 
         uint32_t m_entityCount = 0;
-
-
-        void initBuffers(ComponentSignature& signature, ComponentManager& compManager) {
-            for (auto& compID : signature) {
-                size_t componentSize = compManager.getSize(compID);
-
-                m_rawDataBuffers[compID] = std::make_unique<uint8_t[]>(componentSize * MAX_ENTITY_COUNT);
-            }
-        }
-
-
-        template<typename Component>
-        void bufferInsert(Component value, ComponentManager& componentManager) {
-            ComponentID compID = componentManager.getID<Component>();
-            Component* buffer = (Component*)m_rawDataBuffers[compID].get();
-            auto index = m_entityCount;
-
-            buffer[index] = value;
-
-        }
-
-
     };
 
 
@@ -67,23 +43,31 @@ namespace crg::ecs {
             ComponentManager& componentManager
         ) :
         m_signature(signature),
-        m_componentManager(componentManager) {
+        m_entityCompID(componentManager.getID<Entity>()) {
 
-            m_chunks.emplace_back(std::make_unique<Chunk>(signature, m_componentManager));
+            for (auto& compID : signature) {
+                m_componentSizes[compID] = componentManager.getSize(compID);
+                m_funcTables[compID] = componentManager.getFuncTable(compID);
+            }
 
-            m_chunks.back()->initBuffers(signature, componentManager);
+            m_chunks.emplace_back(std::make_unique<Chunk>(m_componentSizes));
+
 
         }
 
-        template<typename... Components>
-        void addEntity(std::tuple<Components...> componentData) {
+        void addEntity(
+            std::vector<std::pair<
+                ComponentID, void*
+            >> componentData
+        ) {
             auto& chunk = getFreeChunk();
 
-            (chunk.bufferInsert(
-                std::get<Components>(componentData),
-                m_componentManager
-            ), ...);
+            for (auto [compID, data] : componentData) {
+                auto buffer = chunk.m_buffers[compID].get();
+                auto funcs = m_funcTables[compID];
 
+                funcs.arrWrite(buffer, data, chunk.m_entityCount);
+            }
 
             chunk.m_entityCount++;
         }
@@ -94,29 +78,32 @@ namespace crg::ecs {
             return m_chunks;
         }
 
-
-        void removeEntity(Entity& entity) {
+        void removeEntity(Entity& entity, EventManager* eventManager = nullptr) {
             auto [chunkID, entityID] = findEntity(entity);
 
             Chunk& chunk = *m_chunks[chunkID];
 
             for (auto compID : m_signature) {
-                auto buffer = chunk.m_rawDataBuffers[compID].get();
-                auto& deleter = m_componentManager.getDeleter(compID);
+                auto buffer = chunk.m_buffers[compID].get();
+                auto funcs = m_funcTables[compID];
 
-                deleter(buffer, entityID, chunk.m_entityCount - 1);
+                if (eventManager) {
+                    void* ptr = funcs.getPtr(buffer, entityID);
+
+                    funcs.emitRemoved(*eventManager, entity, ptr);
+                }
+
+                funcs.swapAndPop(buffer, entityID, chunk.m_entityCount - 1);
             }
 
             chunk.m_entityCount--;
         }
 
-
-
         inline std::pair<size_t, size_t> findEntity(Entity& entity) {
-            const auto entityCompID = m_componentManager.getID<Entity>();
-
             for (size_t i = 0; i < m_chunks.size(); i++) {
-                Entity* entityBuff = reinterpret_cast<Entity*>(m_chunks[i]->m_rawDataBuffers[entityCompID].get());
+                Entity* entityBuff = reinterpret_cast<Entity*>(
+                    m_chunks[i]->m_buffers[m_entityCompID].get()
+                );
 
                 for (size_t j = 0; j < m_chunks[i]->m_entityCount; j++) {
                     if (entity.id == entityBuff[j].id) {
@@ -136,12 +123,42 @@ namespace crg::ecs {
                 }
             }
 
-            m_chunks.emplace_back(std::make_unique<Chunk>(m_signature, m_componentManager));
+            m_chunks.emplace_back(std::make_unique<Chunk>(m_componentSizes));
 
             return *m_chunks.back();
         }
 
+
+        std::vector<std::pair<
+            ComponentID, void*
+        >> getEntity(Entity& entity) {
+            auto [chunkID, entityID] = findEntity(entity);
+            Chunk& chunk = *m_chunks[chunkID];
+
+            std::vector<std::pair<
+                ComponentID, void*
+            >> result;
+
+            for (auto& compID : m_signature) {
+
+                auto funcs = m_funcTables[compID];
+
+                std::pair<ComponentID, void*> elem;
+                elem.first = compID;
+                elem.second = funcs.getPtr(
+                    chunk.m_buffers[compID].get(),
+                    entityID
+                );
+
+                result.emplace_back(elem);
+            }
+
+            return result;
+        }
+
     private:
+
+        const ComponentID m_entityCompID;
 
         // All chunks in this archetype
         std::vector<std::unique_ptr<Chunk>> m_chunks;
@@ -149,13 +166,9 @@ namespace crg::ecs {
         // The archetype's component signature
         ComponentSignature m_signature;
 
-        ComponentManager& m_componentManager;
+        std::unordered_map<ComponentID, FuncTable> m_funcTables;
 
-
-
-
-
-
+        std::unordered_map<ComponentID, size_t> m_componentSizes;
     };
 
 }

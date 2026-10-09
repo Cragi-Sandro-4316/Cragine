@@ -1,6 +1,8 @@
 #pragma once
 
 #include "ComponentSignature.h"
+#include "Ecs/Entity/Entity.h"
+#include "Ecs/Events/AddedEvent.h"
 #include "Ecs/Query/QueryFilters.h"
 #include <typeindex>
 #include <unordered_map>
@@ -36,33 +38,43 @@ namespace crg::ecs {
             m_componentSizes.emplace_back(sizeof(Component));
             m_componentAligns.emplace_back(alignof(Component));
 
+            m_funcs.emplace(componentID, FuncTable {
+                .write = [](void* to, void* from) {
+                    *(Component*)to = *(Component*)from;
+                },
+                .arrWrite = [](void* arr, void* data, size_t index) {
+                    Component* buff = (Component*)arr;
 
-            m_componentOverwrite[componentID] = [](void* buffer, size_t to, size_t from) {
-                Component* compBuffer = (Component*)buffer;
+                    buff[index] = *(Component*)data;
+                },
+                .swapAndPop = [](void* arr, size_t index, size_t count) {
+                    Component* buff = (Component*)arr;
 
-                compBuffer[to] = compBuffer[from];
-            };
+                    buff[index] = buff[count];
+                },
+                .getPtr = [](void* arr, size_t index) {
+                    Component* buffer = (Component*)arr;
 
-            m_componentCopy[componentID] = [](void* src, uint32_t srcIdx, void* dst, uint32_t dstIdx) {
-                Component* srcBuff = (Component*)src;
-                Component* dstBuff = (Component*)dst;
-
-                dstBuff[dstIdx] = srcBuff[srcIdx];
-            };
-
+                    return (void*)&buffer[index];
+                },
+                .emitAdded = [](EventManager& eventManager, Entity e, void* data) {
+                    eventManager.emit(Added<Component> {
+                        .entity = e,
+                        .component = *(Component*)data
+                    });
+                },
+                .emitRemoved = [](EventManager& eventManager, Entity e, void* data) {
+                    eventManager.emit(Removed<Component> {
+                        .entity = e,
+                        .component = *(Component*)data
+                    });
+                }
+            });
 
             (*m_queryComponentMap)[componentID] = std::unordered_set<QueryID>();
 
         }
 
-
-        ComponentOverwrite& getDeleter(ComponentID compID) {
-            return m_componentOverwrite[compID];
-        }
-
-        ComponentCopy& getCopy(ComponentID compID) {
-            return m_componentCopy[compID];
-        }
 
         template<typename Component>
         inline ComponentID getID() {
@@ -93,27 +105,13 @@ namespace crg::ecs {
         }
 
 
-
-        // Converts a component tuple into a type erased list
-        template<typename... Components>
-        inline std::vector<TypeErasedComponent> makeTypeErased(std::tuple<Components...>& componentData) {
-            std::vector<TypeErasedComponent> result;
-
-            result = {(extractData(std::get<Components>(componentData)), ...)};
-            return result;
-        }
-
-        // Converts a component tuple into a type erased list
-        template<typename Component>
-        inline TypeErasedComponent makeSingleTypeErased(Component& componentData) {
-            auto result = extractData(componentData);
-            return result;
+        FuncTable getFuncTable(ComponentID compID) {
+            return m_funcs[compID];
         }
 
         inline size_t getSize(ComponentID id) {
             return m_componentSizes[id];
         }
-
 
     private:
 
@@ -125,9 +123,8 @@ namespace crg::ecs {
         // Maps a componentID to its type_index
         std::unordered_map<ComponentID, std::type_index> m_componentTypeIDs;
 
-        std::unordered_map<ComponentID, ComponentOverwrite> m_componentOverwrite;
+        std::unordered_map<ComponentID, const FuncTable> m_funcs;
 
-        std::unordered_map<ComponentID, ComponentCopy> m_componentCopy;
 
         // List of all component sizes. Indexed by ComponentID
         std::vector<size_t> m_componentSizes;

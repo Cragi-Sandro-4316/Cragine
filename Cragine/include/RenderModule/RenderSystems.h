@@ -36,6 +36,7 @@ namespace crg::renderer {
         > atlas;
     };
 
+    static Mesh cubeMesh;
 
     static void startup(
         Commands commands,
@@ -78,7 +79,7 @@ namespace crg::renderer {
         transform.rotate(-45, vec3(0, 1, 0));
         transform.rotate(-20, vec3(1, 0, 0));
 
-        Entity ent = commands.spawn(
+        auto cube = commands.spawn(
             mat.m_meshCollection.loadMesh(
                 "../assets/cube.obj",
                 materials.getHandle<SampleMaterial>(),
@@ -91,15 +92,12 @@ namespace crg::renderer {
             transform
         );
 
-
         Transform transform2{};
         transform2.translation.z = 2;
 
         transform2.translation.x = 0.4;
         transform2.scale = vec3(.25);
-        // transform2.rotate(-90, vec3(1, 0, 0));
-        // transform2.rotate(-20, vec3(1, 0, 0));
-
+        // TODO: Check bug in instances.
         commands.spawn(
             mat.m_meshCollection.loadMesh(
                 "../assets/pyramid.obj",
@@ -110,7 +108,7 @@ namespace crg::renderer {
                     1
                 )
             ),
-            transform2
+            transform
         );
 
         Camera cameraObj{};
@@ -123,7 +121,7 @@ namespace crg::renderer {
 
         bufferManager.get(camera).write(cameraObj.getUniform());
 
-        commands.removeComponent<Mesh>(ent);
+        commands.removeComponent<Mesh>(cube);
     }
 
 
@@ -139,6 +137,10 @@ namespace crg::renderer {
         for (auto [ent, transform] : q) {
             for (auto& mesh : meshes.read()) {
                 if (ent.id == mesh.entity.id) {
+
+                    LOG_CORE_INFO("Ent: {}", ent.id);
+                    LOG_CORE_INFO("Mesh id: {}, instanceID: {}", mesh.component.id, mesh.component.instanceID);
+
                     materials.getMaterial(mesh.component.material).m_meshCollection.addInstance(
                         transform,
                         mesh.component
@@ -157,9 +159,9 @@ namespace crg::renderer {
     ) {
         auto& materials = rMaterialManager.get();
 
-        // TODO: currently broken
         for (auto& mesh : meshes.read()) {
-            LOG_CORE_ERROR("Removing mesh...");
+            LOG_CORE_WARNING("Despawning: {}", mesh.entity);
+            LOG_CORE_WARNING("Mesh: {}, instance {}", mesh.component.id, mesh.component.instanceID);
 
             materials.getMaterial(mesh.component.material).m_meshCollection.removeInstance(
                 mesh.component

@@ -134,7 +134,7 @@ namespace crg::ecs {
                 auto compID = componentManager.getID<Component>();
 
                 bufferList.emplace_back(
-                    (Component*)chunk->m_rawDataBuffers[compID].get()
+                    (Component*)chunk->m_buffers[compID].get()
                 );
             }
 

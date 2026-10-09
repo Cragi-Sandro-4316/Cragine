@@ -97,7 +97,6 @@ namespace crg::renderer {
             auto it = m_meshClusterIDs.find(meshID);
 
             if (it != m_meshClusterIDs.end()) {
-                LOG_CORE_INFO("Mesh {} already loaded", path.c_str());
 
                 return Mesh {
                     .id = meshID,
@@ -137,7 +136,6 @@ namespace crg::renderer {
                 .material = material
             };
         }
-
 
         void addInstance(
             Transform& transform,
@@ -197,7 +195,6 @@ namespace crg::renderer {
 
             auto it = m_meshClusterIDs.find(mesh.id);
             if (it == m_meshClusterIDs.end()) {
-                LOG_CORE_WARNING("Instance deletion: given handle not found. Skipping...");
                 return;
             }
 
@@ -220,17 +217,16 @@ namespace crg::renderer {
             for (auto& clusterIdx : clusterIdxs) {
                 auto& instanceBlock = m_instanceBlocks[clusterIdx];
 
-                size_t count = (MAX_CLUSTER_INSTANCE_MAP - instanceBlock.first + instanceOffset - 1) * sizeof(ClusterInstance);
-                void* src = collection->clusterInstances + instanceBlock.first + instanceOffset + 1;
-                void* dst = collection->clusterInstances + instanceBlock.first + instanceOffset;
-
-                std::memmove(
-                    dst,
-                    src,
-                    count
+                arrayErase(
+                    collection->clusterInstances,
+                    MAX_CLUSTER_INSTANCE_MAP,
+                    instanceBlock.first + instanceOffset,
+                    1
                 );
 
-                for (size_t i = clusterIdx; i < m_instanceBlocks.size(); i++) {
+                instanceBlock.count--;
+
+                for (size_t i = clusterIdx + 1; i < m_instanceBlocks.size(); i++) {
                     m_instanceBlocks[i].first--;
                 }
 
@@ -241,8 +237,7 @@ namespace crg::renderer {
 
 
             if (last) {
-                LOG_CORE_INFO("Last mesh. Unloading...");
-                // UnloadMesh();
+                unloadMesh(mesh, collection);
             }
 
             m_mapCount -= clusterIdxs.size();
@@ -312,12 +307,11 @@ namespace crg::renderer {
         void loadFromObj(const std::filesystem::path& path, MeshData& meshData);
 
         void unloadMesh(
-            Handle<Mesh> handle
+            Mesh mesh,
+            MeshCollectionData* collection
         ) {
-            BufferView<MeshCollectionData> view = m_buffer.getBufferView();
-            MeshCollectionData* collection = view.get();
 
-            ClusterIndices& clusterIDs = m_meshClusterIDs[handle.id];
+            ClusterIndices& clusterIDs = m_meshClusterIDs[mesh.id];
 
             for (auto& clusterID : clusterIDs.idxs) {
                 // Swap and pop
@@ -342,21 +336,12 @@ namespace crg::renderer {
                 InstanceBlock& backInstanceBlock = m_instanceBlocks.back();
                 InstanceBlock& instanceBlock = m_instanceBlocks[clusterID];
 
-                void* values = collection->clusterInstances + backInstanceBlock.first;
-
-                size_t& index = instanceBlock.first;
-                size_t& count = backInstanceBlock.count;
-
-                std::memmove(
-                    collection->clusterInstances + index + count,
-                    collection->clusterInstances + index,
-                    (MAX_CLUSTER_INSTANCE_MAP - index) * sizeof(ClusterInstance)
-                );
-
-                std::memcpy(
-                    collection->clusterInstances + index,
-                    values,
-                    count * sizeof(ClusterInstance)
+                arrayInsert(
+                    collection->clusterInstances,
+                    MAX_CLUSTER_INSTANCE_MAP,
+                    instanceBlock.first,
+                    &collection->clusterInstances[backInstanceBlock.first],
+                    backInstanceBlock.count
                 );
 
                 for (size_t i = instanceBlock.first; i < instanceBlock.first + backInstanceBlock.count; i++) {
@@ -367,7 +352,7 @@ namespace crg::renderer {
                 m_instanceBlocks.pop_back();
             }
 
-            m_meshClusterIDs.erase(handle.id);
+            m_meshClusterIDs.erase(mesh.id);
         }
 
 

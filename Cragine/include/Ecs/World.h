@@ -66,11 +66,11 @@ namespace crg::ecs {
 
             std::tuple<Components..., Entity> componentData = std::make_tuple(std::forward<Components>(components)..., entity);
 
-            auto [archID, isNew] = m_archetypeManager.addEntity(signature, componentData);
+            auto [archID, isNew] = m_archetypeManager.addEntity(signature, m_eventManager, entity, componentData);
 
             m_entityManager.assignArchetype(entity, archID);
 
-            (m_eventManager.emit(Added<Components>{.entity = entity, .component = components}), ...);
+            // (m_eventManager.emit(Added<Components>{.entity = entity, .component = components}), ...);
 
             if (isNew) {
                 m_queryManager.updateQueries(&m_archetypeManager.getArchetype(archID));
@@ -87,7 +87,7 @@ namespace crg::ecs {
 
             ArchetypeID archID = m_entityManager.getArchetype(entity);
 
-            m_archetypeManager.removeEntity(entity, archID);
+            m_archetypeManager.removeEntity(entity, archID, m_eventManager);
 
             m_entityManager.removeEntity(entity);
 
@@ -121,9 +121,10 @@ namespace crg::ecs {
 
             ArchetypeID srcArchID = m_entityManager.getArchetype(entity);
 
-            auto [isNew, newArch, newArchID, component] = m_archetypeManager.removeComponent<Component>(
+            auto [isNew, newArch, newArchID] = m_archetypeManager.removeComponent<Component>(
                 entity,
-                srcArchID
+                srcArchID,
+                m_eventManager
             );
 
             if (isNew) {
@@ -131,7 +132,7 @@ namespace crg::ecs {
             }
 
             m_entityManager.assignArchetype(entity, newArchID);
-            m_eventManager.emit(Removed<Component>{.entity = entity, .component = component});
+            // m_eventManager.emit(Removed<Component>{.entity = entity, .component = component});
         }
 
         std::deque<Command>& getCommandQueue() {
