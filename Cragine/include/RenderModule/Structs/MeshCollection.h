@@ -5,7 +5,9 @@
 #include "RenderModule/Components/Mesh.h"
 #include "RenderModule/Components/Transform.h"
 #include "RenderModule/Structs/Buffer.h"
+#include "RenderModule/Structs/BufferView.h"
 #include "RenderModule/Structs/MeshData.h"
+#include "glm/fwd.hpp"
 #include "utils/Logger.h"
 
 #include <cstddef>
@@ -71,7 +73,8 @@ namespace crg::renderer {
             wgpu::BufferUsage::MapRead  |
             wgpu::BufferUsage::MapWrite |
             wgpu::BufferUsage::CopyDst
-        ) {}
+        ),
+        m_instanceBlocks(MAX_CLUSTER_COUNT) {}
 
         Mesh loadMesh(
             const std::filesystem::path path,
@@ -85,24 +88,23 @@ namespace crg::renderer {
 
             MeshID meshID = std::hash<std::filesystem::path>{}(path);
 
-            size_t instanceID = -1;
-            if (m_freeInstanceIdxs.empty()) {
-                instanceID = m_instanceCount++;
-            }
-            else {
-                instanceID = m_freeInstanceIdxs.back();
-                m_freeInstanceIdxs.pop_back();
-            }
+            auto instanceID = m_instanceCounts[meshID]++;
+
+            Mesh mesh {
+                .id = std::hash<std::filesystem::path>{}(path),
+                .instanceID = instanceID,
+                .material = material
+            };
+
+            LOG_CORE_WARNING("Mesh: {}, {}", path.c_str(), mesh.id);
+            LOG_CORE_WARNING("Instance: {}", instanceID);
 
             auto it = m_meshClusterIDs.find(meshID);
 
             if (it != m_meshClusterIDs.end()) {
+                LOG_CORE_WARNING("Mesh already loaded. Skipping...");
 
-                return Mesh {
-                    .id = meshID,
-                    .instanceID = instanceID,
-                    .material = material
-                };
+                return mesh;
             }
 
             MeshData meshData{};
@@ -113,28 +115,34 @@ namespace crg::renderer {
                 (double)CLUSTER_VERTEX_COUNT
             );
 
-            m_meshClusterIDs.insert({
-                meshID,
-                ClusterIndices { .idxs = std::vector<uint32_t>(clusterCount) }
-            });
-
-            auto& indices = m_meshClusterIDs[meshID];
-
-            fillClusters(
-                meshID,
-                collection,
-                meshData,
-                indices.idxs,
-                clusterCount,
-                textureHandle
+            m_meshClusterIDs.emplace(
+                mesh.id,
+                ClusterIndices { std::vector<uint32_t>(clusterCount) }
             );
-            m_clusterCount += clusterCount;
 
-            return Mesh {
-                .id = meshID,
-                .instanceID = instanceID,
-                .material = material
-            };
+            auto& ids = m_meshClusterIDs[mesh.id].idxs;
+
+            for (size_t i = 0; i < ids.size(); i++) {
+                ids[i] = m_clusterCount++;
+                m_clusterToMeshID[ids[i]] = mesh.id;
+                // m_instanceBlocks[ids[i]].first = m_mapCount;
+
+                VertexCluster& cluster = collection->clusters[ids[i]];
+                cluster.textureIndex = textureHandle.id;
+
+                for (size_t j = 0; j < CLUSTER_VERTEX_COUNT; j++) {
+                    size_t vertexIndex = j + (i * CLUSTER_VERTEX_COUNT);
+
+                    if (vertexIndex < meshData.vertices.size()) {
+                        cluster.vertexData[j] = meshData.vertices[vertexIndex];
+                    }
+                    else {
+                        cluster.vertexData[j] = meshData.vertices.back();
+                    }
+                }
+            }
+
+            return mesh;
         }
 
         void addInstance(
@@ -144,46 +152,9 @@ namespace crg::renderer {
             auto view = m_buffer.getBufferView();
             MeshCollectionData* collection = view.get();
 
-            ClusterIndices clusterIndices = m_meshClusterIDs.at(mesh.id);
+            LOG_CORE_TRACE("Adding instance to mesh: {}. instance id: {}", mesh.id, mesh.instanceID);
 
-            auto modelMatrix = transform.toMatrix();
-
-            Instance instance {
-                .modelMatrix = modelMatrix
-            };
-
-
-            collection->instances[mesh.instanceID] = instance;
-
-            for (auto& clusterIdx : clusterIndices.idxs) {
-                if (m_instanceBlocks.size() <= clusterIdx) {
-                    m_instanceBlocks.emplace_back(
-                        InstanceBlock {
-                            .first = (uint32_t) m_mapCount,
-                            .count = 0
-                        }
-                    );
-                }
-
-                auto& instanceBlock = m_instanceBlocks[clusterIdx];
-
-                ClusterInstance clusterInstance {
-                    .cluster = (uint32_t) clusterIdx,
-                    .instance = (uint32_t) mesh.instanceID
-                };
-
-                arrayInsert(
-                    collection->clusterInstances,
-                    MAX_CLUSTER_INSTANCE_MAP,
-                    instanceBlock.first + instanceBlock.count++,
-                    &clusterInstance
-                );
-                m_mapCount++;
-
-                for (size_t i = clusterIdx + 1; i < m_instanceBlocks.size(); i++) {
-                    m_instanceBlocks[i].first++;
-                }
-            }
+            appendInstance(collection, mesh, transform);
         }
 
 
@@ -193,58 +164,11 @@ namespace crg::renderer {
             BufferView<MeshCollectionData> view = m_buffer.getBufferView();
             MeshCollectionData* collection = view.get();
 
-            auto it = m_meshClusterIDs.find(mesh.id);
-            if (it == m_meshClusterIDs.end()) {
-                return;
-            }
-
-            size_t instanceOffset = -1;
-
-            InstanceBlock& firstBlock = m_instanceBlocks[it->second.idxs[0]];
-            for (size_t i = 0; i < firstBlock.count; i++) {
-                if (collection->clusterInstances[i + firstBlock.first].instance == mesh.instanceID) {
-                    instanceOffset = i;
-                    break;
-                }
-            }
-
-            auto freeInstance = collection->clusterInstances[firstBlock.first + instanceOffset].instance;
-            m_freeInstanceIdxs.emplace_back(freeInstance);
-
-            bool last = false;
-
-            auto& clusterIdxs = it->second.idxs;
-            for (auto& clusterIdx : clusterIdxs) {
-                auto& instanceBlock = m_instanceBlocks[clusterIdx];
-
-                arrayErase(
-                    collection->clusterInstances,
-                    MAX_CLUSTER_INSTANCE_MAP,
-                    instanceBlock.first + instanceOffset,
-                    1
-                );
-
-                instanceBlock.count--;
-
-                for (size_t i = clusterIdx + 1; i < m_instanceBlocks.size(); i++) {
-                    m_instanceBlocks[i].first--;
-                }
-
-                if (instanceBlock.count == 0) {
-                    last = true;
-                }
-            }
-
-
-            if (last) {
-                unloadMesh(mesh, collection);
-            }
-
-            m_mapCount -= clusterIdxs.size();
+            deleteInstance(collection, mesh);
         }
 
         uint32_t vertexCount() {
-            return m_clusterCount * CLUSTER_VERTEX_COUNT;
+            return m_mapCount * CLUSTER_VERTEX_COUNT;
         }
 
         wgpu::Buffer& getRawBuffer() {
@@ -263,6 +187,7 @@ namespace crg::renderer {
         // Maps a cluster index to the meshID it belongs to
         std::unordered_map<size_t, MeshID> m_clusterToMeshID;
 
+        std::unordered_map<MeshID, uint32_t> m_instanceCounts;
 
         std::vector<size_t> m_freeInstanceIdxs;
 
@@ -273,88 +198,7 @@ namespace crg::renderer {
 
         std::vector<InstanceBlock> m_instanceBlocks;
 
-        void fillClusters(
-            MeshID meshID,
-            MeshCollectionData* collection,
-            MeshData& data,
-            std::vector<uint32_t>& indices,
-            size_t& clusterCount,
-            Handle<AtlasEntry>& textureHandle
-        ) {
-            size_t start = m_clusterCount;
-            for(size_t i = 0; i < indices.size(); i++) {
-                uint32_t clusterIndex = start + i;
-
-                indices[i] = clusterIndex;
-                m_clusterToMeshID[clusterIndex] = meshID;
-
-                auto& cluster = collection->clusters[clusterIndex];
-                cluster.textureIndex = textureHandle.id;
-
-                for (size_t j = 0; j < CLUSTER_VERTEX_COUNT; j++) {
-                    size_t vertexIndex = j + (i * CLUSTER_VERTEX_COUNT);
-
-                    if (vertexIndex < data.vertices.size()) {
-                        cluster.vertexData[j] = data.vertices[vertexIndex];
-                    }
-                    else {
-                        cluster.vertexData[j] = data.vertices.back();
-                    }
-                }
-            }
-        }
-
         void loadFromObj(const std::filesystem::path& path, MeshData& meshData);
-
-        void unloadMesh(
-            Mesh mesh,
-            MeshCollectionData* collection
-        ) {
-
-            ClusterIndices& clusterIDs = m_meshClusterIDs[mesh.id];
-
-            for (auto& clusterID : clusterIDs.idxs) {
-                // Swap and pop
-                VertexCluster& backCluster = collection->clusters[--m_clusterCount];
-                collection->clusters[clusterID] = backCluster;
-
-                // Find the mesh id of the back cluster
-                auto& backMeshID = m_clusterToMeshID[m_clusterCount];
-
-                // Update the moved chunk index in the mesh chunk list
-                for (auto& cluster : m_meshClusterIDs[backMeshID].idxs) {
-                    if (cluster == m_clusterCount) {
-                        cluster = clusterID;
-                        break;
-                    }
-                }
-
-                m_clusterToMeshID[clusterID] = backMeshID;
-                m_clusterToMeshID.erase(m_clusterCount);
-
-                // Move instances
-                InstanceBlock& backInstanceBlock = m_instanceBlocks.back();
-                InstanceBlock& instanceBlock = m_instanceBlocks[clusterID];
-
-                arrayInsert(
-                    collection->clusterInstances,
-                    MAX_CLUSTER_INSTANCE_MAP,
-                    instanceBlock.first,
-                    &collection->clusterInstances[backInstanceBlock.first],
-                    backInstanceBlock.count
-                );
-
-                for (size_t i = instanceBlock.first; i < instanceBlock.first + backInstanceBlock.count; i++) {
-                    collection->clusterInstances[i].cluster = clusterID;
-                }
-
-                instanceBlock = backInstanceBlock;
-                m_instanceBlocks.pop_back();
-            }
-
-            m_meshClusterIDs.erase(mesh.id);
-        }
-
 
         // TODO: implement edge guards
         template<typename T>
@@ -365,6 +209,12 @@ namespace crg::renderer {
             T* values,
             size_t count = 1
         ) {
+
+            if (arrSize < index) {
+                LOG_CORE_ERROR("Array insert underflow.");
+                return;
+            }
+
             std::memmove(
                 array + index + count,
                 array + index,
@@ -381,6 +231,18 @@ namespace crg::renderer {
             size_t index,
             size_t count
         ) {
+
+            if (index > arrSize) {
+                LOG_CORE_ERROR("arrayErase: index > arrSize, size_t would underflow below.");
+                return;
+            }
+
+            if (count > arrSize - index) {
+                LOG_CORE_ERROR("arrayErase: index + count > arrSize, size_t would underflow");
+                return;
+            }
+
+
             std::memmove(
                 array + index,
                 array + index + count,
@@ -388,6 +250,125 @@ namespace crg::renderer {
             );
         }
 
+        void appendInstance(MeshCollectionData* collection, Mesh& mesh, Transform& transform) {
+
+            uint32_t instanceIndex = -1;
+            if (m_freeInstanceIdxs.empty()) {
+                instanceIndex = m_instanceCount++;
+            }
+            else  {
+                instanceIndex = m_freeInstanceIdxs.back();
+                m_freeInstanceIdxs.pop_back();
+            }
+
+            collection->instances[instanceIndex] = {
+                .modelMatrix = transform.toMatrix()
+            };
+
+            LOG_CORE_INFO("Instance index: {}", instanceIndex);
+
+            ClusterIndices& idx = m_meshClusterIDs.at(mesh.id);
+
+            for (auto id : idx.idxs) {
+
+                InstanceBlock& instanceBlock = m_instanceBlocks[id];
+
+                ClusterInstance map {
+                    .cluster = id,
+                    .instance = (uint32_t) instanceIndex
+                };
+
+                LOG_CORE_INFO("Wrote map: cluster {} instanceIndex {} to map index {}", map.cluster, map.instance, m_mapCount);
+                // TODO: Fix indexing
+                arrayInsert(collection->clusterInstances, MAX_CLUSTER_INSTANCE_MAP, m_mapCount + mesh.instanceID - 1, &map);
+                m_mapCount++;
+
+                for (size_t i = id; i < m_instanceBlocks.size(); i++) {
+                    m_instanceBlocks[i].first++;
+                }
+            }
+
+            LOG_CORE_ERROR("Map Count: {}", m_mapCount);
+
+            for (size_t i = 0; i < m_mapCount; i++) {
+                LOG_CORE_TRACE("Map[{}]: cluster {}, instance {}", i, collection->clusterInstances[i].cluster, collection->clusterInstances[i].instance);
+            }
+        }
+
+        void deleteInstance(MeshCollectionData* collection, Mesh& mesh) {
+            ClusterIndices& idx = m_meshClusterIDs.at(mesh.id);
+
+            for (auto id : idx.idxs) {
+                InstanceBlock& instanceBlock = m_instanceBlocks[id];
+
+                m_freeInstanceIdxs.emplace_back(
+                    collection->clusterInstances[instanceBlock.first + mesh.instanceID].instance
+                );
+
+                arrayErase(collection->clusterInstances, MAX_CLUSTER_INSTANCE_MAP, instanceBlock.first + mesh.instanceID, 1);
+                m_mapCount--;
+
+                for (size_t i = id; i < m_instanceBlocks.size(); i++) {
+                    m_instanceBlocks[i].first--;
+                }
+            }
+
+            if (--m_instanceCounts[mesh.id] == 0) {
+                unloadMesh(collection, mesh);
+            }
+        }
+
+
+        void unloadMesh(MeshCollectionData* collection, Mesh& mesh) {
+            ClusterIndices& idx = m_meshClusterIDs.at(mesh.id);
+
+            for (auto id : idx.idxs) {
+                collection->clusters[id] = collection->clusters[--m_clusterCount];
+                MeshID backMeshID = m_clusterToMeshID[m_clusterCount];
+
+                InstanceBlock& backBlock = m_instanceBlocks[m_clusterCount];
+
+                uint32_t& backCount = m_instanceCounts[backMeshID];
+                uint32_t& count = m_instanceCounts[mesh.id];
+
+                InstanceBlock& block = m_instanceBlocks[id];
+
+                arrayErase(collection->clusterInstances, MAX_CLUSTER_INSTANCE_MAP, block.first, count);
+
+                arrayInsert(
+                    collection->clusterInstances,
+                    MAX_CLUSTER_INSTANCE_MAP,
+                    block.first,
+                    &collection->clusterInstances[backBlock.first],
+                    backCount
+                );
+
+                count = backCount;
+
+                updateClusterMaps(id);
+            }
+        }
+
+        void updateClusterMaps(uint32_t newIndex) {
+            // MeshToCluster:
+            // - find cluster index
+            // - override it with the new one
+            // ClusterToMesh:
+            // - erase back cluster
+            // - insert move cluster index
+            MeshID backMeshID = m_clusterToMeshID[m_clusterCount];
+
+            auto& backList = m_meshClusterIDs[backMeshID].idxs;
+
+            for (auto& index : backList) {
+                if (index == m_clusterCount) {
+                    index = newIndex;
+                }
+            }
+
+            m_clusterToMeshID[newIndex] = backMeshID;
+            m_clusterToMeshID.erase(m_clusterCount);
+        }
 
     };
 

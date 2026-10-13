@@ -36,8 +36,6 @@ namespace crg::renderer {
         > atlas;
     };
 
-    static Mesh cubeMesh;
-
     static void startup(
         Commands commands,
         ResMut<RenderContext> rRenderContext,
@@ -108,7 +106,33 @@ namespace crg::renderer {
                     1
                 )
             ),
-            transform
+            transform2
+        );
+
+        commands.spawn(
+            mat.m_meshCollection.loadMesh(
+                "../assets/cube.obj",
+                materials.getHandle<SampleMaterial>(),
+                textureAtlasManager.get(atlas).pushTexture(
+                    "../assets/emilia.png",
+                    renderContext.queue,
+                    1
+                )
+            ),
+            transform2
+        );
+
+        commands.spawn(
+            mat.m_meshCollection.loadMesh(
+                "../assets/pyramid.obj",
+                materials.getHandle<SampleMaterial>(),
+                textureAtlasManager.get(atlas).pushTexture(
+                    "../assets/reina.gif",
+                    renderContext.queue,
+                    1
+                )
+            ),
+            transform2
         );
 
         Camera cameraObj{};
@@ -121,7 +145,7 @@ namespace crg::renderer {
 
         bufferManager.get(camera).write(cameraObj.getUniform());
 
-        commands.removeComponent<Mesh>(cube);
+        // commands.despawn(cube);
     }
 
 
@@ -138,9 +162,8 @@ namespace crg::renderer {
             for (auto& mesh : meshes.read()) {
                 if (ent.id == mesh.entity.id) {
 
-                    LOG_CORE_INFO("Ent: {}", ent.id);
                     LOG_CORE_INFO("Mesh id: {}, instanceID: {}", mesh.component.id, mesh.component.instanceID);
-
+                    // TODO: preassign mesh instance id when loading. Cannot pass component reference.
                     materials.getMaterial(mesh.component.material).m_meshCollection.addInstance(
                         transform,
                         mesh.component
