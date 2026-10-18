@@ -96,9 +96,6 @@ namespace crg::renderer {
                 .material = material
             };
 
-            LOG_CORE_WARNING("Mesh: {}, {}", path.c_str(), mesh.id);
-            LOG_CORE_WARNING("Instance: {}", instanceID);
-
             auto it = m_meshClusterIDs.find(meshID);
 
             if (it != m_meshClusterIDs.end()) {
@@ -125,7 +122,6 @@ namespace crg::renderer {
             for (size_t i = 0; i < ids.size(); i++) {
                 ids[i] = m_clusterCount++;
                 m_clusterToMeshID[ids[i]] = mesh.id;
-                // m_instanceBlocks[ids[i]].first = m_mapCount;
 
                 VertexCluster& cluster = collection->clusters[ids[i]];
                 cluster.textureIndex = textureHandle.id;
@@ -152,9 +148,21 @@ namespace crg::renderer {
             auto view = m_buffer.getBufferView();
             MeshCollectionData* collection = view.get();
 
-            LOG_CORE_TRACE("Adding instance to mesh: {}. instance id: {}", mesh.id, mesh.instanceID);
+            LOG_CORE_ERROR("Append instance: ");
+            LOG_CORE_INFO("Map count: {}", m_mapCount);
 
             appendInstance(collection, mesh, transform);
+
+            for (size_t i = 0; i < m_mapCount; i++) {
+                LOG_CORE_TRACE("map[{}]: cluster: {}, instanceID: {}",
+                    i,
+                    collection->clusterInstances[i].cluster,
+                    collection->clusterInstances[i].instance
+                );
+            }
+
+            LOG_CORE_INFO("Map count: {}", m_mapCount);
+
         }
 
 
@@ -163,8 +171,28 @@ namespace crg::renderer {
         ) {
             BufferView<MeshCollectionData> view = m_buffer.getBufferView();
             MeshCollectionData* collection = view.get();
+            LOG_CORE_ERROR("Remove instance: ");
+
+            LOG_CORE_INFO("Map count: {}", m_mapCount);
+
+            for (size_t i = 0; i < m_mapCount; i++) {
+                LOG_CORE_TRACE("map[{}]: cluster: {}, instanceID: {}",
+                    i,
+                    collection->clusterInstances[i].cluster,
+                    collection->clusterInstances[i].instance
+                );
+            }
 
             deleteInstance(collection, mesh);
+
+            for (size_t i = 0; i < m_mapCount; i++) {
+                LOG_CORE_TRACE("map[{}]: cluster: {}, instanceID: {}",
+                    i,
+                    collection->clusterInstances[i].cluster,
+                    collection->clusterInstances[i].instance
+                );
+            }
+            LOG_CORE_INFO("Map count: {}", m_mapCount);
         }
 
         uint32_t vertexCount() {
@@ -265,8 +293,6 @@ namespace crg::renderer {
                 .modelMatrix = transform.toMatrix()
             };
 
-            LOG_CORE_INFO("Instance index: {}", instanceIndex);
-
             ClusterIndices& idx = m_meshClusterIDs.at(mesh.id);
 
             for (auto id : idx.idxs) {
@@ -278,25 +304,19 @@ namespace crg::renderer {
                     .instance = (uint32_t) instanceIndex
                 };
 
-                LOG_CORE_INFO("Wrote map: cluster {} instanceIndex {} to map index {}", map.cluster, map.instance, m_mapCount);
-                // TODO: Fix indexing
-                arrayInsert(collection->clusterInstances, MAX_CLUSTER_INSTANCE_MAP, m_mapCount + mesh.instanceID - 1, &map);
+                arrayInsert(collection->clusterInstances, MAX_CLUSTER_INSTANCE_MAP, instanceBlock.first + mesh.instanceID, &map);
                 m_mapCount++;
 
-                for (size_t i = id; i < m_instanceBlocks.size(); i++) {
+                for (size_t i = id + 1; i < m_instanceBlocks.size(); i++) {
                     m_instanceBlocks[i].first++;
                 }
-            }
-
-            LOG_CORE_ERROR("Map Count: {}", m_mapCount);
-
-            for (size_t i = 0; i < m_mapCount; i++) {
-                LOG_CORE_TRACE("Map[{}]: cluster {}, instance {}", i, collection->clusterInstances[i].cluster, collection->clusterInstances[i].instance);
             }
         }
 
         void deleteInstance(MeshCollectionData* collection, Mesh& mesh) {
             ClusterIndices& idx = m_meshClusterIDs.at(mesh.id);
+
+            LOG_CORE_INFO("Mesh id: {}, instance id: {}", mesh.id, mesh.instanceID);
 
             for (auto id : idx.idxs) {
                 InstanceBlock& instanceBlock = m_instanceBlocks[id];
@@ -304,6 +324,8 @@ namespace crg::renderer {
                 m_freeInstanceIdxs.emplace_back(
                     collection->clusterInstances[instanceBlock.first + mesh.instanceID].instance
                 );
+
+                LOG_CORE_INFO("free Instance index: {}", m_freeInstanceIdxs.back());
 
                 arrayErase(collection->clusterInstances, MAX_CLUSTER_INSTANCE_MAP, instanceBlock.first + mesh.instanceID, 1);
                 m_mapCount--;
@@ -314,6 +336,7 @@ namespace crg::renderer {
             }
 
             if (--m_instanceCounts[mesh.id] == 0) {
+                LOG_CORE_WARNING("Deloading mesh");
                 unloadMesh(collection, mesh);
             }
         }

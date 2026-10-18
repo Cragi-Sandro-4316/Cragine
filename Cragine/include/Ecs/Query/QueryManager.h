@@ -53,8 +53,8 @@ namespace crg::ecs {
 
             std::vector<CachedQuery*> queries;
 
-            bool valid = true;
             for (auto& query : m_queries) {
+                bool valid = true;
                 for (auto compID : query->m_signature) {
                     if (!archSignature.contains(compID)) {
                         valid = false;
@@ -100,13 +100,10 @@ namespace crg::ecs {
             return &m_componentMap;
         }
 
-    private:
-
         std::vector<
             std::unique_ptr<CachedQuery>
         > m_queries;
-
-        // std::vector<uint32_t> m_queryVersions;
+    private:
 
         std::unordered_map<
             ComponentID,

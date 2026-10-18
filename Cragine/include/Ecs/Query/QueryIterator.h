@@ -1,6 +1,8 @@
 #pragma once
 
-#include <cstdint>
+#include "Ecs/Archetypes/Archetype.h"
+#include "Ecs/Archetypes/ComponentManager.h"
+#include "Ecs/Archetypes/ComponentSignature.h"
 #include <iterator>
 #include <tuple>
 #include <vector>
@@ -15,11 +17,9 @@ namespace crg::ecs {
         using pointer = value_type*;
         using reference = value_type;
 
-        std::tuple<
-            std::vector<Components*>...
-        >& m_buffers;
+        std::vector<Chunk*>& m_chunks;
 
-        std::vector<const uint32_t*>& m_chunkEntityCounts;
+        ComponentManager& m_componentManager;
 
         // Indexes the chunk
         size_t m_chunkIndex;
@@ -27,22 +27,21 @@ namespace crg::ecs {
         // Indexes the entity inside the chunk
         size_t m_entityIndex;
 
+
         QueryIterator& operator++() {
 
-            if (m_chunkEntityCounts.empty()) return *this;
+            if (m_chunks.empty()) return *this;
 
             m_entityIndex++;
             if (
-                m_entityIndex >= *m_chunkEntityCounts[m_chunkIndex]
+                m_entityIndex >= m_chunks[m_chunkIndex]->m_entityCount
             ) {
-
                 // increase until non empty chunk
                 do {
                     m_chunkIndex++;
-                    // LOG_CORE_INFO("chunks left: {}", chunksLeft);
                 } while (
-                    m_chunkIndex != m_chunkEntityCounts.size() &&
-                    *m_chunkEntityCounts[m_chunkIndex] == 0
+                    m_chunkIndex < m_chunks.size() - 1 &&
+                    m_chunks[m_chunkIndex]->m_entityCount == 0
                 );
 
                 m_entityIndex = 0;
@@ -74,15 +73,12 @@ namespace crg::ecs {
 
         template<typename Component>
         Component& getReference() const {
+            ComponentID compID = m_componentManager.getID<Component>();
 
-            auto& compBuffers = std::get<std::vector<Component*>>(m_buffers);
-
-            Component* buffer = compBuffers[m_chunkIndex];
+            Component* buffer = (Component*)m_chunks[m_chunkIndex]->getBuffer(compID);
 
             return buffer[m_entityIndex];
         }
-
-
     };
 
 }

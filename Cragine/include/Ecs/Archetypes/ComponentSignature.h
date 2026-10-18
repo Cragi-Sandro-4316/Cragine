@@ -27,21 +27,12 @@ namespace crg::ecs {
         }
     };
 
-    using Copy = void(*)(void* src, uint32_t srcIdx, void* dst, uint32_t dstIdx);
 
-    using Write = void(*)(void* to, void* from);
-    using ArrayWrite = void(*)(void* arr, void* data, size_t index);
-    using ArraySwapNPop = void(*)(void* arr, size_t index, size_t count);
-    using GetPtr = void*(*)(void* arr, size_t index);
-    using EmitAdded = void(*)(EventManager& eventManager, Entity entity, void* data);
-    using EmitRemoved = void(*)(EventManager& eventManager, Entity entity, void* data);
 
     struct FuncTable {
-        Write write;
-        ArrayWrite arrWrite;
-        ArraySwapNPop swapAndPop;
-        GetPtr getPtr;
-        EmitAdded emitAdded;
-        EmitRemoved emitRemoved;
+        void (*remove)(void* arr, size_t index, size_t count);
+        void* (*getPtr)(void* arr, size_t index);
+        void (*emitRemoved)(void* arr, size_t index, EventManager& eventManager, Entity& entity);
+
     };
 }

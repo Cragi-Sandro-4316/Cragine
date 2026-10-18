@@ -1,6 +1,7 @@
 #pragma once
 #include <webgpu/webgpu.hpp>
 
+#include "Ecs/Commands/Commands.h"
 #include "Ecs/Ecs.h"
 
 #include "Ecs/Entity/Entity.h"
@@ -35,6 +36,7 @@ namespace crg::renderer {
             TextureAtlas
         > atlas;
     };
+
 
     static void startup(
         Commands commands,
@@ -77,18 +79,19 @@ namespace crg::renderer {
         transform.rotate(-45, vec3(0, 1, 0));
         transform.rotate(-20, vec3(1, 0, 0));
 
-        auto cube = commands.spawn(
-            mat.m_meshCollection.loadMesh(
-                "../assets/cube.obj",
-                materials.getHandle<SampleMaterial>(),
-                textureAtlasManager.get(atlas).pushTexture(
-                    "../assets/emilia.png",
-                    renderContext.queue,
-                    1
-                )
-            ),
-            transform
-        );
+        // commands.spawn(
+        //     mat.m_meshCollection.loadMesh(
+        //         "../assets/cube.obj",
+        //         materials.getHandle<SampleMaterial>(),
+        //         textureAtlasManager.get(atlas).pushTexture(
+        //             "../assets/emilia.png",
+        //             renderContext.queue,
+        //             1
+        //         )
+        //     ),
+        //     transform,
+        //     Marker{}
+        // );
 
         Transform transform2{};
         transform2.translation.z = 2;
@@ -96,44 +99,94 @@ namespace crg::renderer {
         transform2.translation.x = 0.4;
         transform2.scale = vec3(.25);
         // TODO: Check bug in instances.
-        commands.spawn(
-            mat.m_meshCollection.loadMesh(
-                "../assets/pyramid.obj",
-                materials.getHandle<SampleMaterial>(),
-                textureAtlasManager.get(atlas).pushTexture(
-                    "../assets/reina.gif",
-                    renderContext.queue,
-                    1
-                )
-            ),
-            transform2
-        );
 
-        commands.spawn(
-            mat.m_meshCollection.loadMesh(
-                "../assets/cube.obj",
-                materials.getHandle<SampleMaterial>(),
-                textureAtlasManager.get(atlas).pushTexture(
-                    "../assets/emilia.png",
-                    renderContext.queue,
-                    1
-                )
-            ),
-            transform2
+        // TEST: -----------------------------------------
+        auto pyramid1 = mat.m_meshCollection.loadMesh(
+            "../assets/pyramid.obj",
+            materials.getHandle<SampleMaterial>(),
+            textureAtlasManager.get(atlas).pushTexture(
+                "../assets/reina.gif",
+                renderContext.queue,
+                1
+            )
         );
+        mat.m_meshCollection.addInstance(transform, pyramid1);
 
-        commands.spawn(
-            mat.m_meshCollection.loadMesh(
-                "../assets/pyramid.obj",
-                materials.getHandle<SampleMaterial>(),
-                textureAtlasManager.get(atlas).pushTexture(
-                    "../assets/reina.gif",
-                    renderContext.queue,
-                    1
-                )
-            ),
-            transform2
+        auto cube1 = mat.m_meshCollection.loadMesh(
+            "../assets/cube.obj",
+            materials.getHandle<SampleMaterial>(),
+            textureAtlasManager.get(atlas).pushTexture(
+                "../assets/emilia.png",
+                renderContext.queue,
+                1
+            )
         );
+        mat.m_meshCollection.addInstance(transform, cube1);
+
+        auto pyramid2 = mat.m_meshCollection.loadMesh(
+            "../assets/pyramid.obj",
+            materials.getHandle<SampleMaterial>(),
+            textureAtlasManager.get(atlas).pushTexture(
+                "../assets/reina.gif",
+                renderContext.queue,
+                1
+            )
+        );
+        mat.m_meshCollection.addInstance(transform2, pyramid2);
+
+
+        auto cube2 = mat.m_meshCollection.loadMesh(
+            "../assets/cube.obj",
+            materials.getHandle<SampleMaterial>(),
+            textureAtlasManager.get(atlas).pushTexture(
+                "../assets/emilia.png",
+                renderContext.queue,
+                1
+            )
+        );
+        mat.m_meshCollection.addInstance(transform2, cube2);
+
+        mat.m_meshCollection.removeInstance(cube2);
+
+
+        // commands.spawn(
+        //     mat.m_meshCollection.loadMesh(
+        //         "../assets/pyramid.obj",
+        //         materials.getHandle<SampleMaterial>(),
+        //         textureAtlasManager.get(atlas).pushTexture(
+        //             "../assets/reina.gif",
+        //             renderContext.queue,
+        //             1
+        //         )
+        //     ),
+        //     transform2
+        // );
+
+        // commands.spawn(
+        //     mat.m_meshCollection.loadMesh(
+        //         "../assets/cube.obj",
+        //         materials.getHandle<SampleMaterial>(),
+        //         textureAtlasManager.get(atlas).pushTexture(
+        //             "../assets/emilia.png",
+        //             renderContext.queue,
+        //             1
+        //         )
+        //     ),
+        //     transform2
+        // );
+
+        // commands.spawn(
+        //     mat.m_meshCollection.loadMesh(
+        //         "../assets/pyramid.obj",
+        //         materials.getHandle<SampleMaterial>(),
+        //         textureAtlasManager.get(atlas).pushTexture(
+        //             "../assets/reina.gif",
+        //             renderContext.queue,
+        //             1
+        //         )
+        //     ),
+        //     transform
+        // );
 
         Camera cameraObj{};
         cameraObj.setPerspectiveProjection(
@@ -144,8 +197,6 @@ namespace crg::renderer {
         );
 
         bufferManager.get(camera).write(cameraObj.getUniform());
-
-        // commands.despawn(cube);
     }
 
 
@@ -156,21 +207,20 @@ namespace crg::renderer {
         ResMut<MaterialManager> rMaterialManager
     ) {
 
-        auto& materials = rMaterialManager.get();
+        // auto& materials = rMaterialManager.get();
+        // for (auto [ent, transform] : q) {
+        //     LOG_CORE_INFO("Mesh count: {}", meshes.read().size());
+        //     for (auto& mesh : meshes.read()) {
+        //         if (ent.id == mesh.entity.id) {
 
-        for (auto [ent, transform] : q) {
-            for (auto& mesh : meshes.read()) {
-                if (ent.id == mesh.entity.id) {
-
-                    LOG_CORE_INFO("Mesh id: {}, instanceID: {}", mesh.component.id, mesh.component.instanceID);
-                    // TODO: preassign mesh instance id when loading. Cannot pass component reference.
-                    materials.getMaterial(mesh.component.material).m_meshCollection.addInstance(
-                        transform,
-                        mesh.component
-                    );
-                }
-            }
-        }
+        //             LOG_CORE_INFO("Mesh id: {}, instanceID: {}", mesh.component.id, mesh.component.instanceID);
+        //             materials.getMaterial(mesh.component.material).m_meshCollection.addInstance(
+        //                 transform,
+        //                 mesh.component
+        //             );
+        //         }
+        //     }
+        // }
 
     }
 
@@ -182,14 +232,14 @@ namespace crg::renderer {
     ) {
         auto& materials = rMaterialManager.get();
 
-        for (auto& mesh : meshes.read()) {
-            LOG_CORE_WARNING("Despawning: {}", mesh.entity);
-            LOG_CORE_WARNING("Mesh: {}, instance {}", mesh.component.id, mesh.component.instanceID);
+        // for (auto& mesh : meshes.read()) {
+            // LOG_CORE_WARNING("Despawning: {}", mesh.entity);
+            // LOG_CORE_WARNING("Mesh: {}, instance {}", mesh.component.id, mesh.component.instanceID);
 
-            materials.getMaterial(mesh.component.material).m_meshCollection.removeInstance(
-                mesh.component
-            );
-        }
+            // materials.getMaterial(mesh.component.material).m_meshCollection.removeInstance(
+            //     mesh.component
+            // );
+        // }
 
     }
 

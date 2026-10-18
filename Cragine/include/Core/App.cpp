@@ -24,28 +24,10 @@ namespace crg {
         );
     }
 
-
-    struct Sample {
-        std::string x = "sample";
-    };
-
-    struct Sample2 {
-        std::string x = "sample2";
-    };
-
-    struct Foo {
-        int x;
-    };
-
-
-
-
-
     void App::run() {
         LOG_CORE_TRACE("App running");
 
         int i = 0;
-
 
         m_world.runSystems(Schedule::Startup);
         while(!glfwWindowShouldClose(m_window->getGlfwWindow())) {
@@ -58,18 +40,12 @@ namespace crg {
             m_world.getEventManager()->swapBuffers();
             m_world.getEventManager()->clearAll();
 
-            // i++;
-            if (i == 10) {
+            i++;
+            if (i == 2) {
                 break;
             }
         }
         LOG_CORE_INFO("App terminated successfully");
     }
-
-
-
-
-
-
 
 }

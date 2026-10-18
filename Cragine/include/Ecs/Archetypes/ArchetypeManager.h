@@ -28,34 +28,38 @@ namespace crg::ecs {
         std::pair<ArchetypeID, bool> addEntity(
             ComponentSignature signature,
             EventManager& eventManager,
-            Entity& entity,
-            std::tuple<Components...> components
+            Entity entity,
+            Components... components
         ) {
             auto [archID, isNew] = getExactArchetype(signature);
 
             auto& arch = m_archetypes[archID];
 
-            std::vector<std::pair<
-                ComponentID, void*
-            >> componentData;
+            auto& chunk = arch.getFreeChunk();
 
-            ([&]<Components>() {
-                std::pair<
-                    ComponentID, void*
-                > component;
+            auto entCompID = m_componentManager.getID<Entity>();
 
+            auto* entityBuffer = (Entity*)chunk.getBuffer(entCompID);
 
-                component.first = m_componentManager.getID<Components>();
-                component.second = &std::get<Components>(components);
+            entityBuffer[chunk.m_entityCount] = entity;
 
-                auto funcs = m_componentManager.getFuncTable(component.first);
+            ([&](auto& component) {
+                using Component = std::decay_t<decltype(component)>;
+                auto compID = m_componentManager.getID<Component>();
 
-                funcs.emitAdded(eventManager, entity, component.second);
+                auto* buffer = (Component*)chunk.getBuffer(compID);
 
-                componentData.emplace_back(component);
-            }(), ...);
+                buffer[chunk.m_entityCount] = component;
 
-            arch.addEntity(componentData);
+                eventManager.emit(
+                    Added<Component>{
+                        .entity = entity,
+                        .component = component
+                    }
+                );
+            }(components), ...);
+
+            chunk.m_entityCount++;
 
             return {archID, isNew};
         }
@@ -64,7 +68,21 @@ namespace crg::ecs {
         void removeEntity(Entity entity, ArchetypeID archID, EventManager& eventManager) {
             auto& arch = m_archetypes[archID];
 
-            arch.removeEntity(entity, &eventManager);
+            auto [chunkIndex, entityIndex] = arch.findEntity(entity);
+
+            auto* chunk = arch.getChunks()[chunkIndex].get();
+
+            chunk->m_entityCount--;
+            for (auto& compID : arch.getSignature()) {
+                auto funcs = m_componentManager.getFuncTable(compID);
+
+                auto* buffer = chunk->getBuffer(compID);
+
+                funcs.emitRemoved(buffer, entityIndex, eventManager, entity);
+
+                funcs.remove(buffer, entityIndex, chunk->m_entityCount);
+            }
+
         }
 
         template<typename Component>
@@ -78,39 +96,40 @@ namespace crg::ecs {
             Component component,
             EventManager& eventManager
         ) {
-            ComponentID newCompID = m_componentManager.getID<Component>();
-
-            ComponentSignature srcSignature = getSignature(srcArchID);
-            ComponentSignature dstSignature = srcSignature;
-            auto res = dstSignature.insert(newCompID);
-
-            auto [dstArchID, isNew] = getExactArchetype(dstSignature);
-
-            Archetype& srcArch = getArchetype(srcArchID);
-            Archetype& dstArch = getArchetype(dstArchID);
-
-            if (!res.second) {
-                LOG_CORE_WARNING("Entity {} already has this component", entity.id);
-                return { false, &srcArch, srcArchID };
-            }
-
-            auto entityData = srcArch.getEntity(entity);
-
-            auto funcs = m_componentManager.getFuncTable(newCompID);
-
-            std::pair<ComponentID, void*> newComponent;
-            newComponent.first = newCompID;
-            newComponent.second = &component;
-
-            funcs.emitAdded(eventManager, entity, newComponent.second);
-
-            entityData.emplace_back(newComponent);
-
-            dstArch.addEntity(entityData);
-
-            srcArch.removeEntity(entity);
-
-            return std::make_tuple( isNew, &dstArch, dstArchID );
+//             ComponentID newCompID = m_componentManager.getID<Component>();
+//
+//             ComponentSignature srcSignature = getSignature(srcArchID);
+//             ComponentSignature dstSignature = srcSignature;
+//             auto res = dstSignature.insert(newCompID);
+//
+//             auto [dstArchID, isNew] = getExactArchetype(dstSignature);
+//
+//             Archetype& srcArch = getArchetype(srcArchID);
+//             Archetype& dstArch = getArchetype(dstArchID);
+//
+//             if (!res.second) {
+//                 LOG_CORE_WARNING("Entity {} already has this component", entity.id);
+//                 return { false, &srcArch, srcArchID };
+//             }
+//
+//             auto entityData = srcArch.getEntity(entity);
+//
+//             auto funcs = m_componentManager.getFuncTable(newCompID);
+//
+//             std::pair<ComponentID, void*> newComponent;
+//             newComponent.first = newCompID;
+//             newComponent.second = &component;
+//
+//             funcs.emitAdded(eventManager, entity, newComponent.second);
+//
+//             entityData.emplace_back(newComponent);
+//
+//             dstArch.addEntity(entityData);
+//
+//             srcArch.removeEntity(entity);
+//
+//             return std::make_tuple( isNew, &dstArch, dstArchID );
+            return {};
         }
 
 
@@ -124,41 +143,42 @@ namespace crg::ecs {
             ArchetypeID srcArchID,
             EventManager& eventManager
         ) {
-            ComponentID removeCompID = m_componentManager.getID<Component>();
-
-            ComponentSignature srcSignature = getSignature(srcArchID);
-            ComponentSignature dstSignature = srcSignature;
-            auto res = dstSignature.erase(removeCompID);
-
-            auto [dstArchID, isNew] = getExactArchetype(dstSignature);
-
-            Archetype& srcArch = getArchetype(srcArchID);
-            Archetype& dstArch = getArchetype(dstArchID);
-
-            if (res == 0) {
-                LOG_CORE_WARNING("Entity {} does not have component {} to remove", entity.id, removeCompID);
-                return { false, &srcArch, srcArchID };
-            }
-
-            auto entityData = srcArch.getEntity(entity);
-
-            auto funcs = m_componentManager.getFuncTable(removeCompID);
-
-            for (size_t i = 0; i < entityData.size(); i++) {
-                if (entityData[i].first == removeCompID) {
-                    funcs.emitRemoved(eventManager, entity, entityData[i].second);
-
-                    entityData[i] = entityData.back();
-                    break;
-                }
-            }
-            entityData.pop_back();
-
-            dstArch.addEntity(entityData);
-
-            srcArch.removeEntity(entity);
-
-            return std::make_tuple( isNew, &dstArch, dstArchID );
+//             ComponentID removeCompID = m_componentManager.getID<Component>();
+//
+//             ComponentSignature srcSignature = getSignature(srcArchID);
+//             ComponentSignature dstSignature = srcSignature;
+//             auto res = dstSignature.erase(removeCompID);
+//
+//             auto [dstArchID, isNew] = getExactArchetype(dstSignature);
+//
+//             Archetype& srcArch = getArchetype(srcArchID);
+//             Archetype& dstArch = getArchetype(dstArchID);
+//
+//             if (res == 0) {
+//                 LOG_CORE_WARNING("Entity {} does not have component {} to remove", entity.id, removeCompID);
+//                 return { false, &srcArch, srcArchID };
+//             }
+//
+//             auto entityData = srcArch.getEntity(entity);
+//
+//             auto funcs = m_componentManager.getFuncTable(removeCompID);
+//
+//             for (size_t i = 0; i < entityData.size(); i++) {
+//                 if (entityData[i].first == removeCompID) {
+//                     funcs.emitRemoved(eventManager, entity, entityData[i].second);
+//
+//                     entityData[i] = entityData.back();
+//                     break;
+//                 }
+//             }
+//             entityData.pop_back();
+//
+//             dstArch.addEntity(entityData);
+//
+//             srcArch.removeEntity(entity);
+//
+//             return std::make_tuple( isNew, &dstArch, dstArchID );
+            return {};
         }
 
 

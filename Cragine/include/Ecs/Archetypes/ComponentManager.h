@@ -39,34 +39,21 @@ namespace crg::ecs {
             m_componentAligns.emplace_back(alignof(Component));
 
             m_funcs.emplace(componentID, FuncTable {
-                .write = [](void* to, void* from) {
-                    *(Component*)to = *(Component*)from;
-                },
-                .arrWrite = [](void* arr, void* data, size_t index) {
-                    Component* buff = (Component*)arr;
+                .remove = [](void* arr, size_t index, size_t count) {
+                    Component* buffer = (Component*)arr;
 
-                    buff[index] = *(Component*)data;
-                },
-                .swapAndPop = [](void* arr, size_t index, size_t count) {
-                    Component* buff = (Component*)arr;
-
-                    buff[index] = buff[count];
+                    buffer[index] = buffer[count];
                 },
                 .getPtr = [](void* arr, size_t index) {
                     Component* buffer = (Component*)arr;
-
                     return (void*)&buffer[index];
                 },
-                .emitAdded = [](EventManager& eventManager, Entity e, void* data) {
-                    eventManager.emit(Added<Component> {
-                        .entity = e,
-                        .component = *(Component*)data
-                    });
-                },
-                .emitRemoved = [](EventManager& eventManager, Entity e, void* data) {
+                .emitRemoved = [](void* arr, size_t index, EventManager& eventManager, Entity& entity) {
+                    Component* buffer = (Component*)arr;
+
                     eventManager.emit(Removed<Component> {
-                        .entity = e,
-                        .component = *(Component*)data
+                        .entity = entity,
+                        .component = buffer[index]
                     });
                 }
             });

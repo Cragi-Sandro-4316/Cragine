@@ -3,11 +3,12 @@
 #include "Core/App.h"
 #include "Ecs/Ecs.h"
 #include "Ecs/Schedule.h"
+#include "RenderModule/EcsTest.h"
 #include "RenderModule/Managers/GpuResource.h"
 #include "RenderModule/Managers/MaterialManager.h"
 #include "RenderModule/GpuInterface.h"
 #include "RenderModule/RenderContext.h"
-#include "RenderModule/RenderSystems.h"
+// #include "RenderModule/RenderSystems.h"
 #include "RenderModule/Structs/Buffer.h"
 #include "RenderModule/Structs/ImageTexture.h"
 #include "RenderModule/Structs/Sampler.h"
@@ -25,10 +26,15 @@ namespace crg {
             app.addResource<renderer::GpuResource<renderer::TextureAtlas>>();
 
 
-            app.addSystem(ecs::Schedule::Startup, renderer::startup);
-            app.addSystem(ecs::Schedule::Update, renderer::spawnMeshes);
-            app.addSystem(ecs::Schedule::Update, renderer::despawnMeshes);
-            app.addSystem(ecs::Schedule::Update, renderer::render);
+            app.addSystem(ecs::Schedule::Startup, spawn);
+            app.addSystem(ecs::Schedule::Update, despawn);
+            app.addSystem(ecs::Schedule::Update, print);
+
+            // app.addSystem(ecs::Schedule::Startup, renderer::startup);
+            // app.addSystem(ecs::Schedule::Update, renderer::despawnCube);
+            // app.addSystem(ecs::Schedule::Update, renderer::spawnMeshes);
+            // app.addSystem(ecs::Schedule::Update, renderer::despawnMeshes);
+            // app.addSystem(ecs::Schedule::Update, renderer::render);
         }
     };
 

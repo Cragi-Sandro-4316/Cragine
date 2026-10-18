@@ -64,13 +64,9 @@ namespace crg::ecs {
 
             auto signature = m_componentManager.getSignature<Components..., Entity>();
 
-            std::tuple<Components..., Entity> componentData = std::make_tuple(std::forward<Components>(components)..., entity);
-
-            auto [archID, isNew] = m_archetypeManager.addEntity(signature, m_eventManager, entity, componentData);
+            auto [archID, isNew] = m_archetypeManager.addEntity(signature, m_eventManager, entity, components...);
 
             m_entityManager.assignArchetype(entity, archID);
-
-            // (m_eventManager.emit(Added<Components>{.entity = entity, .component = components}), ...);
 
             if (isNew) {
                 m_queryManager.updateQueries(&m_archetypeManager.getArchetype(archID));
@@ -90,7 +86,6 @@ namespace crg::ecs {
             m_archetypeManager.removeEntity(entity, archID, m_eventManager);
 
             m_entityManager.removeEntity(entity);
-
         }
 
         template<typename Component>
